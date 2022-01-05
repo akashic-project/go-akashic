@@ -72,6 +72,7 @@ func (db *Database) Close() error {
 }
 
 // Has retrieves if a key is present in the key-value store.
+// Key-Valueストアにキーが存在するかどうかを取得します。
 func (db *Database) Has(key []byte) (bool, error) {
 	db.lock.RLock()
 	defer db.lock.RUnlock()
@@ -84,6 +85,7 @@ func (db *Database) Has(key []byte) (bool, error) {
 }
 
 // Get retrieves the given key if it's present in the key-value store.
+// Getは、指定されたキーがKey-Valueストアに存在する場合にそれを取得します。
 func (db *Database) Get(key []byte) ([]byte, error) {
 	db.lock.RLock()
 	defer db.lock.RUnlock()
@@ -98,6 +100,7 @@ func (db *Database) Get(key []byte) ([]byte, error) {
 }
 
 // Put inserts the given value into the key-value store.
+// Putは、指定された値をKey-Valueストアに挿入します。
 func (db *Database) Put(key []byte, value []byte) error {
 	db.lock.Lock()
 	defer db.lock.Unlock()

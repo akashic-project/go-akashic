@@ -33,12 +33,16 @@ import (
 
 // CurrentHeader retrieves the current head header of the canonical chain. The
 // header is retrieved from the HeaderChain's internal cache.
+// CurrentHeaderは、正規チェーンの現在のヘッドヘッダーを取得します。
+// ヘッダーはHeaderChainの内部キャッシュから取得されます。
 func (bc *BlockChain) CurrentHeader() *types.Header {
 	return bc.hc.CurrentHeader()
 }
 
 // CurrentBlock retrieves the current head block of the canonical chain. The
 // block is retrieved from the blockchain's internal cache.
+// CurrentBlockは、正規チェーンの現在のヘッドブロックを取得します。
+// ブロックは、ブロックチェーンの内部キャッシュから取得されます。
 func (bc *BlockChain) CurrentBlock() *types.Block {
 	return bc.currentBlock.Load().(*types.Block)
 }
@@ -141,8 +145,10 @@ func (bc *BlockChain) HasFastBlock(hash common.Hash, number uint64) bool {
 
 // GetBlock retrieves a block from the database by hash and number,
 // caching it if found.
+// GetBlockは、ハッシュと数値によってデータベースからブロックを取得し、見つかった場合はキャッシュします。
 func (bc *BlockChain) GetBlock(hash common.Hash, number uint64) *types.Block {
 	// Short circuit if the block's already in the cache, retrieve otherwise
+	// ブロックがすでにキャッシュにある場合は短絡し、そうでない場合は取得します
 	if block, ok := bc.blockCache.Get(hash); ok {
 		return block.(*types.Block)
 	}
@@ -151,6 +157,7 @@ func (bc *BlockChain) GetBlock(hash common.Hash, number uint64) *types.Block {
 		return nil
 	}
 	// Cache the found block for next time and return
+	// 見つかったブロックを次回のためにキャッシュし、
 	bc.blockCache.Add(block.Hash(), block)
 	return block
 }
@@ -212,6 +219,8 @@ func (bc *BlockChain) GetReceiptsByHash(hash common.Hash) types.Receipts {
 
 // GetUnclesInChain retrieves all the uncles from a given block backwards until
 // a specific distance is reached.
+// GetUnclesInChainは、特定の距離に達するまで、
+// 指定されたブロックからすべての叔父を逆方向に取得します。
 func (bc *BlockChain) GetUnclesInChain(block *types.Block, length int) []*types.Header {
 	uncles := []*types.Header{}
 	for i := 0; block != nil && i < length; i++ {
@@ -309,6 +318,7 @@ func (bc *BlockChain) StateAt(root common.Hash) (*state.StateDB, error) {
 }
 
 // Config retrieves the chain's fork configuration.
+// Configは、チェーンのフォーク構成を取得します。
 func (bc *BlockChain) Config() *params.ChainConfig { return bc.chainConfig }
 
 // Engine retrieves the blockchain's consensus engine.

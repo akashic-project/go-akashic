@@ -48,14 +48,17 @@ func main() {
 	fdlimit.Raise(2048)
 
 	// Generate a batch of accounts to seal and fund with
+	// 封印して資金を調達するためのアカウントのバッチを生成します
 	faucets := make([]*ecdsa.PrivateKey, 128)
 	for i := 0; i < len(faucets); i++ {
 		faucets[i], _ = crypto.GenerateKey()
 	}
 	// Pre-generate the ethash mining DAG so we don't race
+	// レースしないように、ethashマイニングDAGを事前生成します
 	ethash.MakeDataset(1, ethconfig.Defaults.Ethash.DatasetDir)
 
 	// Create an Ethash network based off of the Ropsten config
+	// Ropsten構成に基づいてEthashネットワークを作成します
 	genesis := makeGenesis(faucets)
 
 	// Handle interrupts.

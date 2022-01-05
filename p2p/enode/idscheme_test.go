@@ -47,6 +47,7 @@ func TestEmptyNodeID(t *testing.T) {
 }
 
 // Checks that failure to sign leaves the record unmodified.
+// 署名に失敗すると、レコードが変更されないままになることを確認します。
 func TestSignError(t *testing.T) {
 	invalidKey := &ecdsa.PrivateKey{D: new(big.Int), PublicKey: *pubkey}
 
@@ -62,6 +63,7 @@ func TestSignError(t *testing.T) {
 }
 
 // TestGetSetSecp256k1 tests encoding/decoding and setting/getting of the Secp256k1 key.
+// TestGetSetSecp256k1は、Secp256k1キーのエンコード/デコードおよび設定/取得をテストします。
 func TestGetSetSecp256k1(t *testing.T) {
 	var r enr.Record
 	if err := SignV4(&r, privkey); err != nil {

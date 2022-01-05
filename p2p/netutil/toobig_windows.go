@@ -30,6 +30,8 @@ const _WSAEMSGSIZE = syscall.Errno(10040)
 // isPacketTooBig reports whether err indicates that a UDP packet didn't
 // fit the receive buffer. On Windows, WSARecvFrom returns
 // code WSAEMSGSIZE and no data if this happens.
+// isPacketTooBigは、エラーがUDPパケットが受信バッファに適合しなかったことを示しているかどうかを報告します。
+// Windowsでは、WSARecvFromはコードWSAEMSGSIZEを返し、これが発生した場合はデータを返しません。
 func isPacketTooBig(err error) bool {
 	if opErr, ok := err.(*net.OpError); ok {
 		if scErr, ok := opErr.Err.(*os.SyscallError); ok {

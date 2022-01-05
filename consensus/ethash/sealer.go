@@ -38,6 +38,7 @@ import (
 
 const (
 	// staleThreshold is the maximum depth of the acceptable stale but valid ethash solution.
+	// staleThresholdは、許容できる古いが有効なethashソリューションの最大深度です。
 	staleThreshold = 7
 )
 
@@ -48,8 +49,10 @@ var (
 
 // Seal implements consensus.Engine, attempting to find a nonce that satisfies
 // the block's difficulty requirements.
+// シールはconsensus.Engineを実装し、ブロックの難易度要件を満たすナンスを見つけようとします。
 func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
 	// If we're running a fake PoW, simply return a 0 nonce immediately
+	// 偽のPoWを実行している場合は、すぐに0ナンスを返します
 	if ethash.config.PowMode == ModeFake || ethash.config.PowMode == ModeFullFake {
 		header := block.Header()
 		header.Nonce, header.MixDigest = types.BlockNonce{}, common.Hash{}
@@ -61,10 +64,12 @@ func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block
 		return nil
 	}
 	// If we're running a shared PoW, delegate sealing to it
+	// 共有PoWを実行している場合は、シーリングを委任します
 	if ethash.shared != nil {
 		return ethash.shared.Seal(chain, block, results, stop)
 	}
 	// Create a runner and the multiple search threads it directs
+	// ランナーとそれが指示する複数の検索スレッドを作成します
 	abort := make(chan struct{})
 
 	ethash.lock.Lock()
@@ -82,9 +87,10 @@ func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block
 		threads = runtime.NumCPU()
 	}
 	if threads < 0 {
-		threads = 0 // Allows disabling local mining without extra logic around local/remote
+		threads = 0 //ローカル/リモート周辺の追加ロジックなしでローカルマイニングを無効にできます // Allows disabling local mining without extra logic around local/remote
 	}
 	// Push new work to remote sealer
+	// 新しい作業をリモートシーラーにプッシュします
 	if ethash.remote != nil {
 		ethash.remote.workCh <- &sealTask{block: block, results: results}
 	}
@@ -100,14 +106,17 @@ func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block
 		}(i, uint64(ethash.rand.Int63()))
 	}
 	// Wait until sealing is terminated or a nonce is found
+	// シーリングが終了するか、ナンスが見つかるまで待ちます
 	go func() {
 		var result *types.Block
 		select {
 		case <-stop:
 			// Outside abort, stop all miner threads
+			// 中止の外で、すべてのマイナースレッドを停止します
 			close(abort)
 		case result = <-locals:
 			// One of the threads found a block, abort all others
+			// スレッドの1つがブロックを見つけ、他のすべてを中止します
 			select {
 			case results <- result:
 			default:
@@ -116,12 +125,14 @@ func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block
 			close(abort)
 		case <-ethash.update:
 			// Thread count was changed on user request, restart
+			// スレッド数はユーザーの要求に応じて変更され、再起動します
 			close(abort)
 			if err := ethash.Seal(chain, block, results, stop); err != nil {
 				ethash.config.Log.Error("Failed to restart sealing after update", "err", err)
 			}
 		}
 		// Wait for all miners to terminate and return the block
+		// すべてのマイナーが終了してブロックを返すのを待ちます
 		pend.Wait()
 	}()
 	return nil
@@ -129,8 +140,10 @@ func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block
 
 // mine is the actual proof-of-work miner that searches for a nonce starting from
 // seed that results in correct final block difficulty.
+// mineは、シードから開始して正しい最終ブロックの難易度をもたらすナンスを検索する実際のプルーフオブワークマイナーです。
 func (ethash *Ethash) mine(block *types.Block, id int, seed uint64, abort chan struct{}, found chan *types.Block) {
 	// Extract some data from the header
+	// ヘッダーからデータを抽出します
 	var (
 		header  = block.Header()
 		hash    = ethash.SealHash(header).Bytes()
@@ -139,6 +152,7 @@ func (ethash *Ethash) mine(block *types.Block, id int, seed uint64, abort chan s
 		dataset = ethash.dataset(number, false)
 	)
 	// Start generating random nonces until we abort or find a good one
+	// 中止するか、適切なナンスが見つかるまで、ランダムなナンスの生成を開始します
 	var (
 		attempts  = int64(0)
 		nonce     = seed
@@ -151,26 +165,31 @@ search:
 		select {
 		case <-abort:
 			// Mining terminated, update stats and abort
+			// マイニングが終了し、統計を更新して中止します
 			logger.Trace("Ethash nonce search aborted", "attempts", nonce-seed)
 			ethash.hashrate.Mark(attempts)
 			break search
 
 		default:
 			// We don't have to update hash rate on every nonce, so update after after 2^X nonces
+			// すべてのナンスでハッシュレートを更新する必要がないため、2 ^ Xノンスの後に更新します
 			attempts++
 			if (attempts % (1 << 15)) == 0 {
 				ethash.hashrate.Mark(attempts)
 				attempts = 0
 			}
 			// Compute the PoW value of this nonce
+			// このナンスのPoW値を計算します
 			digest, result := hashimotoFull(dataset.dataset, hash, nonce)
 			if powBuffer.SetBytes(result).Cmp(target) <= 0 {
 				// Correct nonce found, create a new header with it
+				// 見つかったナンスを修正し、それを使用して新しいヘッダーを作成します
 				header = types.CopyHeader(header)
 				header.Nonce = types.EncodeNonce(nonce)
 				header.MixDigest = common.BytesToHash(digest)
 
 				// Seal and return a block (if still needed)
+				// ブロックを封印して返却します（まだ必要な場合）
 				select {
 				case found <- block.WithSeal(header):
 					logger.Trace("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce)
@@ -184,10 +203,13 @@ search:
 	}
 	// Datasets are unmapped in a finalizer. Ensure that the dataset stays live
 	// during sealing so it's not unmapped while being read.
+	//データセットはファイナライザーでマップ解除されます。
+	// 読み取り中にマップが解除されないように、データセットがシーリング中にライブのままであることを確認してください。
 	runtime.KeepAlive(dataset)
 }
 
 // This is the timeout for HTTP requests to notify external miners.
+// これは、外部マイナーに通知するHTTPリクエストのタイムアウトです。
 const remoteSealerTimeout = 1 * time.Second
 
 type remoteSealer struct {
@@ -196,29 +218,31 @@ type remoteSealer struct {
 	currentBlock *types.Block
 	currentWork  [4]string
 	notifyCtx    context.Context
-	cancelNotify context.CancelFunc // cancels all notification requests
-	reqWG        sync.WaitGroup     // tracks notification request goroutines
+	cancelNotify context.CancelFunc // すべての通知リクエストをキャンセルします // cancels all notification requests
+	reqWG        sync.WaitGroup     //通知リクエストのgoroutinesを追跡します   // tracks notification request goroutines
 
 	ethash       *Ethash
 	noverify     bool
 	notifyURLs   []string
 	results      chan<- *types.Block
-	workCh       chan *sealTask   // Notification channel to push new work and relative result channel to remote sealer
-	fetchWorkCh  chan *sealWork   // Channel used for remote sealer to fetch mining work
-	submitWorkCh chan *mineResult // Channel used for remote sealer to submit their mining result
-	fetchRateCh  chan chan uint64 // Channel used to gather submitted hash rate for local or remote sealer.
-	submitRateCh chan *hashrate   // Channel used for remote sealer to submit their mining hashrate
+	workCh       chan *sealTask   // 新しい作業と相対結果チャネルをリモートシーラーにプッシュする通知チャネル // Notification channel to push new work and relative result channel to remote sealer
+	fetchWorkCh  chan *sealWork   // リモートシーラーがマイニング作業をフェッチするために使用されるチャネル   // Channel used for remote sealer to fetch mining work
+	submitWorkCh chan *mineResult // リモートシーラーがマイニング結果を送信するために使用されるチャネル       // Channel used for remote sealer to submit their mining result
+	fetchRateCh  chan chan uint64 // ローカルまたはリモートシーラーの送信されたハッシュレートを収集するために使用されるチャネル。 // Channel used to gather submitted hash rate for local or remote sealer.
+	submitRateCh chan *hashrate   // リモートシーラーがマイニングハッシュレートを送信するために使用されるチャネル // Channel used for remote sealer to submit their mining hashrate
 	requestExit  chan struct{}
 	exitCh       chan struct{}
 }
 
 // sealTask wraps a seal block with relative result channel for remote sealer thread.
+// SealTask​​は、リモートシーラースレッドの相対結果チャネルでシールブロックをラップします。
 type sealTask struct {
 	block   *types.Block
 	results chan<- *types.Block
 }
 
 // mineResult wraps the pow solution parameters for the specified block.
+// mineResultは、指定されたブロックのpowソリューションパラメーターをラップします。
 type mineResult struct {
 	nonce     types.BlockNonce
 	mixDigest common.Hash
@@ -228,6 +252,7 @@ type mineResult struct {
 }
 
 // hashrate wraps the hash rate submitted by the remote sealer.
+// hashrateは、リモートシーラーによって送信されたハッシュレートをラップします。
 type hashrate struct {
 	id   common.Hash
 	ping time.Time
@@ -237,6 +262,7 @@ type hashrate struct {
 }
 
 // sealWork wraps a seal work package for remote sealer.
+// SealWorkは、リモートシーラーのシールワークパッケージをラップします。
 type sealWork struct {
 	errc chan error
 	res  chan [4]string
@@ -280,12 +306,16 @@ func (s *remoteSealer) loop() {
 		case work := <-s.workCh:
 			// Update current work with new received block.
 			// Note same work can be past twice, happens when changing CPU threads.
+			// 現在の作業を新しい受信ブロックで更新します。
+			// 同じ作業が2回過ぎてしまう可能性があることに注意してください。
+			// これは、CPUスレッドを変更するときに発生します。
 			s.results = work.results
 			s.makeWork(work.block)
 			s.notifyWork()
 
 		case work := <-s.fetchWorkCh:
 			// Return current mining work to remote miner.
+			// 現在のマイニング作業をリモートマイナーに返します。
 			if s.currentBlock == nil {
 				work.errc <- errNoMiningWork
 			} else {
@@ -294,6 +324,7 @@ func (s *remoteSealer) loop() {
 
 		case result := <-s.submitWorkCh:
 			// Verify submitted PoW solution based on maintained mining blocks.
+			// 維持されているマイニングブロックに基づいて、送信されたPoWソリューションを確認します。
 			if s.submitWork(result.nonce, result.mixDigest, result.hash) {
 				result.errc <- nil
 			} else {
@@ -302,26 +333,31 @@ func (s *remoteSealer) loop() {
 
 		case result := <-s.submitRateCh:
 			// Trace remote sealer's hash rate by submitted value.
+			// 送信された値によってリモートシーラーのハッシュレートをトレースします。
 			s.rates[result.id] = hashrate{rate: result.rate, ping: time.Now()}
 			close(result.done)
 
 		case req := <-s.fetchRateCh:
 			// Gather all hash rate submitted by remote sealer.
+			// リモートシーラーによって送信されたすべてのハッシュレートを収集します。
 			var total uint64
 			for _, rate := range s.rates {
 				// this could overflow
+				// これはオーバーフローする可能性があります
 				total += rate.rate
 			}
 			req <- total
 
 		case <-ticker.C:
 			// Clear stale submitted hash rate.
+			// 古くなった送信済みハッシュレートをクリアします。
 			for id, rate := range s.rates {
 				if time.Since(rate.ping) > 10*time.Second {
 					delete(s.rates, id)
 				}
 			}
 			// Clear stale pending blocks
+			// 古い保留中のブロックをクリアします
 			if s.currentBlock != nil {
 				for hash, block := range s.works {
 					if block.NumberU64()+staleThreshold <= s.currentBlock.NumberU64() {
@@ -343,6 +379,13 @@ func (s *remoteSealer) loop() {
 //   result[1], 32 bytes hex encoded seed hash used for DAG
 //   result[2], 32 bytes hex encoded boundary condition ("target"), 2^256/difficulty
 //   result[3], hex encoded block number
+// makeWorkは、外部マイナー用のワークパッケージを作成します。
+//
+//ワークパッケージは3つの文字列で構成されています：
+// result [0]、32バイトの16進エンコードされた現在のブロックヘッダーpow-hash
+// result [1]、DAGに使用される32バイトの16進エンコードシードハッシュ
+// result [2]、32バイトの16進エンコード境界条件（「ターゲット」）、2 ^ 256 /難易度
+// result [3]、16進数でエンコードされたブロック番号
 func (s *remoteSealer) makeWork(block *types.Block) {
 	hash := s.ethash.SealHash(block.Header())
 	s.currentWork[0] = hash.Hex()
@@ -351,17 +394,21 @@ func (s *remoteSealer) makeWork(block *types.Block) {
 	s.currentWork[3] = hexutil.EncodeBig(block.Number())
 
 	// Trace the seal work fetched by remote sealer.
+	// リモートシーラーによってフェッチされたシール作業をトレースします。
 	s.currentBlock = block
 	s.works[hash] = block
 }
 
 // notifyWork notifies all the specified mining endpoints of the availability of
 // new work to be processed.
+// notifyWorkは、指定されたすべてのマイニングエンドポイントに、処理する新しい作業が利用可能であることを通知します。
 func (s *remoteSealer) notifyWork() {
 	work := s.currentWork
 
 	// Encode the JSON payload of the notification. When NotifyFull is set,
 	// this is the complete block header, otherwise it is a JSON array.
+	// 通知のJSONペイロードをエンコードします。
+	// NotifyFullが設定されている場合、これは完全なブロックヘッダーです。それ以外の場合は、JSON配列です。
 	var blob []byte
 	if s.ethash.config.NotifyFull {
 		blob, _ = json.Marshal(s.currentBlock.Header())
@@ -400,18 +447,22 @@ func (s *remoteSealer) sendNotification(ctx context.Context, url string, json []
 // submitWork verifies the submitted pow solution, returning
 // whether the solution was accepted or not (not can be both a bad pow as well as
 // any other error, like no pending work or stale mining result).
+// submitWorkは、送信されたpowソリューションを検証し、ソリューションが受け入れられたかどうかを返します
+// （powが悪いだけでなく、保留中の作業がない、マイニング結果が古いなどの他のエラーになることもありません）。
 func (s *remoteSealer) submitWork(nonce types.BlockNonce, mixDigest common.Hash, sealhash common.Hash) bool {
 	if s.currentBlock == nil {
 		s.ethash.config.Log.Error("Pending work without block", "sealhash", sealhash)
 		return false
 	}
 	// Make sure the work submitted is present
+	// 提出された作品が存在することを確認します
 	block := s.works[sealhash]
 	if block == nil {
 		s.ethash.config.Log.Warn("Work submitted but none pending", "sealhash", sealhash, "curnumber", s.currentBlock.NumberU64())
 		return false
 	}
 	// Verify the correctness of submitted result.
+	// 送信された結果の正確さを確認します。
 	header := block.Header()
 	header.Nonce = nonce
 	header.MixDigest = mixDigest
@@ -424,6 +475,7 @@ func (s *remoteSealer) submitWork(nonce types.BlockNonce, mixDigest common.Hash,
 		}
 	}
 	// Make sure the result channel is assigned.
+	// 結果チャネルが割り当てられていることを確認します
 	if s.results == nil {
 		s.ethash.config.Log.Warn("Ethash result channel is empty, submitted mining result is rejected")
 		return false
@@ -431,9 +483,11 @@ func (s *remoteSealer) submitWork(nonce types.BlockNonce, mixDigest common.Hash,
 	s.ethash.config.Log.Trace("Verified correct proof-of-work", "sealhash", sealhash, "elapsed", common.PrettyDuration(time.Since(start)))
 
 	// Solutions seems to be valid, return to the miner and notify acceptance.
+	// ソリューションは有効であるようです。マイナーに戻り、承認を通知します。
 	solution := block.WithSeal(header)
 
 	// The submitted solution is within the scope of acceptance.
+	// 提出されたソリューションは承認の範囲内です。
 	if solution.NumberU64()+staleThreshold > s.currentBlock.NumberU64() {
 		select {
 		case s.results <- solution:
@@ -445,6 +499,7 @@ func (s *remoteSealer) submitWork(nonce types.BlockNonce, mixDigest common.Hash,
 		}
 	}
 	// The submitted block is too old to accept, drop it.
+	// 送信されたブロックは古すぎて受け入れることができません。削除してください。
 	s.ethash.config.Log.Warn("Work submitted is too old", "number", solution.NumberU64(), "sealhash", sealhash, "hash", solution.Hash())
 	return false
 }

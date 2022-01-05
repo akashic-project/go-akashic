@@ -15,6 +15,7 @@
 // along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
 
 // Contains the geth command usage template and generator.
+// gethコマンド使用テンプレートとジェネレーターが含まれています。
 
 package main
 
@@ -29,6 +30,7 @@ import (
 )
 
 // AppHelpFlagGroups is the application flags, grouped by functionality.
+// AppHelpFlagGroupsは、機能ごとにグループ化されたアプリケーションフラグです。
 var AppHelpFlagGroups = []flags.FlagGroup{
 	{
 		Name: "ETHEREUM",
@@ -236,13 +238,16 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 
 func init() {
 	// Override the default app help template
+	// デフォルトのアプリヘルプテンプレートを上書きする
 	cli.AppHelpTemplate = flags.AppHelpTemplate
 
 	// Override the default app help printer, but only for the global app help
+	// デフォルトのアプリヘルププリンターを上書きしますが、グローバルアプリヘルプのみです
 	originalHelpPrinter := cli.HelpPrinter
 	cli.HelpPrinter = func(w io.Writer, tmpl string, data interface{}) {
 		if tmpl == flags.AppHelpTemplate {
 			// Iterate over all the flags and add any uncategorized ones
+			// すべてのフラグを繰り返し処理し、分類されていないフラグを追加します
 			categorized := make(map[string]struct{})
 			for _, group := range AppHelpFlagGroups {
 				for _, flag := range group.Flags {
@@ -254,6 +259,7 @@ func init() {
 				deprecated[flag.String()] = struct{}{}
 			}
 			// Only add uncategorized flags if they are not deprecated
+			// 非推奨でない場合にのみ、未分類のフラグを追加します
 			var uncategorized []cli.Flag
 			for _, flag := range data.(*cli.App).Flags {
 				if _, ok := categorized[flag.String()]; !ok {
@@ -264,18 +270,22 @@ func init() {
 			}
 			if len(uncategorized) > 0 {
 				// Append all ungategorized options to the misc group
+				// ゲートされていないすべてのオプションをその他のグループに追加します
 				miscs := len(AppHelpFlagGroups[len(AppHelpFlagGroups)-1].Flags)
 				AppHelpFlagGroups[len(AppHelpFlagGroups)-1].Flags = append(AppHelpFlagGroups[len(AppHelpFlagGroups)-1].Flags, uncategorized...)
 
 				// Make sure they are removed afterwards
+				// それらが後で削除されていることを確認してください
 				defer func() {
 					AppHelpFlagGroups[len(AppHelpFlagGroups)-1].Flags = AppHelpFlagGroups[len(AppHelpFlagGroups)-1].Flags[:miscs]
 				}()
 			}
 			// Render out custom usage screen
+			// カスタム使用画面をレンダリングする
 			originalHelpPrinter(w, tmpl, flags.HelpData{App: data, FlagGroups: AppHelpFlagGroups})
 		} else if tmpl == flags.CommandHelpTemplate {
 			// Iterate over all command specific flags and categorize them
+			// すべてのコマンド固有のフラグを繰り返し、それらを分類します
 			categorized := make(map[string][]cli.Flag)
 			for _, flag := range data.(cli.Command).Flags {
 				if _, ok := categorized[flag.String()]; !ok {
@@ -284,6 +294,7 @@ func init() {
 			}
 
 			// sort to get a stable ordering
+			// 安定した順序を取得するために並べ替え
 			sorted := make([]flags.FlagGroup, 0, len(categorized))
 			for cat, flgs := range categorized {
 				sorted = append(sorted, flags.FlagGroup{Name: cat, Flags: flgs})
@@ -291,6 +302,7 @@ func init() {
 			sort.Sort(flags.ByCategory(sorted))
 
 			// add sorted array to data and render with default printer
+			// 並べ替えられた配列をデータに追加し、デフォルトのプリンターでレンダリングします
 			originalHelpPrinter(w, tmpl, map[string]interface{}{
 				"cmd":              data,
 				"categorizedFlags": sorted,

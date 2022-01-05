@@ -15,6 +15,7 @@
 // along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
 
 // geth is the official command-line client for Ethereum.
+// gethは、イーサリアムの公式コマンドラインクライアントです。
 package main
 
 import (
@@ -41,6 +42,7 @@ import (
 	"github.com/ethereum/go-ethereum/node"
 
 	// Force-load the tracer engines to trigger registration
+	// トレーサーエンジンを強制的にロードして、登録をトリガーします
 	_ "github.com/ethereum/go-ethereum/eth/tracers/js"
 	_ "github.com/ethereum/go-ethereum/eth/tracers/native"
 
@@ -48,16 +50,19 @@ import (
 )
 
 const (
-	clientIdentifier = "geth" // Client identifier to advertise over the network
+	clientIdentifier = "geth" // Client identifier to advertise over the network ネットワーク経由でアドバタイズするクライアント識別子
 )
 
 var (
 	// Git SHA1 commit hash of the release (set via linker flags)
+	// リリースのGitSHA1コミットハッシュ（リンカーフラグを介して設定）
 	gitCommit = ""
 	gitDate   = ""
 	// The app that holds all commands and flags.
+	// すべてのコマンドとフラグを保持するアプリ。
 	app = flags.NewApp(gitCommit, gitDate, "the go-ethereum command line interface")
 	// flags that configure the node
+	// ノードを構成するフラグ
 	nodeFlags = []cli.Flag{
 		utils.IdentityFlag,
 		utils.UnlockedAccountFlag,
@@ -206,11 +211,13 @@ var (
 
 func init() {
 	// Initialize the CLI app and start Geth
+	// CLIアプリを初期化し、Gethを起動します
 	app.Action = geth
-	app.HideVersion = true // we have a command to print the version
+	app.HideVersion = true // we have a command to print the version バージョンを印刷するコマンドがあります
 	app.Copyright = "Copyright 2013-2021 The go-ethereum Authors"
 	app.Commands = []cli.Command{
 		// See chaincmd.go:
+		// chaincmd.goを参照してください。
 		initCommand,
 		importCommand,
 		exportCommand,
@@ -268,8 +275,11 @@ func main() {
 
 // prepare manipulates memory cache allowance and setups metric system.
 // This function should be called before launching devp2p stack.
+// prepareは、メモリキャッシュの許容量を操作し、メートル法を設定します。
+// この関数は、devp2pスタックを起動する前に呼び出す必要があります。
 func prepare(ctx *cli.Context) {
 	// If we're running a known preset, log it for convenience.
+	// 既知のプリセットを実行している場合は、便宜上ログに記録してください。
 	switch {
 	case ctx.GlobalIsSet(utils.RopstenFlag.Name):
 		log.Info("Starting Geth on Ropsten testnet...")
@@ -290,34 +300,43 @@ func prepare(ctx *cli.Context) {
 		log.Info("Starting Geth on Ethereum mainnet...")
 	}
 	// If we're a full node on mainnet without --cache specified, bump default cache allowance
+	// --cacheが指定されていないメインネット上のフルノードの場合、デフォルトのキャッシュ許容量を増やします
 	if ctx.GlobalString(utils.SyncModeFlag.Name) != "light" && !ctx.GlobalIsSet(utils.CacheFlag.Name) && !ctx.GlobalIsSet(utils.NetworkIdFlag.Name) {
 		// Make sure we're not on any supported preconfigured testnet either
+		// サポートされている事前構成済みのテストネットにもアクセスしていないことを確認してください
 		if !ctx.GlobalIsSet(utils.RopstenFlag.Name) &&
 			!ctx.GlobalIsSet(utils.SepoliaFlag.Name) &&
 			!ctx.GlobalIsSet(utils.RinkebyFlag.Name) &&
 			!ctx.GlobalIsSet(utils.GoerliFlag.Name) &&
 			!ctx.GlobalIsSet(utils.DeveloperFlag.Name) {
 			// Nope, we're really on mainnet. Bump that cache up!
+			// いいえ、私たちは本当にメインネットにいます。そのキャッシュをバンプ！
 			log.Info("Bumping default cache on mainnet", "provided", ctx.GlobalInt(utils.CacheFlag.Name), "updated", 4096)
 			ctx.GlobalSet(utils.CacheFlag.Name, strconv.Itoa(4096))
 		}
 	}
 	// If we're running a light client on any network, drop the cache to some meaningfully low amount
+	// 任意のネットワークでライトクライアントを実行している場合は、キャッシュを意味のある少量にドロップします
 	if ctx.GlobalString(utils.SyncModeFlag.Name) == "light" && !ctx.GlobalIsSet(utils.CacheFlag.Name) {
 		log.Info("Dropping default light client cache", "provided", ctx.GlobalInt(utils.CacheFlag.Name), "updated", 128)
 		ctx.GlobalSet(utils.CacheFlag.Name, strconv.Itoa(128))
 	}
 
 	// Start metrics export if enabled
+	// 有効になっている場合は、メトリックのエクスポートを開始します
 	utils.SetupMetrics(ctx)
 
 	// Start system runtime metrics collection
+	// システムランタイムメトリックの収集を開始します
 	go metrics.CollectProcessMetrics(3 * time.Second)
 }
 
 // geth is the main entry point into the system if no special subcommand is ran.
 // It creates a default node based on the command line arguments and runs it in
 // blocking mode, waiting for it to be shut down.
+// 特別なサブコマンドが実行されていない場合、gethはシステムへの主要なエントリポイントです。
+// コマンドライン引数に基づいてデフォルトノードを作成し、
+// ブロックモードで実行して、シャットダウンされるのを待ちます。
 func geth(ctx *cli.Context) error {
 	if args := ctx.Args(); len(args) > 0 {
 		return fmt.Errorf("invalid command: %q", args[0])
@@ -335,20 +354,26 @@ func geth(ctx *cli.Context) error {
 // startNode boots up the system node and all registered protocols, after which
 // it unlocks any requested accounts, and starts the RPC/IPC interfaces and the
 // miner.
+// startNodeは、システムノードと登録されているすべてのプロトコルを起動し、
+// その後、要求されたアカウントのロックを解除し、RPC / IPCイン​​ターフェイスとマイナーを起動します
 func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend, isConsole bool) {
 	debug.Memsize.Add("node", stack)
 
 	// Start up the node itself
+	// ノード自体を起動します
 	utils.StartNode(ctx, stack, isConsole)
 
 	// Unlock any account specifically requested
+	// 特にリクエストされたアカウントのロックを解除する
 	unlockAccounts(ctx, stack)
 
 	// Register wallet event handlers to open and auto-derive wallets
+	// ウォレットイベントハンドラーを登録して、ウォレットを開いて自動派生します
 	events := make(chan accounts.WalletEvent, 16)
 	stack.AccountManager().Subscribe(events)
 
 	// Create a client to interact with local geth node.
+	// ローカルのgethノードと対話するクライアントを作成します。
 	rpcClient, err := stack.Attach()
 	if err != nil {
 		utils.Fatalf("Failed to attach to self: %v", err)
@@ -357,12 +382,14 @@ func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend, isCon
 
 	go func() {
 		// Open any wallets already attached
+		// すでに接続されているウォレットを開きます
 		for _, wallet := range stack.AccountManager().Wallets() {
 			if err := wallet.Open(""); err != nil {
 				log.Warn("Failed to open wallet", "url", wallet.URL(), "err", err)
 			}
 		}
 		// Listen for wallet event till termination
+		// 終了するまでウォレットイベントをリッスンする
 		for event := range events {
 			switch event.Kind {
 			case accounts.WalletArrived:
@@ -390,6 +417,8 @@ func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend, isCon
 
 	// Spawn a standalone goroutine for status synchronization monitoring,
 	// close the node when synchronization is complete if user required.
+	// ステータス同期監視用のスタンドアロンゴルーチンを生成し、
+	// ユーザーが必要な場合は同期が完了したらノードを閉じます。
 	if ctx.GlobalBool(utils.ExitWhenSyncedFlag.Name) {
 		go func() {
 			sub := stack.EventMux().Subscribe(downloader.DoneEvent{})
@@ -413,8 +442,10 @@ func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend, isCon
 	}
 
 	// Start auxiliary services if enabled
+	// 有効になっている場合は補助サービスを開始します
 	if ctx.GlobalBool(utils.MiningEnabledFlag.Name) || ctx.GlobalBool(utils.DeveloperFlag.Name) {
 		// Mining only makes sense if a full Ethereum node is running
+		// マイニングは、完全なイーサリアムノードが実行されている場合にのみ意味があります
 		if ctx.GlobalString(utils.SyncModeFlag.Name) == "light" {
 			utils.Fatalf("Light clients do not support mining")
 		}
@@ -423,9 +454,11 @@ func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend, isCon
 			utils.Fatalf("Ethereum service not running")
 		}
 		// Set the gas price to the limits from the CLI and start mining
+		// CLIからガス価格を制限に設定し、マイニングを開始します
 		gasprice := utils.GlobalBig(ctx, utils.MinerGasPriceFlag.Name)
 		ethBackend.TxPool().SetGasPrice(gasprice)
 		// start mining
+		// マイニングを開始します
 		threads := ctx.GlobalInt(utils.MinerThreadsFlag.Name)
 		if err := ethBackend.StartMining(threads); err != nil {
 			utils.Fatalf("Failed to start mining: %v", err)
@@ -434,6 +467,7 @@ func startNode(ctx *cli.Context, stack *node.Node, backend ethapi.Backend, isCon
 }
 
 // unlockAccounts unlocks any account specifically requested.
+// UnlockAccountsは、特に要求されたアカウントのロックを解除します。
 func unlockAccounts(ctx *cli.Context, stack *node.Node) {
 	var unlocks []string
 	inputs := strings.Split(ctx.GlobalString(utils.UnlockedAccountFlag.Name), ",")
@@ -443,11 +477,14 @@ func unlockAccounts(ctx *cli.Context, stack *node.Node) {
 		}
 	}
 	// Short circuit if there is no account to unlock.
+	// ロックを解除するア​​カウントがない場合は短絡します。
 	if len(unlocks) == 0 {
 		return
 	}
 	// If insecure account unlocking is not allowed if node's APIs are exposed to external.
 	// Print warning log to user and skip unlocking.
+	// ノードのAPIが外部に公開されている場合、安全でないアカウントのロック解除が許可されていない場合。
+	// 警告ログをユーザーに出力し、ロック解除をスキップします。
 	if !stack.Config().InsecureUnlockAllowed && stack.Config().ExtRPCEnabled() {
 		utils.Fatalf("Account unlock with HTTP access is forbidden!")
 	}

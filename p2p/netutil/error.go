@@ -17,6 +17,7 @@
 package netutil
 
 // IsTemporaryError checks whether the given error should be considered temporary.
+// IsTemporaryErrorは、指定されたエラーを一時的なものと見なす必要があるかどうかを確認します。
 func IsTemporaryError(err error) bool {
 	tempErr, ok := err.(interface {
 		Temporary() bool
@@ -25,6 +26,7 @@ func IsTemporaryError(err error) bool {
 }
 
 // IsTimeout checks whether the given error is a timeout.
+// IsTimeoutは、指定されたエラーがタイムアウトであるかどうかを確認します。
 func IsTimeout(err error) bool {
 	timeoutErr, ok := err.(interface {
 		Timeout() bool

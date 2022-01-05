@@ -106,17 +106,22 @@ type RecordKeyNames struct {
 }
 
 // A Logger writes key/value pairs to a Handler
+// ロガーはキーと値のペアをハンドラーに書き込みます
 type Logger interface {
 	// New returns a new Logger that has this logger's context plus the given context
+	// Newは、このロガーのコンテキストと指定されたコンテキストを持つ新しいロガーを返します
 	New(ctx ...interface{}) Logger
 
 	// GetHandler gets the handler associated with the logger.
+	// GetHandlerは、ロガーに関連付けられたハンドラーを取得します。
 	GetHandler() Handler
 
 	// SetHandler updates the logger to write records to the specified handler.
+	// SetHandlerはロガーを更新して、指定されたハンドラーにレコードを書き込みます。
 	SetHandler(h Handler)
 
 	// Log a message at the given level with context key/value pairs
+	// コンテキストキー/値のペアを使用して、指定されたレベルでメッセージをログに記録します
 	Trace(msg string, ctx ...interface{})
 	Debug(msg string, ctx ...interface{})
 	Info(msg string, ctx ...interface{})
@@ -195,6 +200,7 @@ func (l *logger) SetHandler(h Handler) {
 
 func normalize(ctx []interface{}) []interface{} {
 	// if the caller passed a Ctx object, then expand it
+	// 呼び出し元がCtxオブジェクトを渡した場合は、それを展開します
 	if len(ctx) == 1 {
 		if ctxMap, ok := ctx[0].(Ctx); ok {
 			ctx = ctxMap.toArray()
@@ -206,6 +212,10 @@ func normalize(ctx []interface{}) []interface{} {
 	// so instead of erroring on bad input, we'll just make sure
 	// that things are the right length and users can fix bugs
 	// when they see the output looks wrong
+	// ctxは一連のキーと値のペアであるため、ログ関数のエラーをチェックする必要はありません。
+	// したがって、不正な入力でエラーが発生するのではなく、
+	// 適切な長さであり、ユーザーがバグを修正できることを確認します。
+	// 出力が間違っているように見えるとき
 	if len(ctx)%2 != 0 {
 		ctx = append(ctx, nil, errorKey, "Normalized odd number of arguments by adding nil")
 	}
@@ -215,13 +225,19 @@ func normalize(ctx []interface{}) []interface{} {
 
 // Lazy allows you to defer calculation of a logged value that is expensive
 // to compute until it is certain that it must be evaluated with the given filters.
+// Lazyを使用すると、指定されたフィルターで評価する必要があることが確実になるまで、
+// 計算にコストがかかるログ値の計算を延期できます。
 //
 // Lazy may also be used in conjunction with a Logger's New() function
 // to generate a child logger which always reports the current value of changing
 // state.
+// LazyをLoggerのNew（）関数と組み合わせて使用??して、
+// 状態の変化の現在の値を常に報告する子ロガーを生成することもできます。
 //
 // You may wrap any function which takes no arguments to Lazy. It may return any
 // number of values of any type.
+// Lazyへの引数を取らない関数をラップすることができます。
+// 任意のタイプの値をいくつでも返すことができます。
 type Lazy struct {
 	Fn interface{}
 }
@@ -229,6 +245,8 @@ type Lazy struct {
 // Ctx is a map of key/value pairs to pass as context to a log function
 // Use this only if you really need greater safety around the arguments you pass
 // to the logging functions.
+// Ctxは、ログ関数にコンテキストとして渡すキーと値のペアのマップです。
+// これは、ログ関数に渡す引数の安全性を高める必要がある場合にのみ使用してください。
 type Ctx map[string]interface{}
 
 func (c Ctx) toArray() []interface{} {

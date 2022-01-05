@@ -33,6 +33,7 @@ import (
 )
 
 // freezerdb is a database wrapper that enabled freezer data retrievals.
+// freezerdbはフリーザーデータの取得を可能にするデータベースラッパーです。
 type freezerdb struct {
 	ethdb.KeyValueStore
 	ethdb.AncientStore
@@ -40,6 +41,7 @@ type freezerdb struct {
 
 // Close implements io.Closer, closing both the fast key-value store as well as
 // the slow ancient tables.
+// Closeはio.Closerを実装し、高速のKey-Valueストアと低速の古いテーブルの両方を閉じます。
 func (frdb *freezerdb) Close() error {
 	var errs []error
 	if err := frdb.AncientStore.Close(); err != nil {
@@ -57,17 +59,21 @@ func (frdb *freezerdb) Close() error {
 // Freeze is a helper method used for external testing to trigger and block until
 // a freeze cycle completes, without having to sleep for a minute to trigger the
 // automatic background run.
+// Freezeは、自動バックグラウンド実行をトリガーするために1分間スリープすることなく、
+// フリーズサイクルが完了するまでトリガーおよびブロックする外部テストに使用されるヘルパーメソッドです。
 func (frdb *freezerdb) Freeze(threshold uint64) error {
 	if frdb.AncientStore.(*freezer).readonly {
 		return errReadOnly
 	}
 	// Set the freezer threshold to a temporary value
+	// フリーザーのしきい値を一時的な値に設定します
 	defer func(old uint64) {
 		atomic.StoreUint64(&frdb.AncientStore.(*freezer).threshold, old)
 	}(atomic.LoadUint64(&frdb.AncientStore.(*freezer).threshold))
 	atomic.StoreUint64(&frdb.AncientStore.(*freezer).threshold, threshold)
 
 	// Trigger a freeze cycle and block until it's done
+	// フリーズサイクルをトリガーし、完了するまでブロックします
 	trigger := make(chan struct{}, 1)
 	frdb.AncientStore.(*freezer).trigger <- trigger
 	<-trigger
@@ -75,46 +81,55 @@ func (frdb *freezerdb) Freeze(threshold uint64) error {
 }
 
 // nofreezedb is a database wrapper that disables freezer data retrievals.
+// nofreezedbは、フリーザーデータの取得を無効にするデータベースラッパーです。
 type nofreezedb struct {
 	ethdb.KeyValueStore
 }
 
 // HasAncient returns an error as we don't have a backing chain freezer.
+// バッキングチェーンフリーザーがないため、HasAncientはエラーを返します。
 func (db *nofreezedb) HasAncient(kind string, number uint64) (bool, error) {
 	return false, errNotSupported
 }
 
 // Ancient returns an error as we don't have a backing chain freezer.
+// バッキングチェーンフリーザーがないため、Ancientはエラーを返します。
 func (db *nofreezedb) Ancient(kind string, number uint64) ([]byte, error) {
 	return nil, errNotSupported
 }
 
 // AncientRange returns an error as we don't have a backing chain freezer.
+// バッキングチェーンフリーザーがないため、AncientRangeはエラーを返します。
 func (db *nofreezedb) AncientRange(kind string, start, max, maxByteSize uint64) ([][]byte, error) {
 	return nil, errNotSupported
 }
 
 // Ancients returns an error as we don't have a backing chain freezer.
+// バッキングチェーンフリーザーがないため、Ancientsはエラーを返します。
 func (db *nofreezedb) Ancients() (uint64, error) {
 	return 0, errNotSupported
 }
 
 // AncientSize returns an error as we don't have a backing chain freezer.
+// バッキングチェーンフリーザーがないため、AncientSizeはエラーを返します。
 func (db *nofreezedb) AncientSize(kind string) (uint64, error) {
 	return 0, errNotSupported
 }
 
 // ModifyAncients is not supported.
+// ModifyAncientsはサポートされていません。
 func (db *nofreezedb) ModifyAncients(func(ethdb.AncientWriteOp) error) (int64, error) {
 	return 0, errNotSupported
 }
 
 // TruncateAncients returns an error as we don't have a backing chain freezer.
+// バッキングチェーンフリーザーがないため、TruncateAncientsはエラーを返します。
 func (db *nofreezedb) TruncateAncients(items uint64) error {
 	return errNotSupported
 }
 
 // Sync returns an error as we don't have a backing chain freezer.
+// バッキングチェーンフリーザーがないため、Syncはエラーを返します。
 func (db *nofreezedb) Sync() error {
 	return errNotSupported
 }
@@ -132,11 +147,22 @@ func (db *nofreezedb) ReadAncients(fn func(reader ethdb.AncientReader) error) (e
 	// If we instead were to return errNotSupported here, then the caller would
 	// have to explicitly check for that, having an extra clause to do the
 	// non-ancient operations.
+	// 他の古代関連のメソッドとは異なり、このメソッドは呼び出されたときにerrNotSupportedを返しません。
+	// この理由は、呼び出し元がいくつかのことを実行したい場合があるためです。
+	// 1。何かが冷凍庫にあるかどうかを確認します。
+	// 2.そうでない場合は、leveldbを確認します。
+	//
+	// 'fn'内のancient-checksはエラーを返し、leveldbの作業は続行されるため、これは機能します。
+	//
+	// 代わりにここでerrNotSupportedを返す場合、呼び出し元はそれを明示的にチェックする必要があり、
+	// 非古代の操作を実行するための追加の句があります。
 	return fn(db)
 }
 
 // NewDatabase creates a high level database on top of a given key-value data
 // store without a freezer moving immutable chain segments into cold storage.
+// NewDatabaseは、不変のチェーンセグメントをコールドストレージに移動するフリーザーなしで、
+// 特定のKey-Valueデータストアの上に高レベルのデータベースを作成します。
 func NewDatabase(db ethdb.KeyValueStore) ethdb.Database {
 	return &nofreezedb{KeyValueStore: db}
 }
@@ -144,8 +170,11 @@ func NewDatabase(db ethdb.KeyValueStore) ethdb.Database {
 // NewDatabaseWithFreezer creates a high level database on top of a given key-
 // value data store with a freezer moving immutable chain segments into cold
 // storage.
+// NewDatabaseWithFreezerは、指定されたKey-Valueデータストアの上に高レベルのデータベースを作成し、
+// フリーザーが不変のチェーンセグメントをコールドストレージに移動します。
 func NewDatabaseWithFreezer(db ethdb.KeyValueStore, freezer string, namespace string, readonly bool) (ethdb.Database, error) {
 	// Create the idle freezer instance
+	// アイドル状態のフリーザーインスタンスを作成します
 	frdb, err := newFreezer(freezer, namespace, readonly, freezerTableSize, FreezerNoSnappy)
 	if err != nil {
 		return nil, err
@@ -172,6 +201,22 @@ func NewDatabaseWithFreezer(db ethdb.KeyValueStore, freezer string, namespace st
 	// If the genesis hash is empty, we have a new key-value store, so nothing to
 	// validate in this method. If, however, the genesis hash is not nil, compare
 	// it to the freezer content.
+	// フリーザーはユーザーのKey-Valueデータベースとは別に保存できるため、
+	// ユーザーがフリーザーとデータベースの無効な組み合わせを要求する可能性はかなり高くなります。
+	// 競合するデータを提供して、両方のデータストアが破損する可能性があるため、足を踏み入れないようにしてください。
+	//
+	//-フリーザーとKey-Valueストアの両方が空（ジェネシスなし）の場合、新しい空のフリーザーを初期化しただけなので、すべて問題ありません。
+	//-Key-Valueストアが空であるが、フリーザーが空でない場合、ユーザーのジェネシスがフリーザーと一致することを確認する必要があります。
+	//  ここにはジェネシスブロックがないため、これはブロックチェーンでチェックされます
+	//  （この時点で注意する必要もありませんが、Key-Valueとフリーザーの組み合わせは有効です）。
+	//-Key-Valueストアもフリーザーも空でない場合は、ジェネシスハッシュを相互検証して、互換性があることを確認します。
+	//  そうである場合は、冷凍庫とその後のleveldbの間にギャップがないことも確認してください。
+	//-Key-Valueストアが空ではないが、フリーザーがフリーザーリリースにアップグレードしているだけの場合、
+	//  または小さなチェーンがあり、まだ何もフリーズしていない可能性があります。
+	//  Key-Valueストアからブロックがまだ欠落していないことを確認してください。
+	// これは、古いフリーザーがすでに存在することを意味します。
+
+	// ジェネシスハッシュが空の場合、新しいKey-Valueストアがあるため、このメソッドで検証するものはありません。ただし、ジェネシスハッシュがゼロでない場合は、フリーザーのコンテンツと比較してください。
 	if kvgenesis, _ := db.Get(headerHashKey(0)); len(kvgenesis) > 0 {
 		if frozen, _ := frdb.Ancients(); frozen > 0 {
 			// If the freezer already contains something, ensure that the genesis blocks
@@ -237,12 +282,16 @@ func NewMemoryDatabase() ethdb.Database {
 // NewMemoryDatabaseWithCap creates an ephemeral in-memory key-value database
 // with an initial starting capacity, but without a freezer moving immutable
 // chain segments into cold storage.
+// NewMemoryDatabaseWithCapは、初期の開始容量を備えた一時的なメモリ内Key-Valueデータベースを作成しますが、
+// 不変のチェーンセグメントをコールドストレージに移動するフリーザーはありません。
 func NewMemoryDatabaseWithCap(size int) ethdb.Database {
 	return NewDatabase(memorydb.NewWithCap(size))
 }
 
 // NewLevelDBDatabase creates a persistent key-value database without a freezer
 // moving immutable chain segments into cold storage.
+// NewLevelDBDatabaseは、フリーザーが不変のチェーンセグメントをコールドストレージに移動することなく、
+// 永続的なKey-Valueデータベースを作成します。
 func NewLevelDBDatabase(file string, cache int, handles int, namespace string, readonly bool) (ethdb.Database, error) {
 	db, err := leveldb.New(file, cache, handles, namespace, readonly)
 	if err != nil {
@@ -253,6 +302,8 @@ func NewLevelDBDatabase(file string, cache int, handles int, namespace string, r
 
 // NewLevelDBDatabaseWithFreezer creates a persistent key-value database with a
 // freezer moving immutable chain segments into cold storage.
+// NewLevelDBDatabaseWithFreezerは、不変のチェーンセグメントをコールドストレージに移動する
+// フリーザーを使用して永続的なKey-Valueデータベースを作成します。
 func NewLevelDBDatabaseWithFreezer(file string, cache int, handles int, freezer string, namespace string, readonly bool) (ethdb.Database, error) {
 	kvdb, err := leveldb.New(file, cache, handles, namespace, readonly)
 	if err != nil {
@@ -277,12 +328,14 @@ func (c counter) Percentage(current uint64) string {
 }
 
 // stat stores sizes and count for a parameter
+// statはパラメータのサイズとカウントを保存します
 type stat struct {
 	size  common.StorageSize
 	count counter
 }
 
 // Add size to the stat and increase the counter by 1
+// 統計にサイズを追加し、カウンターを1増やします
 func (s *stat) Add(size common.StorageSize) {
 	s.size += size
 	s.count++
@@ -298,6 +351,8 @@ func (s *stat) Count() string {
 
 // InspectDatabase traverses the entire database and checks the size
 // of all different categories of data.
+// InspectDatabaseはデータベース全体をトラバースし、
+// すべての異なるカテゴリのデータのサイズをチェックします。
 func InspectDatabase(db ethdb.Database, keyPrefix, keyStart []byte) error {
 	it := db.NewIterator(keyPrefix, keyStart)
 	defer it.Release()
@@ -308,6 +363,7 @@ func InspectDatabase(db ethdb.Database, keyPrefix, keyStart []byte) error {
 		logged = time.Now()
 
 		// Key-value store statistics
+		// Key-Valueストアの統計
 		headers         stat
 		bodies          stat
 		receipts        stat
@@ -335,6 +391,7 @@ func InspectDatabase(db ethdb.Database, keyPrefix, keyStart []byte) error {
 		bloomTrieNodes stat
 
 		// Meta- and unaccounted data
+		// メタおよび未計上のデータ
 		metadata    stat
 		unaccounted stat
 
@@ -342,6 +399,7 @@ func InspectDatabase(db ethdb.Database, keyPrefix, keyStart []byte) error {
 		total common.StorageSize
 	)
 	// Inspect key-value database first.
+	// 最初にKey-Valueデータベースを検査します。
 	for it.Next() {
 		var (
 			key  = it.Key()
@@ -427,6 +485,7 @@ func InspectDatabase(db ethdb.Database, keyPrefix, keyStart []byte) error {
 		ancients = counter(count)
 	}
 	// Display the database statistic.
+	// データベース統計を表示します。
 	stats := [][]string{
 		{"Key-Value store", "Headers", headers.Size(), headers.Count()},
 		{"Key-Value store", "Bodies", bodies.Size(), bodies.Count()},

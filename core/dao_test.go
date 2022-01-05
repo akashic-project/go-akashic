@@ -28,6 +28,8 @@ import (
 
 // Tests that DAO-fork enabled clients can properly filter out fork-commencing
 // blocks based on their extradata fields.
+// DAOフォーク対応のクライアントが、
+// extradataフィールドに基づいてフォーク開始ブロックを適切に除外できることをテストします。
 func TestDAOForkRangeExtradata(t *testing.T) {
 	forkBlock := big.NewInt(32)
 

@@ -20,12 +20,18 @@ package node
 // on the node. Lifecycle management is delegated to the node, but it is the
 // responsibility of the service-specific package to configure and register the
 // service on the node using the `RegisterLifecycle` method.
+// ライフサイクルには、ノードで開始および停止できるサービスの動作が含まれます。
+// ライフサイクル管理はノードに委任されますが、
+// `RegisterLifecycle`メソッドを使用してノードでサービスを構成および登録するのは、サービス固有のパッケージの責任です。
 type Lifecycle interface {
 	// Start is called after all services have been constructed and the networking
 	// layer was also initialized to spawn any goroutines required by the service.
+	// Startは、すべてのサービスが構築され、ネットワーク層も初期化されて、
+	// サービスに必要なすべてのゴルーチンを生成した後に呼び出されます。
 	Start() error
 
 	// Stop terminates all goroutines belonging to the service, blocking until they
 	// are all terminated.
+	// Stopは、サービスに属するすべてのgoroutineを終了し、すべて終了するまでブロックします。
 	Stop() error
 }

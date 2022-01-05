@@ -30,12 +30,15 @@ import (
 
 // NoOdr is the default context passed to an ODR capable function when the ODR
 // service is not required.
+// NoOdrは、ODRサービスが不要な場合にODR対応関数に渡されるデフォルトのコンテキストです。
 var NoOdr = context.Background()
 
 // ErrNoPeers is returned if no peers capable of serving a queued request are available
+// キューに入れられた要求を処理できるピアが利用できない場合、ErrNoPeersが返されます
 var ErrNoPeers = errors.New("no suitable peers available")
 
 // OdrBackend is an interface to a backend service that handles ODR retrievals type
+// OdrBackendは、ODR取得タイプを処理するバックエンドサービスへのインターフェースです。
 type OdrBackend interface {
 	Database() ethdb.Database
 	ChtIndexer() *core.ChainIndexer
@@ -47,11 +50,13 @@ type OdrBackend interface {
 }
 
 // OdrRequest is an interface for retrieval requests
+// OdrRequestは、取得要求のインターフェースです
 type OdrRequest interface {
 	StoreResult(db ethdb.Database)
 }
 
 // TrieID identifies a state or account storage trie
+// TrieIDは、状態またはアカウントストレージトライを識別します
 type TrieID struct {
 	BlockHash, Root common.Hash
 	BlockNumber     uint64
@@ -60,6 +65,7 @@ type TrieID struct {
 
 // StateTrieID returns a TrieID for a state trie belonging to a certain block
 // header.
+// StateTrieIDは、特定のブロックヘッダーに属する状態トライのTrieIDを返します。
 func StateTrieID(header *types.Header) *TrieID {
 	return &TrieID{
 		BlockHash:   header.Hash(),
@@ -72,6 +78,8 @@ func StateTrieID(header *types.Header) *TrieID {
 // StorageTrieID returns a TrieID for a contract storage trie at a given account
 // of a given state trie. It also requires the root hash of the trie for
 // checking Merkle proofs.
+// StorageTrieIDは、特定の状態トライの特定のアカウントでのコントラクトストレージトライのTrieIDを返します。
+// また、Merkle証明をチェックするためのトライのルートハッシュも必要です。
 func StorageTrieID(state *TrieID, addrHash, root common.Hash) *TrieID {
 	return &TrieID{
 		BlockHash:   state.BlockHash,
@@ -82,6 +90,7 @@ func StorageTrieID(state *TrieID, addrHash, root common.Hash) *TrieID {
 }
 
 // TrieRequest is the ODR request type for state/storage trie entries
+// TrieRequestは、状態/ストレージトライエントリのODRリクエストタイプです。
 type TrieRequest struct {
 	Id    *TrieID
 	Key   []byte
@@ -89,23 +98,27 @@ type TrieRequest struct {
 }
 
 // StoreResult stores the retrieved data in local database
+// StoreResultは、取得したデータをローカルデータベースに保存します
 func (req *TrieRequest) StoreResult(db ethdb.Database) {
 	req.Proof.Store(db)
 }
 
 // CodeRequest is the ODR request type for retrieving contract code
+// CodeRequestは、コントラクトコードを取得するためのODRリクエストタイプです。
 type CodeRequest struct {
-	Id   *TrieID // references storage trie of the account
+	Id   *TrieID // references storage trie of the account  アカウントのストレージトライを参照します
 	Hash common.Hash
 	Data []byte
 }
 
 // StoreResult stores the retrieved data in local database
+// StoreResultは、取得したデータをローカルデータベースに保存します
 func (req *CodeRequest) StoreResult(db ethdb.Database) {
 	rawdb.WriteCode(db, req.Hash, req.Data)
 }
 
 // BlockRequest is the ODR request type for retrieving block bodies
+// BlockRequestは、ブロック本体を取得するためのODR要求タイプです。
 type BlockRequest struct {
 	Hash   common.Hash
 	Number uint64
@@ -114,13 +127,15 @@ type BlockRequest struct {
 }
 
 // StoreResult stores the retrieved data in local database
+// StoreResultは、取得したデータをローカルデータベースに保存します
 func (req *BlockRequest) StoreResult(db ethdb.Database) {
 	rawdb.WriteBodyRLP(db, req.Hash, req.Number, req.Rlp)
 }
 
 // ReceiptsRequest is the ODR request type for retrieving receipts.
+// ReceiptsRequestは、領収書を取得するためのODRリクエストタイプです。
 type ReceiptsRequest struct {
-	Untrusted bool // Indicator whether the result retrieved is trusted or not
+	Untrusted bool // Indicator whether the result retrieved is trusted or not 取得した結果が信頼できるかどうかを示すインジケーター
 	Hash      common.Hash
 	Number    uint64
 	Header    *types.Header
@@ -128,6 +143,7 @@ type ReceiptsRequest struct {
 }
 
 // StoreResult stores the retrieved data in local database
+// StoreResultは、取得したデータをローカルデータベースに保存します
 func (req *ReceiptsRequest) StoreResult(db ethdb.Database) {
 	if !req.Untrusted {
 		rawdb.WriteReceipts(db, req.Hash, req.Number, req.Receipts)
@@ -135,6 +151,7 @@ func (req *ReceiptsRequest) StoreResult(db ethdb.Database) {
 }
 
 // ChtRequest is the ODR request type for retrieving header by Canonical Hash Trie
+// ChtRequestは、Canonical HashTrieによってヘッダーを取得するためのODRリクエストタイプです
 type ChtRequest struct {
 	Config           *IndexerConfig
 	ChtNum, BlockNum uint64
@@ -145,6 +162,7 @@ type ChtRequest struct {
 }
 
 // StoreResult stores the retrieved data in local database
+// StoreResultは、取得したデータをローカルデータベースに保存します
 func (req *ChtRequest) StoreResult(db ethdb.Database) {
 	hash, num := req.Header.Hash(), req.Header.Number.Uint64()
 	rawdb.WriteHeader(db, req.Header)
@@ -153,6 +171,7 @@ func (req *ChtRequest) StoreResult(db ethdb.Database) {
 }
 
 // BloomRequest is the ODR request type for retrieving bloom filters from a CHT structure
+// BloomRequestは、CHT構造からブルームフィルターを取得するためのODR要求タイプです。
 type BloomRequest struct {
 	OdrRequest
 	Config           *IndexerConfig
@@ -165,6 +184,7 @@ type BloomRequest struct {
 }
 
 // StoreResult stores the retrieved data in local database
+// StoreResultは、取得したデータをローカルデータベースに保存します
 func (req *BloomRequest) StoreResult(db ethdb.Database) {
 	for i, sectionIdx := range req.SectionIndexList {
 		sectionHead := rawdb.ReadCanonicalHash(db, (sectionIdx+1)*req.Config.BloomTrieSize-1)
@@ -172,11 +192,17 @@ func (req *BloomRequest) StoreResult(db ethdb.Database) {
 		// a key with a zero sectionHead. GetBloomBits will look there too if we still don't have the canonical
 		// hash. In the unlikely case we've retrieved the section head hash since then, we'll just retrieve the
 		// bit vector again from the network.
+		// このセクションヘッド番号の正規ハッシュが保存されていない場合でも、
+		// sectionHeadがゼロのキーの下に保存されます。
+		// 正規のハッシュがまだない場合は、GetBloomBitsもそこに表示されます。
+		// それ以降、セクションヘッドハッシュを取得した可能性はほとんどありませんが、
+		// ネットワークからビットベクトルを再度取得します。
 		rawdb.WriteBloomBits(db, req.BitIdx, sectionIdx, sectionHead, req.BloomBits[i])
 	}
 }
 
 // TxStatus describes the status of a transaction
+// TxStatusは、トランザクションのステータスを記述します
 type TxStatus struct {
 	Status core.TxStatus
 	Lookup *rawdb.LegacyTxLookupEntry `rlp:"nil"`
@@ -184,10 +210,12 @@ type TxStatus struct {
 }
 
 // TxStatusRequest is the ODR request type for retrieving transaction status
+// TxStatusRequestは、トランザクションステータスを取得するためのODRリクエストタイプです。
 type TxStatusRequest struct {
 	Hashes []common.Hash
 	Status []TxStatus
 }
 
 // StoreResult stores the retrieved data in local database
+// StoreResultは、取得したデータをローカルデータベースに保存します
 func (req *TxStatusRequest) StoreResult(db ethdb.Database) {}

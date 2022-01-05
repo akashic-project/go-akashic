@@ -43,6 +43,7 @@ import (
 
 // PublicEthereumAPI provides an API to access Ethereum full node-related
 // information.
+// PublicEthereumAPIは、Ethereumの完全なノード関連情報にアクセスするためのAPIを提供します。
 type PublicEthereumAPI struct {
 	e *Ethereum
 }
@@ -99,6 +100,10 @@ func NewPrivateMinerAPI(e *Ethereum) *PrivateMinerAPI {
 // usable by this process. If mining is already running, this method adjust the
 // number of threads allowed to use and updates the minimum price required by the
 // transaction pool.
+// Startは、指定された数のスレッドでマイナーを開始します。
+// スレッドがnilの場合、開始されるワーカーの数は、このプロセスで使用可能な論理CPUの数と同じです。
+// マイニングがすでに実行されている場合、
+// このメソッドは使用できるスレッドの数を調整し、トランザクションプールに必要な最小価格を更新します。
 func (api *PrivateMinerAPI) Start(threads *int) error {
 	if threads == nil {
 		return api.e.StartMining(runtime.NumCPU())
@@ -108,11 +113,13 @@ func (api *PrivateMinerAPI) Start(threads *int) error {
 
 // Stop terminates the miner, both at the consensus engine level as well as at
 // the block creation level.
+// Stopは、コンセンサスエンジンレベルとブロック作成レベルの両方でマイナーを終了します。
 func (api *PrivateMinerAPI) Stop() {
 	api.e.StopMining()
 }
 
 // SetExtra sets the extra data string that is included when this miner mines a block.
+// SetExtraは、このマイナーがブロックをマイニングするときに含まれる追加のデータ文字列を設定します。
 func (api *PrivateMinerAPI) SetExtra(extra string) (bool, error) {
 	if err := api.e.Miner().SetExtra([]byte(extra)); err != nil {
 		return false, err

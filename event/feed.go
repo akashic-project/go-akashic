@@ -32,13 +32,20 @@ var errBadChannel = errors.New("event: Subscribe argument does not have sendable
 // match.
 //
 // The zero value is ready to use.
+// フィードは、イベントのキャリアがチャネルである1対多のサブスクリプションを実装します。
+// フィードに送信された値は、サブスクライブされたすべてのチャネルに同時に配信されます。
+//
+// フィードは単一のタイプでのみ使用できます。タイプは、最初の送信またはサブスクライブ操作によって決定されます。タイプが一致しない場合、これらのメソッドへの後続の呼び出しはパニックになります。
+//
+// ゼロ値を使用する準備ができました。
 type Feed struct {
-	once      sync.Once        // ensures that init only runs once
-	sendLock  chan struct{}    // sendLock has a one-element buffer and is empty when held.It protects sendCases.
-	removeSub chan interface{} // interrupts Send
-	sendCases caseList         // the active set of select cases used by Send
+	once      sync.Once        // initが1回だけ実行されるようにします // ensures that init only runs once
+	sendLock  chan struct{}    // sendLockには1要素のバッファがあり、保持すると空になります。sendCasesを保護します。 // sendLock has a one-element buffer and is empty when held.It protects sendCases.
+	removeSub chan interface{} // 送信を中断します // interrupts Send
+	sendCases caseList         // Sendによって使用される選択されたケースのアクティブなセット // the active set of select cases used by Send
 
 	// The inbox holds newly subscribed channels until they are added to sendCases.
+	// 受信トレイは、sendCasesに追加されるまで、新しくサブスクライブされたチャネルを保持します。
 	mu    sync.Mutex
 	inbox caseList
 	etype reflect.Type
@@ -46,6 +53,8 @@ type Feed struct {
 
 // This is the index of the first actual subscription channel in sendCases.
 // sendCases[0] is a SelectRecv case for the removeSub channel.
+// これは、sendCasesの最初の実際のサブスクリプションチャネルのインデックスです。
+// sendCases [0]は、removeSubチャネルのSelectRecvケースです。
 const firstSubSendCase = 1
 
 type feedTypeError struct {

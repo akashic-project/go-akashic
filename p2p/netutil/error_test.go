@@ -25,6 +25,8 @@ import (
 // This test checks that isPacketTooBig correctly identifies
 // errors that result from receiving a UDP packet larger
 // than the supplied receive buffer.
+// このテストでは、isPacketTooBigが、提供された受信バッファーよりも大きいUDPパケットを受信した結果として
+// 発生したエラーを正しく識別していることを確認します
 func TestIsPacketTooBig(t *testing.T) {
 	listener, err := net.ListenPacket("udp", "127.0.0.1:0")
 	if err != nil {

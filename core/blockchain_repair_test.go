@@ -203,6 +203,12 @@ func testShortOldForkedRepair(t *testing.T, snapshots bool) {
 // crashed. In this test scenario the side chain is below the committed block. In
 // this case we expect the canonical chain to be rolled back to the committed block,
 // but the chain data itself left in the database for replaying.
+// 短い正規チェーンと短いサイドチェーンのリカバリをテストします。
+// ここで、高速同期ピボットポイントはすでにディスクにコミットされており、
+// プロセスがクラッシュしました。
+// このテストシナリオでは、サイドチェーンはコミットされたブロックの下にあります。
+// この場合、正規チェーンはコミットされたブロックにロールバックされると予想されますが、
+// チェーンデータ自体は再生のためにデータベースに残されます。
 func TestShortOldForkedSnapSyncedRepair(t *testing.T) {
 	testShortOldForkedSnapSyncedRepair(t, false)
 }
@@ -250,6 +256,10 @@ func testShortOldForkedSnapSyncedRepair(t *testing.T, snapshots bool) {
 // test scenario the side chain is below the committed block. In this case we expect
 // the chain to detect that it was fast syncing and not delete anything, since we
 // can just pick up directly where we left off.
+// 短いカノニカルチェーンと短い側鎖の回復をテストします。
+// 高速同期ピボットポイントはまだコミットされていませんが、プロセスがクラッシュしました。
+// このテストシナリオでは、サイドチェーンはコミットされたブロックの下にあります。
+// この場合、中断したところから直接再開できるため、チェーンは高速同期であり、何も削除しないことを検出することが期待されます。
 func TestShortOldForkedSnapSyncingRepair(t *testing.T) {
 	testShortOldForkedSnapSyncingRepair(t, false)
 }
@@ -297,6 +307,11 @@ func testShortOldForkedSnapSyncingRepair(t *testing.T, snapshots bool) {
 // test scenario the side chain reaches above the committed block. In this case we
 // expect the canonical chain to be rolled back to the committed block, but the
 // chain data itself left in the database for replaying.
+// 短い正規チェーンと短いサイドチェーンのリカバリをテストします。
+// 最近のブロックがすでにディスクにコミットされていて、プロセスがクラッシュしました。
+// このテストシナリオでは、側鎖はコミットされたブロックの上に到達します。
+// この場合、正規チェーンはコミットされたブロックにロールバックされると予想されますが、
+// チェーンデータ自体は再生のためにデータベースに残されます。
 func TestShortNewlyForkedRepair(t *testing.T)              { testShortNewlyForkedRepair(t, false) }
 func TestShortNewlyForkedRepairWithSnapshots(t *testing.T) { testShortNewlyForkedRepair(t, true) }
 
@@ -1752,10 +1767,12 @@ func testLongReorgedSnapSyncingDeepRepair(t *testing.T, snapshots bool) {
 
 func testRepair(t *testing.T, tt *rewindTest, snapshots bool) {
 	// It's hard to follow the test case, visualize the input
+	// テストケースを追跡し、入力を視覚化するのは難しい
 	//log.Root().SetHandler(log.LvlFilterHandler(log.LvlTrace, log.StreamHandler(os.Stderr, log.TerminalFormat(true))))
 	// fmt.Println(tt.dump(true))
 
 	// Create a temporary persistent database
+	// 一時的な永続データベースを作成する
 	datadir, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatalf("Failed to create temporary datadir: %v", err)
@@ -1766,9 +1783,10 @@ func testRepair(t *testing.T, tt *rewindTest, snapshots bool) {
 	if err != nil {
 		t.Fatalf("Failed to create persistent database: %v", err)
 	}
-	defer db.Close() // Might double close, should be fine
+	defer db.Close() // ダブルクローズする可能性があります、問題ないはずです // Might double close, should be fine
 
 	// Initialize a fresh chain
+	// 新しいチェーンを初期化します
 	var (
 		genesis = (&Genesis{BaseFee: big.NewInt(params.InitialBaseFee)}).MustCommit(db)
 		engine  = ethash.NewFullFaker()
@@ -1776,7 +1794,7 @@ func testRepair(t *testing.T, tt *rewindTest, snapshots bool) {
 			TrieCleanLimit: 256,
 			TrieDirtyLimit: 256,
 			TrieTimeLimit:  5 * time.Minute,
-			SnapshotLimit:  0, // Disable snapshot by default
+			SnapshotLimit:  0, // デフォルトでスナップショットを無効にします // Disable snapshot by default
 		}
 	)
 	if snapshots {
@@ -1843,6 +1861,7 @@ func testRepair(t *testing.T, tt *rewindTest, snapshots bool) {
 	defer chain.Stop()
 
 	// Iterate over all the remaining blocks and ensure there are no gaps
+	// 残りのすべてのブロックを繰り返し、ギャップがないことを確認します
 	verifyNoGaps(t, chain, true, canonblocks)
 	verifyNoGaps(t, chain, false, sideblocks)
 	verifyCutoff(t, chain, true, canonblocks, tt.expCanonicalBlocks)

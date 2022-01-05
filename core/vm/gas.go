@@ -34,6 +34,10 @@ const (
 //
 // The cost of gas was changed during the homestead price change HF.
 // As part of EIP 150 (TangerineWhistle), the returned gas is gas - base * 63 / 64.
+// callGasは、通話の実際のガスコストを返します。
+//
+// ガスのコストは、住宅価格の変更HF中に変更されました。
+// EIP 150（TangerineWhistle）の一部として、返されるガスはgas --base * 63/64です。
 func callGas(isEip150 bool, availableGas, base uint64, callCost *uint256.Int) (uint64, error) {
 	if isEip150 {
 		availableGas = availableGas - base
@@ -41,6 +45,9 @@ func callGas(isEip150 bool, availableGas, base uint64, callCost *uint256.Int) (u
 		// If the bit length exceeds 64 bit we know that the newly calculated "gas" for EIP150
 		// is smaller than the requested amount. Therefore we return the new gas instead
 		// of returning an error.
+
+		// ビット長が64ビットを超える場合、EIP150に対して新しく計算された「ガス」が要求された量よりも少ないことがわかります。
+		// したがって、エラーを返すのではなく、新しいガスを返します。
 		if !callCost.IsUint64() || gas < callCost.Uint64() {
 			return gas, nil
 		}

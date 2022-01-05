@@ -48,6 +48,23 @@ The state transitioning model does all the necessary work to work out a valid ne
 5) Run Script section
 6) Derive new state root
 */
+/*
+状態遷移モデル
+
+状態遷移は、トランザクションが現在の世界の状態に適用されるときに行われる変更です。
+状態遷移モデルは、有効な新しい状態ルートを作成するために必要なすべての作業を実行します。
+
+1）ノンス処理
+2）前払いガス
+3）受信者が\ 0 * 32の場合、新しい状態オブジェクトを作成します
+4）価値移転
+==契約作成の場合==
+   4a）トランザクションデータの実行を試みます
+   4b）有効な場合は、結果を新しい状態オブジェクトのコードとして使用します
+==終了==
+5）スクリプトセクションを実行する
+6）新しい状態ルートを導出する
+*/
 type StateTransition struct {
 	gp         *GasPool
 	msg        Message
@@ -63,6 +80,7 @@ type StateTransition struct {
 }
 
 // Message represents a message sent to a contract.
+// メッセージは、契約に送信されたメッセージを表します。
 type Message interface {
 	From() common.Address
 	To() *common.Address
@@ -81,23 +99,29 @@ type Message interface {
 
 // ExecutionResult includes all output after executing given evm
 // message no matter the execution itself is successful or not.
+// ExecutionResultには、実行自体が成功したかどうかに関係なく、
+// 指定されたevmメッセージの実行後のすべての出力が含まれます。
 type ExecutionResult struct {
-	UsedGas    uint64 // Total used gas but include the refunded gas
-	Err        error  // Any error encountered during the execution(listed in core/vm/errors.go)
-	ReturnData []byte // Returned data from evm(function result or data supplied with revert opcode)
+	UsedGas    uint64 // 使用済みガスの合計ですが、返金されたガスを含みます                  // Total used gas but include the refunded gas
+	Err        error  // 実行中に発生したエラー（core/vm/errors.goにリストされています）// Any error encountered during the execution(listed in core/vm/errors.go)
+	ReturnData []byte // evmから返されたデータ（関数の結果またはrevert opcodeで提供されたデータ） // Returned data from evm(function result or data supplied with revert opcode)
 }
 
 // Unwrap returns the internal evm error which allows us for further
 // analysis outside.
+// Unwrapは内部evmエラーを返します。これにより、外部でさらに分析することができます。
 func (result *ExecutionResult) Unwrap() error {
 	return result.Err
 }
 
 // Failed returns the indicator whether the execution is successful or not
+// Failedは、実行が成功したかどうかのインジケーターを返します
 func (result *ExecutionResult) Failed() bool { return result.Err != nil }
 
 // Return is a helper function to help caller distinguish between revert reason
 // and function return. Return returns the data after execution if no error occurs.
+// Returnは、呼び出し元が復帰理由と関数returnを区別するのに役立つヘルパー関数です。
+// エラーが発生しなかった場合、Returnは実行後にデータを返します。
 func (result *ExecutionResult) Return() []byte {
 	if result.Err != nil {
 		return nil
@@ -107,6 +131,8 @@ func (result *ExecutionResult) Return() []byte {
 
 // Revert returns the concrete revert reason if the execution is aborted by `REVERT`
 // opcode. Note the reason can be nil if no data supplied with revert opcode.
+// 実行が `REVERT`オペコードによって中止された場合、Revertは具体的な復帰理由を返します。
+// revert opcodeでデータが提供されていない場合、理由はnilになる可能性があることに注意してください。
 func (result *ExecutionResult) Revert() []byte {
 	if result.Err != vm.ErrExecutionReverted {
 		return nil
@@ -115,8 +141,10 @@ func (result *ExecutionResult) Revert() []byte {
 }
 
 // IntrinsicGas computes the 'intrinsic gas' for a message with the given data.
+// IntrinsicGasは、指定されたデータを使用してメッセージの「固有ガス」を計算します。
 func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation bool, isHomestead, isEIP2028 bool) (uint64, error) {
 	// Set the starting gas for the raw transaction
+	// 生のトランザクションの開始ガスを設定します
 	var gas uint64
 	if isContractCreation && isHomestead {
 		gas = params.TxGasContractCreation
@@ -124,8 +152,10 @@ func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation b
 		gas = params.TxGas
 	}
 	// Bump the required gas by the amount of transactional data
+	// トランザクションデータの量だけ必要なガスをバンプします
 	if len(data) > 0 {
 		// Zero and non-zero bytes are priced differently
+		// ゼロバイトと非ゼロバイトの価格は異なります
 		var nz uint64
 		for _, byt := range data {
 			if byt != 0 {
@@ -133,6 +163,7 @@ func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation b
 			}
 		}
 		// Make sure we don't exceed uint64 for all data combinations
+		// すべてのデータの組み合わせでuint64を超えないようにしてください
 		nonZeroGas := params.TxDataNonZeroGasFrontier
 		if isEIP2028 {
 			nonZeroGas = params.TxDataNonZeroGasEIP2028
@@ -156,6 +187,7 @@ func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation b
 }
 
 // NewStateTransition initialises and returns a new state transition object.
+// NewStateTransitionは、新しい状態遷移オブジェクトを初期化して返します。
 func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition {
 	return &StateTransition{
 		gp:        gp,
@@ -177,13 +209,21 @@ func NewStateTransition(evm *vm.EVM, msg Message, gp *GasPool) *StateTransition 
 // the gas used (which includes gas refunds) and an error if it failed. An error always
 // indicates a core error meaning that the message would always fail for that particular
 // state and would never be accepted within a block.
+// ApplyMessageは、環境内の古い状態に対して指定されたメッセージを適用することにより、
+// 新しい状態を計算します。
+//
+// ApplyMessageは、EVMの実行によって返されたバイト（発生した場合）、
+// 使用されたガス（ガスの払い戻しを含む）、および失敗した場合のエラーを返します。
+// エラーは常にコアエラーを示します。
+// これは、メッセージがその特定の状態では常に失敗し、ブロック内で受け入れられないことを意味します。
 func ApplyMessage(evm *vm.EVM, msg Message, gp *GasPool) (*ExecutionResult, error) {
 	return NewStateTransition(evm, msg, gp).TransitionDb()
 }
 
 // to returns the recipient of the message.
+// メッセージの受信者を返します。
 func (st *StateTransition) to() common.Address {
-	if st.msg == nil || st.msg.To() == nil /* contract creation */ {
+	if st.msg == nil || st.msg.To() == nil /* 契約の作成 */ /* contract creation */ {
 		return common.Address{}
 	}
 	return *st.msg.To()
@@ -213,8 +253,10 @@ func (st *StateTransition) buyGas() error {
 
 func (st *StateTransition) preCheck() error {
 	// Only check transactions that are not fake
+	// 偽物ではないトランザクションのみをチェックします
 	if !st.msg.IsFake() {
 		// Make sure this transaction's nonce is correct.
+		// このトランザクションのナンスが正しいことを確認します。
 		stNonce := st.state.GetNonce(st.msg.From())
 		if msgNonce := st.msg.Nonce(); stNonce < msgNonce {
 			return fmt.Errorf("%w: address %v, tx: %d state: %d", ErrNonceTooHigh,
@@ -227,14 +269,17 @@ func (st *StateTransition) preCheck() error {
 				st.msg.From().Hex(), stNonce)
 		}
 		// Make sure the sender is an EOA
+		// 送信者がEOAであることを確認します
 		if codeHash := st.state.GetCodeHash(st.msg.From()); codeHash != emptyCodeHash && codeHash != (common.Hash{}) {
 			return fmt.Errorf("%w: address %v, codehash: %s", ErrSenderNoEOA,
 				st.msg.From().Hex(), codeHash)
 		}
 	}
 	// Make sure that transaction gasFeeCap is greater than the baseFee (post london)
+	// トランザクションgasFeeCapがbaseFee（post london）よりも大きいことを確認します
 	if st.evm.ChainConfig().IsLondon(st.evm.Context.BlockNumber) {
 		// Skip the checks if gas fields are zero and baseFee was explicitly disabled (eth_call)
+		// ガス田がゼロで、baseFeeが明示的に無効にされているかどうかのチェックをスキップします（eth_call）
 		if !st.evm.Config.NoBaseFee || st.gasFeeCap.BitLen() > 0 || st.gasTipCap.BitLen() > 0 {
 			if l := st.gasFeeCap.BitLen(); l > 256 {
 				return fmt.Errorf("%w: address %v, maxFeePerGas bit length: %d", ErrFeeCapVeryHigh,
@@ -250,6 +295,8 @@ func (st *StateTransition) preCheck() error {
 			}
 			// This will panic if baseFee is nil, but basefee presence is verified
 			// as part of header validation.
+			// baseFeeがnilの場合、これはパニックになりますが、
+			// basefeeの存在はヘッダー検証の一部として検証されます。
 			if st.gasFeeCap.Cmp(st.evm.Context.BaseFee) < 0 {
 				return fmt.Errorf("%w: address %v, maxFeePerGas: %s baseFee: %s", ErrFeeCapTooLow,
 					st.msg.From().Hex(), st.gasFeeCap, st.evm.Context.BaseFee)
@@ -272,6 +319,17 @@ func (st *StateTransition) preCheck() error {
 //
 // However if any consensus issue encountered, return the error directly with
 // nil evm execution result.
+// TransitionDbは、現在のメッセージを適用し、次のフィールドでevm実行結果を返すことにより、状態を遷移します。
+//
+// -使用済みガス：
+// 使用されたガスの合計（返金されるガスを含む）
+// --returndata：
+// evmから返されたデータ
+// -具体的な実行エラー：
+// 実行を中止するさまざまな** EVM **エラー、
+// 例： ErrOutOfGas、ErrExecutionReverted
+//
+// ただし、コンセンサスの問題が発生した場合は、nilevmの実行結果とともにエラーを直接返します。
 func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	// First check this message satisfies all consensus rules before
 	// applying the message. The rules include these clauses
@@ -284,6 +342,18 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	// 6. caller has enough balance to cover asset transfer for **topmost** call
 
 	// Check clauses 1-3, buy gas if everything is correct
+
+	// メッセージを適用する前に、まずこのメッセージがすべてのコンセンサスルールを満たしていることを確認してください。
+	// ルールにはこれらの条項が含まれます
+	//
+	// 1.メッセージ発信者のナンスは正しい
+	// 2.発信者は、取引手数料をカバーするのに十分な残高があります（gaslimit * gasprice）
+	// 3.必要なガスの量はブロックで利用可能です
+	// 4.購入したガスは、固有の使用量をカバーするのに十分です
+	// 5.。固有ガスの計算時にオーバーフローはありません
+	// 6.発信者には、**最上位**の通話のアセット転送をカバーするのに十分な残高があります
+
+	//条項1〜3を確認し、すべてが正しい場合はガスを購入します
 	if err := st.preCheck(); err != nil {
 		return nil, err
 	}
@@ -295,6 +365,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	contractCreation := msg.To() == nil
 
 	// Check clauses 4-5, subtract intrinsic gas if everything is correct
+	// 4〜5項を確認し、すべてが正しければ固有ガスを差し引く
 	gas, err := IntrinsicGas(st.data, st.msg.AccessList(), contractCreation, homestead, istanbul)
 	if err != nil {
 		return nil, err
@@ -305,31 +376,35 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	st.gas -= gas
 
 	// Check clause 6
+	// 句6を確認します
 	if msg.Value().Sign() > 0 && !st.evm.Context.CanTransfer(st.state, msg.From(), msg.Value()) {
 		return nil, fmt.Errorf("%w: address %v", ErrInsufficientFundsForTransfer, msg.From().Hex())
 	}
 
 	// Set up the initial access list.
+	// 初期アクセスリストを設定します。
 	if rules := st.evm.ChainConfig().Rules(st.evm.Context.BlockNumber); rules.IsBerlin {
 		st.state.PrepareAccessList(msg.From(), msg.To(), vm.ActivePrecompiles(rules), msg.AccessList())
 	}
 	var (
 		ret   []byte
-		vmerr error // vm errors do not effect consensus and are therefore not assigned to err
+		vmerr error // vmエラーはコンセンサスに影響を与えないため、errに割り当てられません // vm errors do not effect consensus and are therefore not assigned to err
 	)
 	if contractCreation {
 		ret, _, st.gas, vmerr = st.evm.Create(sender, st.data, st.gas, st.value)
 	} else {
-		// Increment the nonce for the next transaction
+		//次のトランザクションのためにナンスをインクリメントします // Increment the nonce for the next transaction
 		st.state.SetNonce(msg.From(), st.state.GetNonce(sender.Address())+1)
 		ret, st.gas, vmerr = st.evm.Call(sender, st.to(), st.data, st.gas, st.value)
 	}
 
 	if !london {
 		// Before EIP-3529: refunds were capped to gasUsed / 2
+		// EIP-3529より前：払い戻しはgasUsed / 2に制限されていました
 		st.refundGas(params.RefundQuotient)
 	} else {
 		// After EIP-3529: refunds are capped to gasUsed / 5
+		// EIP-3529の後：払い戻しはgasUsed / 5に制限されます
 		st.refundGas(params.RefundQuotientEIP3529)
 	}
 	effectiveTip := st.gasPrice

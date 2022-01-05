@@ -29,11 +29,12 @@ import (
 )
 
 // API describes the set of methods offered over the RPC interface
+// APIは、RPCインターフェースを介して提供される一連のメソッドを記述します
 type API struct {
-	Namespace string      // namespace under which the rpc methods of Service are exposed
-	Version   string      // api version for DApp's
-	Service   interface{} // receiver instance which holds the methods
-	Public    bool        // indication if the methods must be considered safe for public use
+	Namespace string      // サービスのrpcメソッドが公開される名前空間 // namespace under which the rpc methods of Service are exposed
+	Version   string      // DAppのAPIバージョン                     // api version for DApp's
+	Service   interface{} // メソッドを保持するレシーバーインスタンス   // receiver instance which holds the methods
+	Public    bool        // メソッドが公の使用に対して安全であると見なされなければならないかどうかの表示 // indication if the methods must be considered safe for public use
 }
 
 // ServerCodec implements reading, parsing and writing RPC messages for the server side of

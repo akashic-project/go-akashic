@@ -399,6 +399,7 @@ func (tx *Transaction) WithSignature(signer Signer, sig []byte) (*Transaction, e
 }
 
 // Transactions implements DerivableList for transactions.
+// トランザクションは、トランザクションのDerivableListを実装します。
 type Transactions []*Transaction
 
 // Len returns the length of s.

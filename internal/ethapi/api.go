@@ -1794,6 +1794,7 @@ func (s *PublicTransactionPoolAPI) Sign(addr common.Address, data hexutil.Bytes)
 }
 
 // SignTransactionResult represents a RLP encoded signed transaction.
+// SignTransactionResultは、RLPでエンコードされた署名付きトランザクションを表します。
 type SignTransactionResult struct {
 	Raw hexutil.Bytes      `json:"raw"`
 	Tx  *types.Transaction `json:"tx"`
@@ -1802,6 +1803,8 @@ type SignTransactionResult struct {
 // SignTransaction will sign the given transaction with the from account.
 // The node needs to have the private key of the account corresponding with
 // the given from address and it needs to be unlocked.
+// SignTransactionは、fromアカウントを使用して指定されたトランザクションに署名します。
+// ノードは、指定された差出人アドレスに対応するアカウントの秘密鍵を持っている必要があり、ロックを解除する必要があります。
 func (s *PublicTransactionPoolAPI) SignTransaction(ctx context.Context, args TransactionArgs) (*SignTransactionResult, error) {
 	if args.Gas == nil {
 		return nil, fmt.Errorf("gas not specified")
@@ -1816,6 +1819,7 @@ func (s *PublicTransactionPoolAPI) SignTransaction(ctx context.Context, args Tra
 		return nil, err
 	}
 	// Before actually sign the transaction, ensure the transaction fee is reasonable.
+	// 実際に取引に署名する前に、取引手数料が妥当であることを確認してください。
 	tx := args.toTransaction()
 	if err := checkTxFee(tx.GasPrice(), tx.Gas(), s.b.RPCTxFeeCap()); err != nil {
 		return nil, err
@@ -1833,6 +1837,8 @@ func (s *PublicTransactionPoolAPI) SignTransaction(ctx context.Context, args Tra
 
 // PendingTransactions returns the transactions that are in the transaction pool
 // and have a from address that is one of the accounts this node manages.
+// 保留中のトランザクションは、トランザクションプールにあり、
+// このノードが管理するアカウントの1つである差出人アドレスを持つトランザクションを返します。
 func (s *PublicTransactionPoolAPI) PendingTransactions() ([]*RPCTransaction, error) {
 	pending, err := s.b.GetPoolTransactions()
 	if err != nil {
@@ -1857,6 +1863,8 @@ func (s *PublicTransactionPoolAPI) PendingTransactions() ([]*RPCTransaction, err
 
 // Resend accepts an existing transaction and a new gas price and limit. It will remove
 // the given transaction from the pool and reinsert it with the new gas price and limit.
+// 再送信は、既存のトランザクションと新しいガスの価格と制限を受け入れます。
+// 指定されたトランザクションをプールから削除し、新しいガス価格と制限で再挿入します。
 func (s *PublicTransactionPoolAPI) Resend(ctx context.Context, sendArgs TransactionArgs, gasPrice *hexutil.Big, gasLimit *hexutil.Uint64) (common.Hash, error) {
 	if sendArgs.Nonce == nil {
 		return common.Hash{}, fmt.Errorf("missing transaction nonce in transaction spec")
@@ -1867,6 +1875,7 @@ func (s *PublicTransactionPoolAPI) Resend(ctx context.Context, sendArgs Transact
 	matchTx := sendArgs.toTransaction()
 
 	// Before replacing the old transaction, ensure the _new_ transaction fee is reasonable.
+	// 古い取引を交換する前に、_新しい_取引手数料が妥当であることを確認してください。
 	var price = matchTx.GasPrice()
 	if gasPrice != nil {
 		price = gasPrice.ToInt()

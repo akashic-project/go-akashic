@@ -48,6 +48,9 @@ var (
 // LightChain represents a canonical chain that by default only handles block
 // headers, downloading block bodies and receipts on demand through an ODR
 // interface. It only does header validation during chain insertion.
+// LightChainは、デフォルトでブロックヘッダーのみを処理し、
+// ODRインターフェイスを介してオンデマンドでブロック本体とレシートをダウンロードする正規チェーンを表します。
+// チェーン挿入中のヘッダー検証のみを行います。
 type LightChain struct {
 	hc            *core.HeaderChain
 	indexerConfig *IndexerConfig
@@ -61,11 +64,11 @@ type LightChain struct {
 	genesisBlock  *types.Block
 	forker        *core.ForkChoice
 
-	bodyCache    *lru.Cache // Cache for the most recent block bodies
-	bodyRLPCache *lru.Cache // Cache for the most recent block bodies in RLP encoded format
-	blockCache   *lru.Cache // Cache for the most recent entire blocks
+	bodyCache    *lru.Cache // Cache for the most recent block bodies 最新のブロック本体のキャッシュ
+	bodyRLPCache *lru.Cache // Cache for the most recent block bodies in RLP encoded format RLPエンコード形式の最新のブロック本体のキャッシュ
+	blockCache   *lru.Cache // Cache for the most recent entire blocks  最新のブロック全体のキャッシュ
 
-	chainmu sync.RWMutex // protects header inserts
+	chainmu sync.RWMutex // protects header inserts ヘッダーインサートを保護します
 	quit    chan struct{}
 	wg      sync.WaitGroup
 

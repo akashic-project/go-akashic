@@ -24,6 +24,8 @@ import (
 
 // IPTracker predicts the external endpoint, i.e. IP address and port, of the local host
 // based on statements made by other hosts.
+// IPTrackerは、他のホストのステートメントに基づいて、
+// ローカルホストの外部エンドポイント（IPアドレスとポート）を予測します。
 type IPTracker struct {
 	window          time.Duration
 	contactWindow   time.Duration
@@ -41,12 +43,17 @@ type ipStatement struct {
 }
 
 // NewIPTracker creates an IP tracker.
+// NewIPTrackerはIPトラッカーを作成します。
 //
 // The window parameters configure the amount of past network events which are kept. The
 // minStatements parameter enforces a minimum number of statements which must be recorded
 // before any prediction is made. Higher values for these parameters decrease 'flapping' of
 // predictions as network conditions change. Window duration values should typically be in
 // the range of minutes.
+// ウィンドウパラメータは、保持される過去のネットワークイベントの量を設定します。
+// minStatementsパラメーターは、予測が行われる前に記録する必要があるステートメントの最小数を適用します。
+// これらのパラメータの値を高くすると、ネットワークの状態が変化したときに予測の「フラッピング」が減少します。
+// ウィンドウ期間の値は通常、分の範囲内である必要があります。
 func NewIPTracker(window, contactWindow time.Duration, minStatements int) *IPTracker {
 	return &IPTracker{
 		window:        window,
@@ -61,6 +68,9 @@ func NewIPTracker(window, contactWindow time.Duration, minStatements int) *IPTra
 // PredictFullConeNAT checks whether the local host is behind full cone NAT. It predicts by
 // checking whether any statement has been received from a node we didn't contact before
 // the statement was made.
+// PredictFullConeNATは、ローカルホストがフルコーンNATの背後にあるかどうかを確認します。
+// ステートメントが作成される前に接続しなかったノードからステートメントが受信されたかどうかを
+// チェックすることによって予測します。
 func (it *IPTracker) PredictFullConeNAT() bool {
 	now := it.clock.Now()
 	it.gcContact(now)
@@ -74,10 +84,12 @@ func (it *IPTracker) PredictFullConeNAT() bool {
 }
 
 // PredictEndpoint returns the current prediction of the external endpoint.
+// PredictEndpointは、外部エンドポイントの現在の予測を返します。
 func (it *IPTracker) PredictEndpoint() string {
 	it.gcStatements(it.clock.Now())
 
 	// The current strategy is simple: find the endpoint with most statements.
+	// 現在の戦略は単純です。ほとんどのステートメントを含むエンドポイントを見つけます。
 	counts := make(map[string]int)
 	maxcount, max := 0, ""
 	for _, s := range it.statements {
@@ -91,6 +103,7 @@ func (it *IPTracker) PredictEndpoint() string {
 }
 
 // AddStatement records that a certain host thinks our external endpoint is the one given.
+// AddStatementは、特定のホストが外部エンドポイントが指定されたものであると見なしていることを記録します。
 func (it *IPTracker) AddStatement(host, endpoint string) {
 	now := it.clock.Now()
 	it.statements[host] = ipStatement{endpoint, now}
@@ -101,6 +114,7 @@ func (it *IPTracker) AddStatement(host, endpoint string) {
 
 // AddContact records that a packet containing our endpoint information has been sent to a
 // certain host.
+// AddContactは、エンドポイント情報を含むパケットが特定のホストに送信されたことを記録します。
 func (it *IPTracker) AddContact(host string) {
 	now := it.clock.Now()
 	it.contact[host] = now

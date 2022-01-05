@@ -27,8 +27,11 @@ import (
 
 // Tests that transactions can be added to strict lists and list contents and
 // nonce boundaries are correctly maintained.
+// トランザクションを厳密なリストに追加でき、
+// リストの内容とナンス境界が正しく維持されていることをテストします。
 func TestStrictTxListAdd(t *testing.T) {
 	// Generate a list of transactions to insert
+	// 挿入するトランザクションのリストを生成します
 	key, _ := crypto.GenerateKey()
 
 	txs := make(types.Transactions, 1024)
@@ -36,11 +39,13 @@ func TestStrictTxListAdd(t *testing.T) {
 		txs[i] = transaction(uint64(i), 0, key)
 	}
 	// Insert the transactions in a random order
+	// トランザクションをランダムな順序で挿入します
 	list := newTxList(true)
 	for _, v := range rand.Perm(len(txs)) {
 		list.Add(txs[v], DefaultTxPoolConfig.PriceBump)
 	}
 	// Verify internal state
+	// 内部状態を確認します
 	if len(list.txs.items) != len(txs) {
 		t.Errorf("transaction count mismatch: have %d, want %d", len(list.txs.items), len(txs))
 	}
@@ -53,6 +58,7 @@ func TestStrictTxListAdd(t *testing.T) {
 
 func BenchmarkTxListAdd(b *testing.B) {
 	// Generate a list of transactions to insert
+	// 挿入するトランザクションのリストを生成します
 	key, _ := crypto.GenerateKey()
 
 	txs := make(types.Transactions, 100000)
@@ -60,6 +66,7 @@ func BenchmarkTxListAdd(b *testing.B) {
 		txs[i] = transaction(uint64(i), 0, key)
 	}
 	// Insert the transactions in a random order
+	// トランザクションをランダムな順序で挿入します
 	priceLimit := big.NewInt(int64(DefaultTxPoolConfig.PriceLimit))
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

@@ -39,9 +39,12 @@ var (
 // A BlockNonce is a 64-bit hash which proves (combined with the
 // mix-hash) that a sufficient amount of computation has been carried
 // out on a block.
+// BlockNonceは64ビットのハッシュであり、
+// ブロックに対して十分な量の計算が実行されたことを（ミックスハッシュと組み合わせて）証明します。
 type BlockNonce [8]byte
 
 // EncodeNonce converts the given integer to a block nonce.
+// EncodeNonceは、指定された整数をブロックナンスに変換します。
 func EncodeNonce(i uint64) BlockNonce {
 	var n BlockNonce
 	binary.BigEndian.PutUint64(n[:], i)
@@ -66,6 +69,7 @@ func (n *BlockNonce) UnmarshalText(input []byte) error {
 //go:generate gencodec -type Header -field-override headerMarshaling -out gen_header_json.go
 
 // Header represents a block header in the Ethereum blockchain.
+// ヘッダーは、イーサリアムブロックチェーンのブロックヘッダーを表します。
 type Header struct {
 	ParentHash  common.Hash    `json:"parentHash"       gencodec:"required"`
 	UncleHash   common.Hash    `json:"sha3Uncles"       gencodec:"required"`
@@ -84,6 +88,7 @@ type Header struct {
 	Nonce       BlockNonce     `json:"nonce"`
 
 	// BaseFee was added by EIP-1559 and is ignored in legacy headers.
+	// BaseFeeはEIP-1559によって追加され、レガシーヘッダーでは無視されます。
 	BaseFee *big.Int `json:"baseFeePerGas" rlp:"optional"`
 
 	/*
@@ -162,6 +167,7 @@ type Body struct {
 }
 
 // Block represents an entire block in the Ethereum blockchain.
+// ブロックは、イーサリアムブロックチェーン内のブロック全体を表します。
 type Block struct {
 	header       *Header
 	uncles       []*Header
@@ -173,10 +179,12 @@ type Block struct {
 
 	// Td is used by package core to store the total difficulty
 	// of the chain up to and including the block.
+	// Tdは、ブロックまでのチェーンの全体的な難易度を格納するためにパッケージコアによって使用されます。
 	td *big.Int
 
 	// These fields are used by package eth to track
 	// inter-peer block relay.
+	// これらのフィールドは、パッケージethがピア間ブロックリレーを追跡するために使用します。
 	ReceivedAt   time.Time
 	ReceivedFrom interface{}
 }

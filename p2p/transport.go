@@ -35,16 +35,22 @@ import (
 const (
 	// total timeout for encryption handshake and protocol
 	// handshake in both directions.
+	// 両方向の暗号化ハンドシェイクとプロトコルハンドシェイクの合計タイムアウ
 	handshakeTimeout = 5 * time.Second
 
 	// This is the timeout for sending the disconnect reason.
 	// This is shorter than the usual timeout because we don't want
 	// to wait if the connection is known to be bad anyway.
+	// これは、切断理由を送信するためのタイムアウトです。
+	// とにかく接続が悪いことがわかっている場合は待ちたくないので、
+	// これは通常のタイムアウトよりも短くなります。
 	discWriteTimeout = 1 * time.Second
 )
 
 // rlpxTransport is the transport used by actual (non-test) connections.
 // It wraps an RLPx connection with locks and read/write deadlines.
+// rlpxTransportは、実際の（テスト以外の）接続で使用されるトランスポートです。
+// RLPx接続をロックと読み取り/書き込み期限でラップします。
 type rlpxTransport struct {
 	rmu, wmu sync.Mutex
 	wbuf     bytes.Buffer
@@ -66,6 +72,9 @@ func (t *rlpxTransport) ReadMsg() (Msg, error) {
 		// Protocol messages are dispatched to subprotocol handlers asynchronously,
 		// but package rlpx may reuse the returned 'data' buffer on the next call
 		// to Read. Copy the message data to avoid this being an issue.
+		// プロトコルメッセージは、サブプロトコルハンドラーに非同期でディスパッチされます。
+		// ただし、パッケージrlpxは、次にReadを呼び出すときに、返された「データ」バッファを再利用する場合があります。
+		// これが問題にならないように、メッセージデータをコピーしてください。
 		data = common.CopyBytes(data)
 		msg = Msg{
 			ReceivedAt: time.Now(),
@@ -83,12 +92,14 @@ func (t *rlpxTransport) WriteMsg(msg Msg) error {
 	defer t.wmu.Unlock()
 
 	// Copy message data to write buffer.
+	// メッセージデータを書き込みバッファにコピーします。
 	t.wbuf.Reset()
 	if _, err := io.CopyN(&t.wbuf, msg.Payload, int64(msg.Size)); err != nil {
 		return err
 	}
 
 	// Write the message.
+	// メッセージを書いてください。
 	t.conn.SetWriteDeadline(time.Now().Add(frameWriteTimeout))
 	size, err := t.conn.Write(msg.Code, t.wbuf.Bytes())
 	if err != nil {
@@ -96,8 +107,9 @@ func (t *rlpxTransport) WriteMsg(msg Msg) error {
 	}
 
 	// Set metrics.
+	// メトリックを設定します。
 	msg.meterSize = size
-	if metrics.Enabled && msg.meterCap.Name != "" { // don't meter non-subprotocol messages
+	if metrics.Enabled && msg.meterCap.Name != "" { // don't meter non-subprotocol messages サブプロトコル以外のメッセージを計測しない
 		m := fmt.Sprintf("%s/%s/%d/%#02x", egressMeterName, msg.meterCap.Name, msg.meterCap.Version, msg.meterCode)
 		metrics.GetOrRegisterMeter(m, nil).Mark(int64(msg.meterSize))
 		metrics.GetOrRegisterMeter(m+"/packets", nil).Mark(1)
@@ -112,11 +124,14 @@ func (t *rlpxTransport) close(err error) {
 	// Tell the remote end why we're disconnecting if possible.
 	// We only bother doing this if the underlying connection supports
 	// setting a timeout tough.
+	// 可能であれば、切断する理由をリモートエンドに伝えます。
+	// 基礎となる接続がタイムアウトの厳しい設定をサポートしている場合にのみ、これを行う必要があります。
 	if t.conn != nil {
 		if r, ok := err.(DiscReason); ok && r != DiscNetworkError {
 			deadline := time.Now().Add(discWriteTimeout)
 			if err := t.conn.SetWriteDeadline(deadline); err == nil {
 				// Connection supports write deadline.
+				// 接続は書き込み期限をサポートします。
 				t.wbuf.Reset()
 				rlp.Encode(&t.wbuf, []DiscReason{r})
 				t.conn.Write(discMsg, t.wbuf.Bytes())
@@ -136,16 +151,21 @@ func (t *rlpxTransport) doProtoHandshake(our *protoHandshake) (their *protoHands
 	// returning the handshake read error. If the remote side
 	// disconnects us early with a valid reason, we should return it
 	// as the error so it can be tracked elsewhere.
+	// ハンドシェイクの書き込みは同時に行われるため、
+	// ハンドシェイクの読み取りエラーを返すことをお勧めします。
+	// リモート側が正当な理由で早期に切断した場合は、
+	// 他の場所で追跡できるように、エラーとして返す必要があります。
 	werr := make(chan error, 1)
 	go func() { werr <- Send(t, handshakeMsg, our) }()
 	if their, err = readProtocolHandshake(t); err != nil {
-		<-werr // make sure the write terminates too
+		<-werr // make sure the write terminates too //書き込みも終了することを確認してください
 		return nil, err
 	}
 	if err := <-werr; err != nil {
 		return nil, fmt.Errorf("write error: %v", err)
 	}
 	// If the protocol version supports Snappy encoding, upgrade immediately
+	// プロトコルバージョンがSnappyエンコーディングをサポートしている場合は、すぐにアップグレードしてください
 	t.conn.SetSnappy(their.Version >= snappyProtocolVersion)
 
 	return their, nil
@@ -164,6 +184,8 @@ func readProtocolHandshake(rw MsgReader) (*protoHandshake, error) {
 		// spec and we send it ourself if the post-handshake checks fail.
 		// We can't return the reason directly, though, because it is echoed
 		// back otherwise. Wrap it in a string instead.
+		// プロトコルハンドシェイクが仕様に従って有効になる前に切断し、ハンドシェイク後のチェックが失敗した場合は自分で送信します。
+		// ただし、理由を直接返すことはできません。それ以外の場合はエコーバックされるためです。代わりに文字列でラップしてください。
 		var reason [1]DiscReason
 		rlp.Decode(msg.Payload, &reason)
 		return nil, reason[0]

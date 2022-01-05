@@ -193,6 +193,7 @@ func odrContractCall(ctx context.Context, db ethdb.Database, bc *core.BlockChain
 		}
 
 		// Perform read-only call.
+		// 読み取り専用呼び出しを実行します。
 		st.SetBalance(testBankAddress, math.MaxBig256)
 		msg := callmsg{types.NewMessage(testBankAddress, &testContractAddr, 0, new(big.Int), 1000000, big.NewInt(params.InitialBaseFee), big.NewInt(params.InitialBaseFee), new(big.Int), data, nil, true)}
 		txContext := core.NewEVMTxContext(msg)
@@ -213,12 +214,16 @@ func testChainGen(i int, block *core.BlockGen) {
 	switch i {
 	case 0:
 		// In block 1, the test bank sends account #1 some ether.
+		// ブロック1で、テスト銀行はアカウント＃1にエーテルを送信します。
 		tx, _ := types.SignTx(types.NewTransaction(block.TxNonce(testBankAddress), acc1Addr, big.NewInt(10_000_000_000_000_000), params.TxGas, block.BaseFee(), nil), signer, testBankKey)
 		block.AddTx(tx)
 	case 1:
 		// In block 2, the test bank sends some more ether to account #1.
 		// acc1Addr passes it on to account #2.
 		// acc1Addr creates a test contract.
+		// ブロック2では、テストバンクがアカウント＃1にさらにエーテルを送信します。
+		// acc1Addrはそれをアカウント＃2に渡します。
+		// acc1Addrはテストコントラクトを作成します
 		tx1, _ := types.SignTx(types.NewTransaction(block.TxNonce(testBankAddress), acc1Addr, big.NewInt(1_000_000_000_000_000), params.TxGas, block.BaseFee(), nil), signer, testBankKey)
 		nonce := block.TxNonce(acc1Addr)
 		tx2, _ := types.SignTx(types.NewTransaction(nonce, acc2Addr, big.NewInt(1_000_000_000_000_000), params.TxGas, block.BaseFee(), nil), signer, acc1Key)
@@ -230,6 +235,7 @@ func testChainGen(i int, block *core.BlockGen) {
 		block.AddTx(tx3)
 	case 2:
 		// Block 3 is empty but was mined by account #2.
+		// ブロック3は空ですが、アカウント＃2によってマイニングされました。
 		block.SetCoinbase(acc2Addr)
 		block.SetExtra([]byte("yeehaw"))
 		data := common.Hex2Bytes("C16431B900000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001")
@@ -237,6 +243,7 @@ func testChainGen(i int, block *core.BlockGen) {
 		block.AddTx(tx)
 	case 3:
 		// Block 4 includes blocks 2 and 3 as uncle headers (with modified extra data).
+		// ブロック4には、ブロック2と3が叔父のヘッダーとして含まれています（追加データが変更されています）。
 		b2 := block.PrevBlock(1).Header()
 		b2.Extra = []byte("foo")
 		block.AddUncle(b2)
@@ -261,6 +268,7 @@ func testChainOdr(t *testing.T, protocol int, fn odrTestFn) {
 	)
 	gspec.MustCommit(ldb)
 	// Assemble the test environment
+	// テスト環境を組み立てます
 	blockchain, _ := core.NewBlockChain(sdb, nil, params.TestChainConfig, ethash.NewFullFaker(), vm.Config{}, nil, nil)
 	gchain, _ := core.GenerateChain(params.TestChainConfig, genesis, ethash.NewFaker(), sdb, 4, testChainGen)
 	if _, err := blockchain.InsertChain(gchain); err != nil {
@@ -305,16 +313,19 @@ func testChainOdr(t *testing.T, protocol int, fn odrTestFn) {
 	}
 
 	// expect retrievals to fail (except genesis block) without a les peer
+	// レピアなしで検索が失敗することを期待する（ジェネシスブロックを除く）
 	t.Log("checking without ODR")
 	odr.disable = true
 	test(1)
 
 	// expect all retrievals to pass with ODR enabled
+	// ODRを有効にすると、すべての取得が成功することを期待します
 	t.Log("checking with ODR")
 	odr.disable = false
 	test(len(gchain))
 
 	// still expect all retrievals to pass, now data should be cached locally
+	// それでもすべての取得が通過することを期待しているので、データはローカルにキャッシュする必要があります
 	t.Log("checking without ODR, should be cached")
 	odr.disable = true
 	test(len(gchain))

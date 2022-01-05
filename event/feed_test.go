@@ -192,6 +192,8 @@ func TestFeedSubscribeBlockedPost(t *testing.T) {
 
 	// We're done when ch1 has received N times.
 	// The number of receives on ch2 depends on scheduling.
+	// ch1がN回受信されたら完了です。
+	// ch2での受信数は、スケジューリングによって異なります。
 	for i := 0; i < nsends; {
 		select {
 		case <-ch1:
@@ -216,6 +218,7 @@ func TestFeedUnsubscribeBlockedPost(t *testing.T) {
 	}
 
 	// Queue up some Sends. None of these can make progress while bchan isn't read.
+	// いくつかの送信をキューに入れます。 bchanが読み取られていない間は、これらのいずれも進行できません。
 	wg.Add(nsends)
 	for i := 0; i < nsends; i++ {
 		go func() {
@@ -224,20 +227,25 @@ func TestFeedUnsubscribeBlockedPost(t *testing.T) {
 		}()
 	}
 	// Subscribe the other channels.
+	// 他のチャネルを購読します。
 	for i, ch := range chans {
 		subs[i] = feed.Subscribe(ch)
 	}
 	// Unsubscribe them again.
+	// それらを再度購読解除します。
 	for _, sub := range subs {
 		sub.Unsubscribe()
 	}
 	// Unblock the Sends.
+	// 送信のブロックを解除します。
 	bsub.Unsubscribe()
 	wg.Wait()
 }
 
 // Checks that unsubscribing a channel during Send works even if that
 // channel has already been sent on.
+// チャンネルがすでに送信されている場合でも、
+// 送信中にチャンネルの登録解除が機能することを確認します。
 func TestFeedUnsubscribeSentChan(t *testing.T) {
 	var (
 		feed Feed
@@ -256,16 +264,21 @@ func TestFeedUnsubscribeSentChan(t *testing.T) {
 	}()
 
 	// Wait for the value on ch1.
+	// ch1の値を待ちます。
 	<-ch1
 	// Unsubscribe ch1, removing it from the send cases.
+	// ch1のサブスクライブを解除し、送信ケースから削除します。
 	sub1.Unsubscribe()
 
 	// Receive ch2, finishing Send.
+	// ch2を受信し、送信を終了します。
 	<-ch2
 	wg.Wait()
 
 	// Send again. This should send to ch2 only, so the wait group will unblock
 	// as soon as a value is received on ch2.
+	// もう一度送信。これはch2にのみ送信する必要があるため、
+	// ch2で値を受信するとすぐに、待機グループのブロックが解除されます。
 	wg.Add(1)
 	go func() {
 		feed.Send(0)

@@ -42,16 +42,17 @@ type Backend interface {
 }
 
 // Config is the configuration parameters of mining.
+// Configは、マイニングの構成パラメーターです。
 type Config struct {
-	Etherbase  common.Address `toml:",omitempty"` // Public address for block mining rewards (default = first account)
-	Notify     []string       `toml:",omitempty"` // HTTP URL list to be notified of new work packages (only useful in ethash).
-	NotifyFull bool           `toml:",omitempty"` // Notify with pending block headers instead of work packages
-	ExtraData  hexutil.Bytes  `toml:",omitempty"` // Block extra data set by the miner
-	GasFloor   uint64         // Target gas floor for mined blocks.
-	GasCeil    uint64         // Target gas ceiling for mined blocks.
-	GasPrice   *big.Int       // Minimum gas price for mining a transaction
-	Recommit   time.Duration  // The time interval for miner to re-create mining work.
-	Noverify   bool           // Disable remote mining solution verification(only useful in ethash).
+	Etherbase  common.Address `toml:",omitempty"` // ブロックマイニング報酬のパブリックアドレス（デフォルト=最初のアカウント） // Public address for block mining rewards (default = first account)
+	Notify     []string       `toml:",omitempty"` // 新しいワークパッケージについて通知されるHTTPURLリスト（ethashでのみ役立ちます）。 // HTTP URL list to be notified of new work packages (only useful in ethash).
+	NotifyFull bool           `toml:",omitempty"` // 作業パッケージの代わりに保留中のブロックヘッダーで通知します // Notify with pending block headers instead of work packages
+	ExtraData  hexutil.Bytes  `toml:",omitempty"` // マイナーによって追加のデータセットをブロックします// Block extra data set by the miner
+	GasFloor   uint64         //採掘されたブロックのターゲットガスフロア。 // Target gas floor for mined blocks.
+	GasCeil    uint64         //採掘されたブロックのターゲットガス上限。   // Target gas ceiling for mined blocks.
+	GasPrice   *big.Int       //トランザクションをマイニングするための最小ガス価格 // Minimum gas price for mining a transaction
+	Recommit   time.Duration  //マイナーがマイニング作業を再作成するための時間間隔。 // The time interval for miner to re-create mining work.
+	Noverify   bool           //リモートマイニングソリューションの検証を無効にします（ethashでのみ役立ちます）。 // Disable remote mining solution verification(only useful in ethash).
 }
 
 // Miner creates blocks and searches for proof-of-work values.
@@ -87,6 +88,10 @@ func New(eth Backend, config *Config, chainConfig *params.ChainConfig, mux *even
 // It's entered once and as soon as `Done` or `Failed` has been broadcasted the events are unregistered and
 // the loop is exited. This to prevent a major security vuln where external parties can DOS you with blocks
 // and halt your mining operation for as long as the DOS continues.
+// updateはダウンローダーイベントを追跡します。これはワンショットタイプの更新ループであることに注意してください。
+// 一度入力すると、 `Done`または` Failed`がブロードキャストされるとすぐに、イベントの登録が解除され、ループが終了します。
+// これは、外部の関係者がブロックを使用してDOSを実行し、
+// DOSが継続している限り、マイニング操作を停止できるという重大なセキュリティの脆弱性を防ぐためです。
 func (miner *Miner) update() {
 	defer miner.wg.Done()
 
@@ -105,6 +110,7 @@ func (miner *Miner) update() {
 		case ev := <-dlEventCh:
 			if ev == nil {
 				// Unsubscription done, stop listening
+				// サブスクリプション解除が完了し、リスニングを停止します
 				dlEventCh = nil
 				continue
 			}
@@ -115,6 +121,7 @@ func (miner *Miner) update() {
 				canStart = false
 				if wasMining {
 					// Resume mining after sync was finished
+					// 同期が終了した後にマイニングを再開します
 					shouldStart = true
 					log.Info("Mining aborted due to sync")
 				}
@@ -131,6 +138,7 @@ func (miner *Miner) update() {
 					miner.worker.start()
 				}
 				// Stop reacting to downloader events
+				// ダウンローダーイベントへの反応を停止します
 				events.Unsubscribe()
 			}
 		case addr := <-miner.startCh:
@@ -182,11 +190,13 @@ func (miner *Miner) SetExtra(extra []byte) error {
 }
 
 // SetRecommitInterval sets the interval for sealing work resubmitting.
+// SetRecommitIntervalは、シール作業の再送信の間隔を設定します。
 func (miner *Miner) SetRecommitInterval(interval time.Duration) {
 	miner.worker.setRecommitInterval(interval)
 }
 
 // Pending returns the currently pending block and associated state.
+// 保留中は、現在保留中のブロックと関連する状態を返します。
 func (miner *Miner) Pending() (*types.Block, *state.StateDB) {
 	return miner.worker.pending()
 }
@@ -196,11 +206,17 @@ func (miner *Miner) Pending() (*types.Block, *state.StateDB) {
 // Note, to access both the pending block and the pending state
 // simultaneously, please use Pending(), as the pending state can
 // change between multiple method calls
+
+// PendingBlockは現在保留中のブロックを返します。
+//
+// 保留中のブロックと保留中の状態の両方に同時にアクセスするには、
+// 保留中の状態が複数のメソッド呼び出し間で変化する可能性があるため、Pending（）を使用してください。
 func (miner *Miner) PendingBlock() *types.Block {
 	return miner.worker.pendingBlock()
 }
 
 // PendingBlockAndReceipts returns the currently pending block and corresponding receipts.
+// PresidentingBlockAndReceiptsは、現在保留中のブロックと対応するレシートを返します。
 func (miner *Miner) PendingBlockAndReceipts() (*types.Block, types.Receipts) {
 	return miner.worker.pendingBlockAndReceipts()
 }
@@ -212,6 +228,8 @@ func (miner *Miner) SetEtherbase(addr common.Address) {
 
 // SetGasCeil sets the gaslimit to strive for when mining blocks post 1559.
 // For pre-1559 blocks, it sets the ceiling.
+// SetGasCeilは、1559以降のブロックをマイニングするときに努力するガス制限を設定します。
+// 1559より前のブロックの場合、上限を設定します。
 func (miner *Miner) SetGasCeil(ceil uint64) {
 	miner.worker.setGasCeil(ceil)
 }
@@ -220,6 +238,9 @@ func (miner *Miner) SetGasCeil(ceil uint64) {
 // Note this function shouldn't be exposed to API, it's unnecessary for users
 // (miners) to actually know the underlying detail. It's only for outside project
 // which uses this library.
+// EnablePresealは、プレシールマイニング機能をオンにします。デフォルトで有効になっています。
+// この関数はAPIに公開されるべきではないことに注意してください。ユーザー（マイナー）が実際に基本的な詳細を知る必要はありません。
+// このライブラリを使用する外部プロジェクト専用です。
 func (miner *Miner) EnablePreseal() {
 	miner.worker.enablePreseal()
 }
@@ -229,12 +250,18 @@ func (miner *Miner) EnablePreseal() {
 // Note this function shouldn't be exposed to API, it's unnecessary for users
 // (miners) to actually know the underlying detail. It's only for outside project
 // which uses this library.
+// DisablePresealは、プレシールマイニング機能をオフにします。
+// ブロックを瞬時にシールできる偽のコンセンサスエンジンが必要です。
+// この関数はAPIに公開されるべきではないことに注意してください。
+// ユーザー（マイナー）が実際に基本的な詳細を知る必要はありません。
+// このライブラリを使用する外部プロジェクト専用です。
 func (miner *Miner) DisablePreseal() {
 	miner.worker.disablePreseal()
 }
 
 // SubscribePendingLogs starts delivering logs from pending transactions
 // to the given channel.
+// SubscribePendingLogsは、保留中のトランザクションから指定されたチャネルへのログの配信を開始します。
 func (miner *Miner) SubscribePendingLogs(ch chan<- []*types.Log) event.Subscription {
 	return miner.worker.pendingLogsFeed.Subscribe(ch)
 }

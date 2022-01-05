@@ -41,12 +41,14 @@ func convertFileLockError(err error) error {
 
 // StopError is returned if a Node fails to stop either any of its registered
 // services or itself.
+// ノードが登録されたサービスまたはそれ自体のいずれかを停止できなかった場合、StopErrorが返されます。
 type StopError struct {
 	Server   error
 	Services map[reflect.Type]error
 }
 
 // Error generates a textual representation of the stop error.
+// エラーは、停止エラーのテキスト表現を生成します。
 func (e *StopError) Error() string {
 	return fmt.Sprintf("server: %v, services: %v", e.Server, e.Services)
 }

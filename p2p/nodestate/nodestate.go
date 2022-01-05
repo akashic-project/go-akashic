@@ -61,6 +61,26 @@ type (
 	// might be locked when the top level SetState/SetField functions are called. If a function
 	// potentially performs state/field changes then it is recommended to mention this fact in the
 	// function description, along with whether it should run inside an operation callback.
+	// NodeStateMachineは、ネットワークノード関連のイベントサブスクリプションシステムを実装します。
+	// 各ノードに任意のタイプのバイナリ状態フラグとフィールドを割り当てることができ、フラグ/フィールドの変更へのサブスクリプションを許可します。
+	// これにより、さらにフラグとフィールドを変更して、さらにサブスクリプションをトリガーする可能性があります。
+	// 操作には、最初の変更とそれに続くすべての変更が含まれ、常に一貫したグローバル状態で終了します。
+	// これは、操作が終了するまでブロックする（他のトップレベル関数もブロックする）「トップレベル」のSetState / SetField呼び出しによって開始されます。
+	// さらに変更を加えるコールバックでは、非ブロッキングSetStateSub / SetFieldSub関数を使用する必要があります。
+	// 最初の変更から生じるイベントのツリーは幅優先でトラバースされ、サブスクリプションコールバックごとに、
+	// 現在のコールバックで行われた変更によって何かがトリガーされる前に、
+	// 現在のコールバックをトリガーする同じ変更によって引き起こされた他のすべてのコールバックが処理されるようにします。 。
+	// 実際には、このロジックにより、すべてのサブスクリプションが論理的な順序でイベントを「参照」し、
+	// コールバックが同時に呼び出されることはなく、「前後」の効果も可能になります。
+	// ステートマシンの設計では、無限のイベントサイクルが発生しないようにする必要があります。
+	// 呼び出し元は、特定のノードに割り当てられたタイムアウトと状態フラグのサブセットを追加することもできます。
+	// タイムアウトが経過すると、フラグがリセットされます。関連するすべてのフラグがリセットされると、タイマーはドロップされます。
+	// フラグ記述子で保存が有効になっている場合、タイムアウトのない状態フラグがデータベースに保持されます。
+	// ノードに状態フラグが設定されていない場合、そのノードは破棄されます。
+	// 注：ミューテックスのデッドロックを回避するために、コールバックは、トップレベルの
+	// SetState / SetField関数が呼び出されたときにロックされる可能性のあるミューテックスをロックしないでください。
+	// 関数が状態/フィールドの変更を実行する可能性がある場合は、
+	// 関数の説明でこの事実を、操作コールバック内で実行する必要があるかどうかとともに記載することをお勧めします。
 	NodeStateMachine struct {
 		started, closed     bool
 		lock                sync.Mutex
@@ -69,31 +89,38 @@ type (
 		dbNodeKey           []byte
 		nodes               map[enode.ID]*nodeInfo
 		offlineCallbackList []offlineCallback
-		opFlag              bool       // an operation has started
-		opWait              *sync.Cond // signaled when the operation ends
-		opPending           []func()   // pending callback list of the current operation
+		opFlag              bool       // an operation has started 操作が開始されました
+		opWait              *sync.Cond // signaled when the operation ends 		操作が終了すると通知されます
+		opPending           []func()   // pending callback list of the current operation 現在の操作の保留中のコールバックリスト
 
 		// Registered state flags or fields. Modifications are allowed
 		// only when the node state machine has not been started.
+		// 登録された状態フラグまたはフィールド。
+		// 変更は、ノードステートマシンが起動されていない場合にのみ許可されます。
 		setup     *Setup
 		fields    []*fieldInfo
 		saveFlags bitMask
 
 		// Installed callbacks. Modifications are allowed only when the
 		// node state machine has not been started.
+		// インストールされたコールバック。
+		// 変更は、ノードステートマシンが起動されていない場合にのみ許可されます。
 		stateSubs []stateSub
 
 		// Testing hooks, only for testing purposes.
+		// テスト目的でのみ、フックをテストします。
 		saveNodeHook func(*nodeInfo)
 	}
 
 	// Flags represents a set of flags from a certain setup
+	// フラグは、特定のセットアップからのフラグのセットを表します
 	Flags struct {
 		mask  bitMask
 		setup *Setup
 	}
 
 	// Field represents a field from a certain setup
+	// フィールドは、特定の設定からのフィールドを表します
 	Field struct {
 		index int
 		setup *Setup
@@ -102,6 +129,9 @@ type (
 	// flagDefinition describes a node state flag. Each registered instance is automatically
 	// mapped to a bit of the 64 bit node states.
 	// If persistent is true then the node is saved when state machine is shutdown.
+	// flagDefinitionは、ノード状態フラグを記述します。
+	// 登録された各インスタンスは、64ビットノード状態のビットに自動的にマップされます。
+	// 永続性がtrueの場合、ステートマシンがシャットダウンされたときにノードが保存されます。
 	flagDefinition struct {
 		name       string
 		persistent bool
@@ -110,6 +140,8 @@ type (
 	// fieldDefinition describes an optional node field of the given type. The contents
 	// of the field are only retained for each node as long as at least one of the
 	// state flags is set.
+	// fieldDefinitionは、指定されたタイプのオプションのノードフィールドを記述します。
+	// フィールドの内容は、少なくとも1つの状態フラグが設定されている限り、ノードごとにのみ保持されます。
 	fieldDefinition struct {
 		name   string
 		ftype  reflect.Type
@@ -118,6 +150,7 @@ type (
 	}
 
 	// stateSetup contains the list of flags and fields used by the application
+	// stateSetupには、アプリケーションで使用されるフラグとフィールドのリストが含まれています
 	Setup struct {
 		Version uint
 		flags   []flagDefinition
@@ -126,19 +159,26 @@ type (
 
 	// bitMask describes a node state or state mask. It represents a subset
 	// of node flags with each bit assigned to a flag index (LSB represents flag 0).
+	// bitMaskは、ノードの状態または状態マスクを記述します。
+	// これは、各ビットがフラグインデックスに割り当てられたノードフラグのサブセットを表します
+	// （LSBはフラグ0を表します）。
 	bitMask uint64
 
 	// StateCallback is a subscription callback which is called when one of the
 	// state flags that is included in the subscription state mask is changed.
 	// Note: oldState and newState are also masked with the subscription mask so only
 	// the relevant bits are included.
+	// StateCallbackは、サブスクリプション状態マスクに含まれている状態フラグの1つが変更されたときに呼び出されるサブスクリプションコールバックです。
+	// 注：oldStateとnewStateもサブスクリプションマスクでマスクされるため、関連するビットのみが含まれます。
 	StateCallback func(n *enode.Node, oldState, newState Flags)
 
 	// FieldCallback is a subscription callback which is called when the value of
 	// a specific field is changed.
+	// FieldCallbackは、特定のフィールドの値が変更されたときに呼び出されるサブスクリプションコールバックです。
 	FieldCallback func(n *enode.Node, state Flags, oldValue, newValue interface{})
 
 	// nodeInfo contains node state, fields and state timeouts
+	// nodeInfoには、ノードの状態、フィールド、および状態のタイムアウトが含まれます
 	nodeInfo struct {
 		node       *enode.Node
 		state      bitMask
@@ -179,9 +219,12 @@ type (
 
 // offlineState is a special state that is assumed to be set before a node is loaded from
 // the database and after it is shut down.
+// offsetStateは、ノードがデータベースからロードされる前、
+// およびノー??ドがシャットダウンされた後に設定されると想定される特別な状態です。
 const offlineState = bitMask(1)
 
 // NewFlag creates a new node state flag
+// NewFlagは新しいノード状態フラグを作成します
 func (s *Setup) NewFlag(name string) Flags {
 	if s.flags == nil {
 		s.flags = []flagDefinition{{name: "offline"}}
@@ -192,6 +235,7 @@ func (s *Setup) NewFlag(name string) Flags {
 }
 
 // NewPersistentFlag creates a new persistent node state flag
+// NewPersistentFlagは、新しい永続ノード状態フラグを作成します
 func (s *Setup) NewPersistentFlag(name string) Flags {
 	if s.flags == nil {
 		s.flags = []flagDefinition{{name: "offline"}}
@@ -202,11 +246,13 @@ func (s *Setup) NewPersistentFlag(name string) Flags {
 }
 
 // OfflineFlag returns the system-defined offline flag belonging to the given setup
+// DowntownFlagは、指定されたセットアップに属するシステム定義のオフラインフラグを返します
 func (s *Setup) OfflineFlag() Flags {
 	return Flags{mask: offlineState, setup: s}
 }
 
 // NewField creates a new node state field
+// NewFieldは、新しいノード状態フィールドを作成します
 func (s *Setup) NewField(name string, ftype reflect.Type) Field {
 	f := Field{index: len(s.fields), setup: s}
 	s.fields = append(s.fields, fieldDefinition{
@@ -217,6 +263,7 @@ func (s *Setup) NewField(name string, ftype reflect.Type) Field {
 }
 
 // NewPersistentField creates a new persistent node field
+// NewPersistentFieldは、新しい永続ノードフィールドを作成します
 func (s *Setup) NewPersistentField(name string, ftype reflect.Type, encode func(interface{}) ([]byte, error), decode func([]byte) (interface{}, error)) Field {
 	f := Field{index: len(s.fields), setup: s}
 	s.fields = append(s.fields, fieldDefinition{
@@ -229,6 +276,7 @@ func (s *Setup) NewPersistentField(name string, ftype reflect.Type, encode func(
 }
 
 // flagOp implements binary flag operations and also checks whether the operands belong to the same setup
+// flagOpは、バイナリフラグ操作を実装し、オペランドが同じセットアップに属しているかどうかもチェックします
 func flagOp(a, b Flags, trueIfA, trueIfB, trueIfBoth bool) Flags {
 	if a.setup == nil {
 		if a.mask != 0 {
@@ -259,30 +307,39 @@ func flagOp(a, b Flags, trueIfA, trueIfB, trueIfBoth bool) Flags {
 }
 
 // And returns the set of flags present in both a and b
+// そして、aとbの両方に存在するフラグのセットを返します
 func (a Flags) And(b Flags) Flags { return flagOp(a, b, false, false, true) }
 
 // AndNot returns the set of flags present in a but not in b
+// AndNotは、aには存在するが、bには存在しないフラグのセットを返します。
 func (a Flags) AndNot(b Flags) Flags { return flagOp(a, b, true, false, false) }
 
 // Or returns the set of flags present in either a or b
+// または、aまたはbのいずれかに存在するフラグのセットを返します
 func (a Flags) Or(b Flags) Flags { return flagOp(a, b, true, true, true) }
 
 // Xor returns the set of flags present in either a or b but not both
+// Xorは、aまたはbのいずれかに存在するが、両方には存在しないフラグのセットを返します。
 func (a Flags) Xor(b Flags) Flags { return flagOp(a, b, true, true, false) }
 
 // HasAll returns true if b is a subset of a
+// bがaのサブセットである場合、HasAllはtrueを返します
 func (a Flags) HasAll(b Flags) bool { return flagOp(a, b, false, true, false).mask == 0 }
 
 // HasNone returns true if a and b have no shared flags
+// aとbに共有フラグがない場合、HasNoneはtrueを返します
 func (a Flags) HasNone(b Flags) bool { return flagOp(a, b, false, false, true).mask == 0 }
 
 // Equals returns true if a and b have the same flags set
+// aとbに同じフラグが設定されている場合、Equalsはtrueを返します
 func (a Flags) Equals(b Flags) bool { return flagOp(a, b, true, true, false).mask == 0 }
 
 // IsEmpty returns true if a has no flags set
+// フラグが設定されていない場合、IsEmptyはtrueを返します
 func (a Flags) IsEmpty() bool { return a.mask == 0 }
 
 // MergeFlags merges multiple sets of state flags
+// MergeFlagsは、状態フラグの複数のセットをマージします
 func MergeFlags(list ...Flags) Flags {
 	if len(list) == 0 {
 		return Flags{}
@@ -295,6 +352,7 @@ func MergeFlags(list ...Flags) Flags {
 }
 
 // String returns a list of the names of the flags specified in the bit mask
+// 文字列は、ビットマスクで指定されたフラグの名前のリストを返します
 func (f Flags) String() string {
 	if f.mask == 0 {
 		return "[]"
@@ -317,6 +375,9 @@ func (f Flags) String() string {
 // NewNodeStateMachine creates a new node state machine.
 // If db is not nil then the node states, fields and active timeouts are persisted.
 // Persistence can be enabled or disabled for each state flag and field.
+// NewNodeStateMachineは、新しいノードステートマシンを作成します。
+// dbがnilでない場合、ノードの状態、フィールド、およびアクティブなタイムアウトが保持されます。
+// 永続性は、状態フラグとフィールドごとに有効または無効にできます
 func NewNodeStateMachine(db ethdb.KeyValueStore, dbKey []byte, clock mclock.Clock, setup *Setup) *NodeStateMachine {
 	if setup.flags == nil {
 		panic("No state flags defined")
@@ -355,6 +416,7 @@ func NewNodeStateMachine(db ethdb.KeyValueStore, dbKey []byte, clock mclock.Cloc
 }
 
 // stateMask checks whether the set of flags belongs to the same setup and returns its internal bit mask
+// stateMaskは、フラグのセットが同じセットアップに属しているかどうかを確認し、その内部ビットマスクを返します
 func (ns *NodeStateMachine) stateMask(flags Flags) bitMask {
 	if flags.setup != ns.setup && flags.mask != 0 {
 		panic("Node state flags belong to a different setup")
@@ -363,6 +425,7 @@ func (ns *NodeStateMachine) stateMask(flags Flags) bitMask {
 }
 
 // fieldIndex checks whether the field belongs to the same setup and returns its internal index
+// fieldIndexは、フィールドが同じセットアップに属しているかどうかを確認し、その内部インデックスを返します
 func (ns *NodeStateMachine) fieldIndex(field Field) int {
 	if field.setup != ns.setup {
 		panic("Node field belongs to a different setup")
@@ -379,6 +442,13 @@ func (ns *NodeStateMachine) fieldIndex(field Field) int {
 // of steps.
 // State subscriptions should be installed before loading the node database or making the
 // first state update.
+// SubscribeStateは、ノード状態のサブスクリプションを追加します。
+// コールバックは、ステートマシンのミューテックスが保持されていないときに呼び出され、
+// 非ブロッキングSetStateSub / SetFieldSub関数を使用してさらに状態を更新できます。
+// 操作のすべてのコールバックは、最初の呼び出し元のスレッド/ゴルーチンから実行されており、並列操作は許可されていません。
+// したがって、コールバックが同時に呼び出されることはありません。
+// デッドロックを回避し、有限のステップ数で安定した状態に到達するのは、実装された状態ロジックの責任です。
+// 状態サブスクリプションは、ノードデータベースをロードする前、または最初の状態更新を行う前にインストールする必要があります。
 func (ns *NodeStateMachine) SubscribeState(flags Flags, callback StateCallback) {
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
@@ -390,6 +460,7 @@ func (ns *NodeStateMachine) SubscribeState(flags Flags, callback StateCallback) 
 }
 
 // SubscribeField adds a node field subscription. Same rules apply as for SubscribeState.
+// SubscribeFieldは、ノードフィールドサブスクリプションを追加します。 SubscribeStateと同じルールが適用されます。
 func (ns *NodeStateMachine) SubscribeField(field Field, callback FieldCallback) {
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
@@ -402,11 +473,13 @@ func (ns *NodeStateMachine) SubscribeField(field Field, callback FieldCallback) 
 }
 
 // newNode creates a new nodeInfo
+// newNodeは新しいnodeInfoを作成します
 func (ns *NodeStateMachine) newNode(n *enode.Node) *nodeInfo {
 	return &nodeInfo{node: n, fields: make([]interface{}, len(ns.fields))}
 }
 
 // checkStarted checks whether the state machine has already been started and panics otherwise.
+// checkStartedは、ステートマシンがすでに起動されているかどうかを確認し、そうでない場合はパニックになります。
 func (ns *NodeStateMachine) checkStarted() {
 	if !ns.started {
 		panic("state machine not started yet")
@@ -415,6 +488,7 @@ func (ns *NodeStateMachine) checkStarted() {
 
 // Start starts the state machine, enabling state and field operations and disabling
 // further subscriptions.
+// Startはステートマシンを起動し、状態とフィールドの操作を有効にし、それ以上のサブスクリプションを無効にします。
 func (ns *NodeStateMachine) Start() {
 	ns.lock.Lock()
 	if ns.started {
@@ -432,6 +506,7 @@ func (ns *NodeStateMachine) Start() {
 }
 
 // Stop stops the state machine and saves its state if a database was supplied
+// データベースが提供された場合、Stopはステートマシンを停止し、その状態を保存します
 func (ns *NodeStateMachine) Stop() {
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
@@ -454,6 +529,7 @@ func (ns *NodeStateMachine) Stop() {
 }
 
 // loadFromDb loads persisted node states from the database
+// loadFromDbは、永続化されたノードの状態をデータベースからロードします
 func (ns *NodeStateMachine) loadFromDb() {
 	it := ns.db.NewIterator(ns.dbNodeKey, nil)
 	for it.Next() {
@@ -473,6 +549,7 @@ func (id dummyIdentity) Verify(r *enr.Record, sig []byte) error { return nil }
 func (id dummyIdentity) NodeAddr(r *enr.Record) []byte          { return id[:] }
 
 // decodeNode decodes a node database entry and adds it to the node set if successful
+// decodeNodeはノードデータベースエントリをデコードし、成功した場合はノードセットに追加します
 func (ns *NodeStateMachine) decodeNode(id enode.ID, data []byte) {
 	var enc nodeInfoEnc
 	if err := rlp.DecodeBytes(data, &enc); err != nil {
@@ -493,6 +570,7 @@ func (ns *NodeStateMachine) decodeNode(id enode.ID, data []byte) {
 		return
 	}
 	// Resolve persisted node fields
+	// 永続化されたノードフィールドを解決する
 	for i, encField := range enc.Fields {
 		if len(encField) == 0 {
 			continue
@@ -511,6 +589,7 @@ func (ns *NodeStateMachine) decodeNode(id enode.ID, data []byte) {
 		}
 	}
 	// It's a compatible node record, add it to set.
+	// 互換性のあるノードレコードです。セットに追加してください。
 	ns.nodes[id] = node
 	node.state = enc.State
 	fields := make([]interface{}, len(node.fields))
@@ -520,6 +599,7 @@ func (ns *NodeStateMachine) decodeNode(id enode.ID, data []byte) {
 }
 
 // saveNode saves the given node info to the database
+// saveNodeは、指定されたノード情報をデータベースに保存します
 func (ns *NodeStateMachine) saveNode(id enode.ID, node *nodeInfo) error {
 	if ns.db == nil {
 		return nil
@@ -577,11 +657,13 @@ func (ns *NodeStateMachine) saveNode(id enode.ID, node *nodeInfo) error {
 }
 
 // deleteNode removes a node info from the database
+// deleteNodeは、データベースからノード情報を削除します
 func (ns *NodeStateMachine) deleteNode(id enode.ID) {
 	ns.db.Delete(append(ns.dbNodeKey, id[:]...))
 }
 
 // saveToDb saves the persistent flags and fields of all nodes that have been changed
+// saveToDbは、変更されたすべてのノードの永続的なフラグとフィールドを保存します
 func (ns *NodeStateMachine) saveToDb() {
 	for id, node := range ns.nodes {
 		if node.dirty {
@@ -594,6 +676,8 @@ func (ns *NodeStateMachine) saveToDb() {
 }
 
 // updateEnode updates the enode entry belonging to the given node if it already exists
+// updateEnodeは、指定されたノードに属するenodeエントリがすでに存在する場合、それを更新します。
+
 func (ns *NodeStateMachine) updateEnode(n *enode.Node) (enode.ID, *nodeInfo) {
 	id := n.ID()
 	node := ns.nodes[id]
@@ -605,6 +689,7 @@ func (ns *NodeStateMachine) updateEnode(n *enode.Node) (enode.ID, *nodeInfo) {
 }
 
 // Persist saves the persistent state and fields of the given node immediately
+// Persistは、指定されたノードの永続的な状態とフィールドをすぐに保存します
 func (ns *NodeStateMachine) Persist(n *enode.Node) error {
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
@@ -622,6 +707,8 @@ func (ns *NodeStateMachine) Persist(n *enode.Node) error {
 
 // SetState updates the given node state flags and blocks until the operation is finished.
 // If a flag with a timeout is set again, the operation removes or replaces the existing timeout.
+// SetStateは、操作が終了するまで、指定されたノード状態フラグとブロックを更新します。
+// タイムアウトのあるフラグが再度設定された場合、操作は既存のタイムアウトを削除または置換します。
 func (ns *NodeStateMachine) SetState(n *enode.Node, setFlags, resetFlags Flags, timeout time.Duration) error {
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
@@ -636,6 +723,8 @@ func (ns *NodeStateMachine) SetState(n *enode.Node, setFlags, resetFlags Flags, 
 
 // SetStateSub updates the given node state flags without blocking (should be called
 // from a subscription/operation callback).
+// SetStateSubは、ブロックせずに指定されたノード状態フラグを更新します
+// （サブスクリプション/操作コールバックから呼び出す必要があります）。
 func (ns *NodeStateMachine) SetStateSub(n *enode.Node, setFlags, resetFlags Flags, timeout time.Duration) {
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
@@ -662,9 +751,11 @@ func (ns *NodeStateMachine) setState(n *enode.Node, setFlags, resetFlags Flags, 
 
 	// Remove the timeout callbacks for all reset and set flags,
 	// even they are not existent(it's noop).
+	// 存在しない場合でも、すべてのリセットフラグとセットフラグのタイムアウトコールバックを削除します（noopです）。
 	ns.removeTimeouts(node, set|reset)
 
 	// Register the timeout callback if required
+	// 必要に応じてタイムアウトコールバックを登録する
 	if timeout != 0 && set != 0 {
 		ns.addTimeout(n, set, timeout)
 	}
@@ -692,6 +783,7 @@ func (ns *NodeStateMachine) setState(n *enode.Node, setFlags, resetFlags Flags, 
 }
 
 // opCheck checks whether an operation is active
+// opCheckは、操作がアクティブかどうかを確認します
 func (ns *NodeStateMachine) opCheck() {
 	if !ns.opFlag {
 		panic("Operation has not started")
@@ -699,6 +791,7 @@ func (ns *NodeStateMachine) opCheck() {
 }
 
 // opStart waits until other operations are finished and starts a new one
+// opStartは、他の操作が終了するまで待機し、新しい操作を開始します
 func (ns *NodeStateMachine) opStart() bool {
 	for ns.opFlag {
 		ns.opWait.Wait()
@@ -714,6 +807,9 @@ func (ns *NodeStateMachine) opStart() bool {
 // Callbacks resulting from a state/field change performed in a previous callback are always
 // put at the end of the pending list and therefore processed after all callbacks resulting
 // from the previous state/field change.
+// opFinishは、保留中のすべてのコールバックを実行して、現在の操作を終了します。
+// 前のコールバックで実行された状態/フィールドの変更に起因するコールバックは、
+// 常に保留リストの最後に配置されるため、前の状態/フィールドの変更に起因するすべてのコールバックの後に処理されます
 func (ns *NodeStateMachine) opFinish() {
 	for len(ns.opPending) != 0 {
 		list := ns.opPending
@@ -732,6 +828,9 @@ func (ns *NodeStateMachine) opFinish() {
 // Operation calls the given function as an operation callback. This allows the caller
 // to start an operation with multiple initial changes. The same rules apply as for
 // subscription callbacks.
+// 操作は、指定された関数を操作コールバックとして呼び出します。
+// これにより、呼び出し元は複数の初期変更を使用して操作を開始できます。
+// サブスクリプションコールバックの場合と同じルールが適用されます。
 func (ns *NodeStateMachine) Operation(fn func()) error {
 	ns.lock.Lock()
 	started := ns.opStart()
@@ -747,6 +846,7 @@ func (ns *NodeStateMachine) Operation(fn func()) error {
 }
 
 // offlineCallbacks calls state update callbacks at startup or shutdown
+// offsetCallbacksは、起動時またはシャットダウン時に状態更新コールバックを呼び出します
 func (ns *NodeStateMachine) offlineCallbacks(start bool) {
 	for _, cb := range ns.offlineCallbackList {
 		cb := cb
@@ -783,6 +883,8 @@ func (ns *NodeStateMachine) offlineCallbacks(start bool) {
 
 // AddTimeout adds a node state timeout associated to the given state flag(s).
 // After the specified time interval, the relevant states will be reset.
+// AddTimeoutは、指定された状態フラグに関連付けられたノード状態タイムアウトを追加します。
+// 指定された時間間隔の後、関連する状態がリセットされます。
 func (ns *NodeStateMachine) AddTimeout(n *enode.Node, flags Flags, timeout time.Duration) error {
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
@@ -796,6 +898,7 @@ func (ns *NodeStateMachine) AddTimeout(n *enode.Node, flags Flags, timeout time.
 }
 
 // addTimeout adds a node state timeout associated to the given state flag(s).
+// addTimeoutは、指定された状態フラグに関連付けられたノード状態タイムアウトを追加します。
 func (ns *NodeStateMachine) addTimeout(n *enode.Node, mask bitMask, timeout time.Duration) {
 	_, node := ns.updateEnode(n)
 	if node == nil {
@@ -827,6 +930,9 @@ func (ns *NodeStateMachine) addTimeout(n *enode.Node, mask bitMask, timeout time
 // If a timeout was associated to multiple flags which are not all included in the
 // specified remove mask then only the included flags are de-associated and the timer
 // stays active.
+// removeTimeoutは、指定された状態フラグに関連付けられているノード状態のタイムアウトを削除します。
+// 指定された削除マスクにすべて含まれていない複数のフラグにタイムアウトが関連付けられていた場合、
+// 含まれているフラグのみが関連付け解除され、タイマーはアクティブのままになります。
 func (ns *NodeStateMachine) removeTimeouts(node *nodeInfo, mask bitMask) {
 	for i := 0; i < len(node.timeouts); i++ {
 		t := node.timeouts[i]
@@ -851,6 +957,10 @@ func (ns *NodeStateMachine) removeTimeouts(node *nodeInfo, mask bitMask) {
 // GetField retrieves the given field of the given node. Note that when used in a
 // subscription callback the result can be out of sync with the state change represented
 // by the callback parameters so extra safety checks might be necessary.
+// GetFieldは、指定されたノードの指定されたフィールドを取得します。
+// サブスクリプションコールバックで使用すると、
+// 結果がコールバックパラメータで表される状態の変化と同期しなくなる可能性があるため、
+// 追加の安全性チェックが必要になる場合があることに注意してください。
 func (ns *NodeStateMachine) GetField(n *enode.Node, field Field) interface{} {
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
@@ -868,6 +978,10 @@ func (ns *NodeStateMachine) GetField(n *enode.Node, field Field) interface{} {
 // GetState retrieves the current state of the given node. Note that when used in a
 // subscription callback the result can be out of sync with the state change represented
 // by the callback parameters so extra safety checks might be necessary.
+// GetStateは、指定されたノードの現在の状態を取得します。
+// サブスクリプションコールバックで使用すると、
+// 結果がコールバックパラメータで表される状態の変化と同期しなくなる可能性があるため、
+// 追加の安全性チェックが必要になる場合があることに注意してください。
 func (ns *NodeStateMachine) GetState(n *enode.Node) Flags {
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
@@ -956,6 +1070,9 @@ func (ns *NodeStateMachine) setField(n *enode.Node, field Field, value interface
 // disabled flags set.
 // Note that this callback is not an operation callback but ForEach can be called from an
 // Operation callback or Operation can also be called from a ForEach callback if necessary.
+// ForEachは、必要なフラグをすべて設定し、無効なフラグを設定していない各ノードのコールバックを呼び出します。
+// このコールバックはオペレーションコールバックではありませんが、ForEachはオペレーションコールバックから呼び出すことができます。
+// または、必要に応じてオペレーションをForEachコールバックから呼び出すこともできます。
 func (ns *NodeStateMachine) ForEach(requireFlags, disableFlags Flags, cb func(n *enode.Node, state Flags)) {
 	ns.lock.Lock()
 	ns.checkStarted()
@@ -977,6 +1094,7 @@ func (ns *NodeStateMachine) ForEach(requireFlags, disableFlags Flags, cb func(n 
 }
 
 // GetNode returns the enode currently associated with the given ID
+// GetNodeは、指定されたIDに現在関連付けられているenodeを返します
 func (ns *NodeStateMachine) GetNode(id enode.ID) *enode.Node {
 	ns.lock.Lock()
 	defer ns.lock.Unlock()
@@ -990,6 +1108,8 @@ func (ns *NodeStateMachine) GetNode(id enode.ID) *enode.Node {
 
 // AddLogMetrics adds logging and/or metrics for nodes entering, exiting and currently
 // being in a given set specified by required and disabled state flags
+// AddLogMetricsは、必須および無効の状態フラグで指定された特定のセットに入ったり、
+// 終了したり、現在存在しているノードのロギングやメトリックを追加します
 func (ns *NodeStateMachine) AddLogMetrics(requireFlags, disableFlags Flags, name string, inMeter, outMeter metrics.Meter, gauge metrics.Gauge) {
 	var count int64
 	ns.SubscribeState(requireFlags.Or(disableFlags), func(n *enode.Node, oldState, newState Flags) {

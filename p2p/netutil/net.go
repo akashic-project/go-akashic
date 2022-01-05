@@ -30,6 +30,7 @@ var lan4, lan6, special4, special6 Netlist
 
 func init() {
 	// Lists from RFC 5735, RFC 5156,
+	// RFC 5735、RFC 5156、からのリスト
 	// https://www.iana.org/assignments/iana-ipv4-special-registry/
 	lan4.Add("0.0.0.0/8")              // "This" network
 	lan4.Add("10.0.0.0/8")             // Private Use
@@ -66,10 +67,12 @@ func init() {
 }
 
 // Netlist is a list of IP networks.
+// ネットリストはIPネットワークのリストです
 type Netlist []net.IPNet
 
 // ParseNetlist parses a comma-separated list of CIDR masks.
 // Whitespace and extra commas are ignored.
+// ParseNetlistは、CIDRマスクのコンマ区切りリストを解析します。空白と余分なコンマは無視されます。
 func ParseNetlist(s string) (*Netlist, error) {
 	ws := strings.NewReplacer(" ", "", "\n", "", "\t", "")
 	masks := strings.Split(ws.Replace(s), ",")
@@ -88,6 +91,7 @@ func ParseNetlist(s string) (*Netlist, error) {
 }
 
 // MarshalTOML implements toml.MarshalerRec.
+// MarshalTOMLはtoml.MarshalerRecを実装します。
 func (l Netlist) MarshalTOML() interface{} {
 	list := make([]string, 0, len(l))
 	for _, net := range l {
@@ -97,6 +101,7 @@ func (l Netlist) MarshalTOML() interface{} {
 }
 
 // UnmarshalTOML implements toml.UnmarshalerRec.
+// UnmarshalTOMLはtoml.UnmarshalerRecを実装します。
 func (l *Netlist) UnmarshalTOML(fn func(interface{}) error) error {
 	var masks []string
 	if err := fn(&masks); err != nil {
@@ -114,6 +119,8 @@ func (l *Netlist) UnmarshalTOML(fn func(interface{}) error) error {
 
 // Add parses a CIDR mask and appends it to the list. It panics for invalid masks and is
 // intended to be used for setting up static lists.
+// Addは、CIDRマスクを解析し、それをリストに追加します。
+// 無効なマスクでパニックになり、静的リストの設定に使用することを目的としています。
 func (l *Netlist) Add(cidr string) {
 	_, n, err := net.ParseCIDR(cidr)
 	if err != nil {
@@ -123,6 +130,7 @@ func (l *Netlist) Add(cidr string) {
 }
 
 // Contains reports whether the given IP is contained in the list.
+// 指定されたIPがリストに含まれているかどうかのレポートが含まれます。
 func (l *Netlist) Contains(ip net.IP) bool {
 	if l == nil {
 		return false
@@ -136,6 +144,7 @@ func (l *Netlist) Contains(ip net.IP) bool {
 }
 
 // IsLAN reports whether an IP is a local network address.
+// IsLANは、IPがローカルネットワークアドレスであるかどうかを報告します。
 func IsLAN(ip net.IP) bool {
 	if ip.IsLoopback() {
 		return true
@@ -148,6 +157,8 @@ func IsLAN(ip net.IP) bool {
 
 // IsSpecialNetwork reports whether an IP is located in a special-use network range
 // This includes broadcast, multicast and documentation addresses.
+// IsSpecialNetworkは、IPが特殊用途のネットワーク範囲にあるかどうかを報告します。
+// これには、ブロードキャスト、マルチキャスト、およびドキュメントアドレスが含まれます。
 func IsSpecialNetwork(ip net.IP) bool {
 	if ip.IsMulticast() {
 		return true
@@ -168,12 +179,18 @@ var (
 
 // CheckRelayIP reports whether an IP relayed from the given sender IP
 // is a valid connection target.
+// CheckRelayIPは、指定された送信者IPから中継されたIPが有効な接続ターゲットであるかどうかを報告します。
 //
 // There are four rules:
 //   - Special network addresses are never valid.
 //   - Loopback addresses are OK if relayed by a loopback host.
 //   - LAN addresses are OK if relayed by a LAN host.
 //   - All other addresses are always acceptable.
+// 4つのルールがあります：
+//   - 特別なネットワークアドレスは決して有効ではありません。
+//   - ループバックホストによってリレーされる場合、ループバックアドレスはOKです。
+//   - LANホストによって中継される場合、LANアドレスはOKです。
+//   - 他のすべてのアドレスは常に受け入れられます。
 func CheckRelayIP(sender, addr net.IP) error {
 	if len(addr) != net.IPv4len && len(addr) != net.IPv6len {
 		return errInvalid
@@ -194,6 +211,7 @@ func CheckRelayIP(sender, addr net.IP) error {
 }
 
 // SameNet reports whether two IP addresses have an equal prefix of the given bit length.
+// SameNetは、2つのIPアドレスが指定されたビット長の等しいプレフィックスを持っているかどうかを報告します。
 func SameNet(bits uint, ip, other net.IP) bool {
 	ip4, other4 := ip.To4(), other.To4()
 	switch {
@@ -217,9 +235,10 @@ func sameNet(bits uint, ip, other net.IP) bool {
 
 // DistinctNetSet tracks IPs, ensuring that at most N of them
 // fall into the same network range.
+// DistinctNetSetはIPを追跡し、最大でN個が同じネットワーク範囲に含まれるようにします。
 type DistinctNetSet struct {
-	Subnet uint // number of common prefix bits
-	Limit  uint // maximum number of IPs in each subnet
+	Subnet uint // number of common prefix bits 	共通プレフィックスビット数
+	Limit  uint // maximum number of IPs in each subnet 各サブネットのIPの最大数
 
 	members map[string]uint
 	buf     net.IP
@@ -227,6 +246,8 @@ type DistinctNetSet struct {
 
 // Add adds an IP address to the set. It returns false (and doesn't add the IP) if the
 // number of existing IPs in the defined range exceeds the limit.
+// Addは、IPアドレスをセットに追加します。
+// 定義された範囲内の既存のIPの数が制限を超えると、falseを返します（IPは追加しません）。
 func (s *DistinctNetSet) Add(ip net.IP) bool {
 	key := s.key(ip)
 	n := s.members[string(key)]
@@ -238,6 +259,7 @@ func (s *DistinctNetSet) Add(ip net.IP) bool {
 }
 
 // Remove removes an IP from the set.
+// Removeは、セットからIPを削除します。
 func (s *DistinctNetSet) Remove(ip net.IP) {
 	key := s.key(ip)
 	if n, ok := s.members[string(key)]; ok {
@@ -250,6 +272,7 @@ func (s *DistinctNetSet) Remove(ip net.IP) {
 }
 
 // Contains whether the given IP is contained in the set.
+// 指定されたIPがセットに含まれているかどうかが含まれます。
 func (s DistinctNetSet) Contains(ip net.IP) bool {
 	key := s.key(ip)
 	_, ok := s.members[string(key)]
@@ -257,6 +280,7 @@ func (s DistinctNetSet) Contains(ip net.IP) bool {
 }
 
 // Len returns the number of tracked IPs.
+// Lenは、追跡されたIPの数を返します。
 func (s DistinctNetSet) Len() int {
 	n := uint(0)
 	for _, i := range s.members {
@@ -266,16 +290,21 @@ func (s DistinctNetSet) Len() int {
 }
 
 // key encodes the map key for an address into a temporary buffer.
+// keyは、アドレスのマップキーを一時バッファにエンコードします。
 //
 // The first byte of key is '4' or '6' to distinguish IPv4/IPv6 address types.
 // The remainder of the key is the IP, truncated to the number of bits.
+// キーの最初のバイトは、IPv4 / IPv6アドレスタイプを区別するために「4」または「6」です。
+// キーの残りの部分はIPであり、ビット数に切り捨てられます。
 func (s *DistinctNetSet) key(ip net.IP) net.IP {
 	// Lazily initialize storage.
+	// ストレージを怠惰に初期化します。
 	if s.members == nil {
 		s.members = make(map[string]uint)
 		s.buf = make(net.IP, 17)
 	}
 	// Canonicalize ip and bits.
+	// IPとビットを正規化します。
 	typ := byte('6')
 	if ip4 := ip.To4(); ip4 != nil {
 		typ, ip = '4', ip4
@@ -285,6 +314,7 @@ func (s *DistinctNetSet) key(ip net.IP) net.IP {
 		bits = uint(len(ip) * 8)
 	}
 	// Encode the prefix into s.buf.
+	// プレフィックスをs.bufにエンコードします。
 	nb := int(bits / 8)
 	mask := ^byte(0xFF >> (bits % 8))
 	s.buf[0] = typ
@@ -296,6 +326,7 @@ func (s *DistinctNetSet) key(ip net.IP) net.IP {
 }
 
 // String implements fmt.Stringer
+// 文字列はfmt.Stringerを実装します
 func (s DistinctNetSet) String() string {
 	var buf bytes.Buffer
 	buf.WriteString("{")

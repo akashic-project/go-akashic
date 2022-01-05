@@ -31,7 +31,7 @@ import (
 var (
 	walletCommand = cli.Command{
 		Name:      "wallet",
-		Usage:     "Manage Ethereum presale wallets",
+		Usage:     "Manage Ethereum presale wallets", // イーサリアムの先行販売ウォレットを管理する
 		ArgsUsage: "",
 		Category:  "ACCOUNT COMMANDS",
 		Description: `
@@ -40,11 +40,14 @@ var (
 will prompt for your password and imports your ether presale account.
 It can be used non-interactively with the --password option taking a
 passwordfile as argument containing the wallet password in plaintext.`,
+		// パスワードの入力を求められ、etherpresaleアカウントがインポートされます。
+		// --passwordオプションを使用して非対話的に使用できます。
+		// プレーンテキストのウォレットパスワードを含む引数としてのpasswordfile。
 		Subcommands: []cli.Command{
 			{
 
 				Name:      "import",
-				Usage:     "Import Ethereum presale wallet",
+				Usage:     "Import Ethereum presale wallet", // イーサリアムの先行販売ウォレットをインポートする
 				ArgsUsage: "<keyFile>",
 				Action:    utils.MigrateFlags(importWallet),
 				Category:  "ACCOUNT COMMANDS",
@@ -60,13 +63,16 @@ passwordfile as argument containing the wallet password in plaintext.`,
 will prompt for your password and imports your ether presale account.
 It can be used non-interactively with the --password option taking a
 passwordfile as argument containing the wallet password in plaintext.`,
+				// パスワードの入力を求められ、etherpresaleアカウントがインポートされます。
+				// --passwordオプションを使用して非対話的に使用できます。
+				// プレーンテキストのウォレットパスワードを含む引数としてのpasswordfile。
 			},
 		},
 	}
 
 	accountCommand = cli.Command{
 		Name:     "account",
-		Usage:    "Manage accounts",
+		Usage:    "Manage accounts", // アカウントを管理する
 		Category: "ACCOUNT COMMANDS",
 		Description: `
 
@@ -88,21 +94,37 @@ It is safe to transfer the entire directory or the individual keys therein
 between ethereum nodes by simply copying.
 
 Make sure you backup your keys regularly.`,
+		// アカウントを管理し、既存のすべてのアカウントを一覧表示し、秘密鍵を新しいアカウントにインポートします
+		// アカウント、新しいアカウントを作成するか、既存のアカウントを更新します。
+
+		// パスワードの入力を求められたときの対話型モードと、特定のパスワードファイルを介してパスワードが提供される非対話型モードをサポートします。
+		// 非対話型モードは、テストネットワークまたは既知の安全な環境でのスクリプトによる使用のみを目的としています。
+
+		// 新しいアカウントを作成するときに指定したパスワードを覚えておいてください（
+		// 新規またはインポート）。それがないと、アカウントのロックを解除できません。
+
+		// 暗号化されていない形式でのキーのエクスポートはサポートされていないことに注意してください。
+
+		// キーは<DATADIR> / keystoreに保存されます。
+		// ディレクトリ全体またはその中の個々のキーを安全に転送できます
+		// 単にコピーすることにより、イーサリアムノード間で。
+
+		// キーを定期的にバックアップしてください。
 		Subcommands: []cli.Command{
 			{
 				Name:   "list",
-				Usage:  "Print summary of existing accounts",
+				Usage:  "Print summary of existing accounts", // 既存のアカウントの概要を印刷する
 				Action: utils.MigrateFlags(accountList),
 				Flags: []cli.Flag{
 					utils.DataDirFlag,
 					utils.KeyStoreDirFlag,
 				},
 				Description: `
-Print a short summary of all accounts`,
+Print a short summary of all accounts`, // すべてのアカウントの簡単な要約を印刷する
 			},
 			{
 				Name:   "new",
-				Usage:  "Create a new account",
+				Usage:  "Create a new account", // 新しいアカウントを作成する
 				Action: utils.MigrateFlags(accountCreate),
 				Flags: []cli.Flag{
 					utils.DataDirFlag,
@@ -124,10 +146,17 @@ For non-interactive use the password can be specified with the --password flag:
 Note, this is meant to be used for testing only, it is a bad idea to save your
 password to file or expose in any other way.
 `,
+				// gethアカウント新規
+				// 新しいアカウントを作成し、アドレスを印刷します。
+				// アカウントは暗号化された形式で保存され、パスワードの入力を求められます。
+				// 今後アカウントのロックを解除するには、このパスワードを覚えておく必要があります。
+				// 非対話型の使用の場合、パスワードは--passwordフラグで指定できます。
+				// これはテストのみに使用することを目的としていることに注意してください。保存することはお勧めできません。
+				// 他の方法でファイルまたは公開するためのパスワード。
 			},
 			{
 				Name:      "update",
-				Usage:     "Update an existing account",
+				Usage:     "Update an existing account", // 既存のアカウントを更新する
 				Action:    utils.MigrateFlags(accountUpdate),
 				ArgsUsage: "<address>",
 				Flags: []cli.Flag{
@@ -153,10 +182,22 @@ For non-interactive use the password can be specified with the --password flag:
 Since only one password can be given, only format update can be performed,
 changing your password is only possible interactively.
 `,
+				// gethアカウントの更新<アドレス>
+				// 既存のアカウントを更新します。
+				// アカウントは暗号化された形式で最新バージョンで保存され、プロンプトが表示されます
+				// アカウントのロックを解除するためのパスワードと、更新されたファイルを保存するためのパスワード。
+
+				// したがって、この同じコマンドを使用して、廃止されたアカウントを移行できます
+				// 最新の形式にフォーマットするか、アカウントのパスワードを変更します。
+
+				// 非対話型の使用の場合、パスワードは--passwordフラグで指定できます。
+				//     gethアカウントの更新[オプション] <アドレス>
+				// パスワードは1つしか指定できないため、フォーマットの更新のみを実行できます。
+				// パスワードの変更はインタラクティブにのみ可能です。
 			},
 			{
 				Name:   "import",
-				Usage:  "Import a private key into a new account",
+				Usage:  "Import a private key into a new account", // 秘密鍵を新しいアカウントにインポートします
 				Action: utils.MigrateFlags(accountImport),
 				Flags: []cli.Flag{
 					utils.DataDirFlag,
@@ -186,6 +227,17 @@ As you can directly copy your encrypted accounts to another ethereum instance,
 this import mechanism is not needed when you transfer an account between
 nodes.
 `,
+				// geth account import <keyfile>
+
+				// 暗号化されていない秘密鍵を<keyfile>からインポートし、新しいアカウントを作成します。
+				// アドレスを出力します。
+				// キーファイルには、16進形式の暗号化されていない秘密鍵が含まれていると見なされます。
+				// アカウントは暗号化された形式で保存され、パスワードの入力を求められます。
+				// 今後アカウントのロックを解除するには、このパスワードを覚えておく必要があります。
+				// 非対話型の使用の場合、パスワードは-passwordフラグで指定できます。
+				//     geth account import [options] <keyfile>
+				// ノート：
+				// 暗号化されたアカウントを別のイーサリアムインスタンスに直接コピーできるため、ノード間でアカウントを転送する場合、このインポートメカニズムは必要ありません。
 			},
 		},
 	}
@@ -204,10 +256,11 @@ func accountList(ctx *cli.Context) error {
 }
 
 // tries unlocking the specified account a few times.
+// 指定されたアカウントのロックを数回試みます。
 func unlockAccount(ks *keystore.KeyStore, address string, i int, passwords []string) (accounts.Account, string) {
 	account, err := utils.MakeAddress(ks, address)
 	if err != nil {
-		utils.Fatalf("Could not list accounts: %v", err)
+		utils.Fatalf("Could not list accounts: %v", err) // アカウントを一覧表示できませんでした：
 	}
 	for trials := 0; trials < 3; trials++ {
 		prompt := fmt.Sprintf("Unlocking account %s | Attempt %d/%d", address, trials+1, 3)
@@ -223,21 +276,23 @@ func unlockAccount(ks *keystore.KeyStore, address string, i int, passwords []str
 		}
 		if err != keystore.ErrDecrypt {
 			// No need to prompt again if the error is not decryption-related.
+			// エラーが復号化に関連していない場合は、再度プロンプトを表示する必要はありません。
 			break
 		}
 	}
 	// All trials expended to unlock account, bail out
+	// アカウントのロックを解除し、救済するために費やされたすべてのトライアル
 	utils.Fatalf("Failed to unlock account %s (%v)", address, err)
 
 	return accounts.Account{}, ""
 }
 
 func ambiguousAddrRecovery(ks *keystore.KeyStore, err *keystore.AmbiguousAddrError, auth string) accounts.Account {
-	fmt.Printf("Multiple key files exist for address %x:\n", err.Addr)
+	fmt.Printf("Multiple key files exist for address %x:\n", err.Addr) // アドレス用に複数のキーファイルが存在します
 	for _, a := range err.Matches {
 		fmt.Println("  ", a.URL)
 	}
-	fmt.Println("Testing your password against all of them...")
+	fmt.Println("Testing your password against all of them...") // それらすべてに対してパスワードをテストしています...
 	var match *accounts.Account
 	for _, a := range err.Matches {
 		if err := ks.Unlock(a, auth); err == nil {
@@ -246,10 +301,10 @@ func ambiguousAddrRecovery(ks *keystore.KeyStore, err *keystore.AmbiguousAddrErr
 		}
 	}
 	if match == nil {
-		utils.Fatalf("None of the listed files could be unlocked.")
+		utils.Fatalf("None of the listed files could be unlocked.") // リストされたファイルはどれもロックを解除できませんでした。
 	}
-	fmt.Printf("Your password unlocked %s\n", match.URL)
-	fmt.Println("In order to avoid this warning, you need to remove the following duplicate key files:")
+	fmt.Printf("Your password unlocked %s\n", match.URL)                                                 // パスワードのロックが解除されました
+	fmt.Println("In order to avoid this warning, you need to remove the following duplicate key files:") // この警告を回避するには、次の重複するキーファイルを削除する必要があります。
 	for _, a := range err.Matches {
 		if a != *match {
 			fmt.Println("  ", a.URL)
@@ -259,9 +314,11 @@ func ambiguousAddrRecovery(ks *keystore.KeyStore, err *keystore.AmbiguousAddrErr
 }
 
 // accountCreate creates a new account into the keystore defined by the CLI flags.
+// accountCreateは、CLIフラグで定義されたキーストアに新しいアカウントを作成します。
 func accountCreate(ctx *cli.Context) error {
 	cfg := gethConfig{Node: defaultNodeConfig()}
 	// Load config file.
+	// 構成ファイルをロードします。
 	if file := ctx.GlobalString(configFileFlag.Name); file != "" {
 		if err := loadConfig(file, &cfg); err != nil {
 			utils.Fatalf("%v", err)
@@ -270,7 +327,7 @@ func accountCreate(ctx *cli.Context) error {
 	utils.SetNodeConfig(ctx, &cfg.Node)
 	keydir, err := cfg.Node.KeyDirConfig()
 	if err != nil {
-		utils.Fatalf("Failed to read configuration: %v", err)
+		utils.Fatalf("Failed to read configuration: %v", err) // 構成の読み取りに失敗しました：
 	}
 	scryptN := keystore.StandardScryptN
 	scryptP := keystore.StandardScryptP
@@ -278,7 +335,7 @@ func accountCreate(ctx *cli.Context) error {
 		scryptN = keystore.LightScryptN
 		scryptP = keystore.LightScryptP
 	}
-
+	// 新しいアカウントはパスワードでロックされています。パスワードを教えてください。このパスワードを忘れないでください。
 	password := utils.GetPassPhraseWithList("Your new account is locked with a password. Please give a password. Do not forget this password.", true, 0, utils.MakePasswordList(ctx))
 
 	account, err := keystore.StoreKey(keydir, password, scryptN, scryptP)
@@ -293,23 +350,31 @@ func accountCreate(ctx *cli.Context) error {
 	fmt.Printf("- You must NEVER share the secret key with anyone! The key controls access to your funds!\n")
 	fmt.Printf("- You must BACKUP your key file! Without the key, it's impossible to access account funds!\n")
 	fmt.Printf("- You must REMEMBER your password! Without the password, it's impossible to decrypt the key!\n\n")
+	// 新しいキーが生成されました
+	// キーのパブリックアドレス：
+	// 秘密鍵ファイルのパス：
+	//  -公開アドレスは誰とでも共有できます。他の人はあなたと対話するためにそれを必要とします。
+	//  -秘密鍵を他人と共有してはいけません！キーはあなたの資金へのアクセスを制御します！
+	//  -キーファイルをバックアップする必要があります！キーがないと、口座の資金にアクセスすることは不可能です！
+	//  -パスワードを覚えておく必要があります！パスワードがないと、キーを復号化することはできません。
 	return nil
 }
 
 // accountUpdate transitions an account from a previous format to the current
 // one, also providing the possibility to change the pass-phrase.
+// accountUpdateは、アカウントを以前の形式から現在の形式に移行し、パスフレーズを変更する可能性も提供します。
 func accountUpdate(ctx *cli.Context) error {
 	if len(ctx.Args()) == 0 {
-		utils.Fatalf("No accounts specified to update")
+		utils.Fatalf("No accounts specified to update") // 更新するアカウントが指定されていません
 	}
 	stack, _ := makeConfigNode(ctx)
 	ks := stack.AccountManager().Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
 
 	for _, addr := range ctx.Args() {
 		account, oldPassword := unlockAccount(ks, addr, 0, nil)
-		newPassword := utils.GetPassPhraseWithList("Please give a new password. Do not forget this password.", true, 0, nil)
+		newPassword := utils.GetPassPhraseWithList("Please give a new password. Do not forget this password.", true, 0, nil) //	新しいパスワードを入力してください。このパスワードを忘れないでください。
 		if err := ks.Update(account, oldPassword, newPassword); err != nil {
-			utils.Fatalf("Could not update the account: %v", err)
+			utils.Fatalf("Could not update the account: %v", err) // アカウントを更新できませんでした
 		}
 	}
 	return nil
@@ -318,11 +383,11 @@ func accountUpdate(ctx *cli.Context) error {
 func importWallet(ctx *cli.Context) error {
 	keyfile := ctx.Args().First()
 	if len(keyfile) == 0 {
-		utils.Fatalf("keyfile must be given as argument")
+		utils.Fatalf("keyfile must be given as argument") // キーファイルは引数として指定する必要があります
 	}
 	keyJSON, err := ioutil.ReadFile(keyfile)
 	if err != nil {
-		utils.Fatalf("Could not read wallet file: %v", err)
+		utils.Fatalf("Could not read wallet file: %v", err) // ウォレットファイルを読み取れませんでした：
 	}
 
 	stack, _ := makeConfigNode(ctx)

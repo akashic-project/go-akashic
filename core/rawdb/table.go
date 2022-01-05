@@ -22,12 +22,14 @@ import (
 
 // table is a wrapper around a database that prefixes each key access with a pre-
 // configured string.
+// tableは、データベースのラッパーであり、各キーアクセスの前に事前構成された文字列を付けます。
 type table struct {
 	db     ethdb.Database
 	prefix string
 }
 
 // NewTable returns a database object that prefixes all keys with a given string.
+// NewTableは、すべてのキーの前に指定された文字列を付けるデータベースオブジェクトを返します。
 func NewTable(db ethdb.Database, prefix string) ethdb.Database {
 	return &table{
 		db:     db,
@@ -36,22 +38,26 @@ func NewTable(db ethdb.Database, prefix string) ethdb.Database {
 }
 
 // Close is a noop to implement the Database interface.
+// Closeは、データベースインターフェイスを実装するためのnoopです。
 func (t *table) Close() error {
 	return nil
 }
 
 // Has retrieves if a prefixed version of a key is present in the database.
+// プレフィックス付きバージョンのキーがデータベースに存在するかどうかを取得します。
 func (t *table) Has(key []byte) (bool, error) {
 	return t.db.Has(append([]byte(t.prefix), key...))
 }
 
 // Get retrieves the given prefixed key if it's present in the database.
+// Getは、指定されたプレフィックス付きキーがデータベースに存在する場合、それを取得します。
 func (t *table) Get(key []byte) ([]byte, error) {
 	return t.db.Get(append([]byte(t.prefix), key...))
 }
 
 // HasAncient is a noop passthrough that just forwards the request to the underlying
 // database.
+// HasAncientは、リクエストを基盤となるデータベースに転送するだけのnoopパススルーです。
 func (t *table) HasAncient(kind string, number uint64) (bool, error) {
 	return t.db.HasAncient(kind, number)
 }

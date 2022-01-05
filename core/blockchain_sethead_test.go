@@ -2059,6 +2059,8 @@ func testSetHead(t *testing.T, tt *rewindTest, snapshots bool) {
 
 // verifyNoGaps checks that there are no gaps after the initial set of blocks in
 // the database and errors if found.
+// verifyNoGapsは、のブロックの最初のセットの後にギャップがないことを確認します
+//データベースとエラー（見つかった場合）。
 func verifyNoGaps(t *testing.T, chain *BlockChain, canonical bool, inserted types.Blocks) {
 	t.Helper()
 
@@ -2074,7 +2076,7 @@ func verifyNoGaps(t *testing.T, chain *BlockChain, canonical bool, inserted type
 			} else {
 				t.Errorf("Sidechain header gap between #%d-#%d", end, i-1)
 			}
-			end = 0 // Reset for further gap detection
+			end = 0 // さらにギャップを検出するためにリセット// Reset for further gap detection
 		}
 	}
 	end = 0

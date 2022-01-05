@@ -34,6 +34,7 @@ import (
 )
 
 // ReadCanonicalHash retrieves the hash assigned to a canonical block number.
+// ReadCanonicalHashは、正規のブロック番号に割り当てられたハッシュを取得します。
 func ReadCanonicalHash(db ethdb.Reader, number uint64) common.Hash {
 	var data []byte
 	db.ReadAncients(func(reader ethdb.AncientReader) error {
@@ -755,6 +756,11 @@ func readLegacyLogs(db ethdb.Reader, hash common.Hash, number uint64, config *pa
 //
 // Note, due to concurrent download of header and block body the header and thus
 // canonical hash can be stored in the database but the body data not (yet).
+// ReadBlockは、ハッシュに対応するブロック全体を取得し、保存されているヘッダーと本文から組み立てます。
+// ヘッダーまたは本文のいずれかを取得できなかった場合は、nilが返されます。
+//
+// ヘッダーとブロック本体が同時にダウンロードされるため、
+// ヘッダーと正規ハッシュはデータベースに保存できますが、本体データは（まだ）保存できません。
 func ReadBlock(db ethdb.Reader, hash common.Hash, number uint64) *types.Block {
 	header := ReadHeader(db, hash, number)
 	if header == nil {

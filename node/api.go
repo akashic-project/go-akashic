@@ -31,6 +31,7 @@ import (
 )
 
 // apis returns the collection of built-in RPC APIs.
+// apisは、組み込みのRPCAPIのコレクションを返します。
 func (n *Node) apis() []rpc.API {
 	return []rpc.API{
 		{
@@ -57,19 +58,23 @@ func (n *Node) apis() []rpc.API {
 
 // privateAdminAPI is the collection of administrative API methods exposed only
 // over a secure RPC channel.
+// privateAdminAPIは、安全なRPCチャネルを介してのみ公開される管理APIメソッドのコレクションです。
 type privateAdminAPI struct {
-	node *Node // Node interfaced by this API
+	node *Node // Node interfaced by this API このAPIによってインターフェースされるノード
 }
 
 // AddPeer requests connecting to a remote node, and also maintaining the new
 // connection at all times, even reconnecting if it is lost.
+// AddPeerは、リモートノードへの接続を要求し、新しい接続を常に維持し、失われた場合でも再接続します。
 func (api *privateAdminAPI) AddPeer(url string) (bool, error) {
 	// Make sure the server is running, fail otherwise
+	// サーバーが実行されていることを確認してください。そうでない場合は失敗します。
 	server := api.node.Server()
 	if server == nil {
 		return false, ErrNodeStopped
 	}
 	// Try to add the url as a static peer and return
+	// 静的ピアとしてURLを追加し、
 	node, err := enode.Parse(enode.ValidSchemes, url)
 	if err != nil {
 		return false, fmt.Errorf("invalid enode: %v", err)
@@ -79,13 +84,16 @@ func (api *privateAdminAPI) AddPeer(url string) (bool, error) {
 }
 
 // RemovePeer disconnects from a remote node if the connection exists
+// 接続が存在する場合、RemovePeerはリモートノードから切断します
 func (api *privateAdminAPI) RemovePeer(url string) (bool, error) {
 	// Make sure the server is running, fail otherwise
+	// サーバーが実行されていることを確認してください。そうでない場合は失敗します。
 	server := api.node.Server()
 	if server == nil {
 		return false, ErrNodeStopped
 	}
 	// Try to remove the url as a static peer and return
+	// 静的ピアとしてURLを削除し、
 	node, err := enode.Parse(enode.ValidSchemes, url)
 	if err != nil {
 		return false, fmt.Errorf("invalid enode: %v", err)
@@ -95,8 +103,10 @@ func (api *privateAdminAPI) RemovePeer(url string) (bool, error) {
 }
 
 // AddTrustedPeer allows a remote node to always connect, even if slots are full
+// AddTrustedPeerを使用すると、スロットがいっぱいの場合でも、リモートノードが常に接続できます。
 func (api *privateAdminAPI) AddTrustedPeer(url string) (bool, error) {
 	// Make sure the server is running, fail otherwise
+	// サーバーが実行されていることを確認してください。そうでない場合は失敗します。
 	server := api.node.Server()
 	if server == nil {
 		return false, ErrNodeStopped
@@ -111,8 +121,10 @@ func (api *privateAdminAPI) AddTrustedPeer(url string) (bool, error) {
 
 // RemoveTrustedPeer removes a remote node from the trusted peer set, but it
 // does not disconnect it automatically.
+// RemoveTrustedPeerは、信頼できるピアセットからリモートノードを削除しますが、自動的に切断することはありません。
 func (api *privateAdminAPI) RemoveTrustedPeer(url string) (bool, error) {
 	// Make sure the server is running, fail otherwise
+	// サーバーが実行されていることを確認してください。そうでない場合は失敗します。
 	server := api.node.Server()
 	if server == nil {
 		return false, ErrNodeStopped
@@ -127,14 +139,17 @@ func (api *privateAdminAPI) RemoveTrustedPeer(url string) (bool, error) {
 
 // PeerEvents creates an RPC subscription which receives peer events from the
 // node's p2p.Server
+// PeerEventsは、ノードのp2p.Serverからピアイベントを受信するRPCサブスクリプションを作成します
 func (api *privateAdminAPI) PeerEvents(ctx context.Context) (*rpc.Subscription, error) {
 	// Make sure the server is running, fail otherwise
+	// サーバーが実行されていることを確認してください。そうでない場合は失敗します。
 	server := api.node.Server()
 	if server == nil {
 		return nil, ErrNodeStopped
 	}
 
 	// Create the subscription
+	// サブスクリプションを作成する
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
 		return nil, rpc.ErrNotificationsUnsupported
@@ -164,11 +179,13 @@ func (api *privateAdminAPI) PeerEvents(ctx context.Context) (*rpc.Subscription, 
 }
 
 // StartHTTP starts the HTTP RPC API server.
+// StartHTTPは、HTTP RPCAPIサーバーを起動します。
 func (api *privateAdminAPI) StartHTTP(host *string, port *int, cors *string, apis *string, vhosts *string) (bool, error) {
 	api.node.lock.Lock()
 	defer api.node.lock.Unlock()
 
 	// Determine host and port.
+	// ホストとポートを決定します。
 	if host == nil {
 		h := DefaultHTTPHost
 		if api.node.config.HTTPHost != "" {
@@ -219,12 +236,15 @@ func (api *privateAdminAPI) StartHTTP(host *string, port *int, cors *string, api
 
 // StartRPC starts the HTTP RPC API server.
 // Deprecated: use StartHTTP instead.
+// StartRPCは、HTTP RPCAPIサーバーを起動します。
+//非推奨：代わりにStartHTTPを使用してください。
 func (api *privateAdminAPI) StartRPC(host *string, port *int, cors *string, apis *string, vhosts *string) (bool, error) {
 	log.Warn("Deprecation warning", "method", "admin.StartRPC", "use-instead", "admin.StartHTTP")
 	return api.StartHTTP(host, port, cors, apis, vhosts)
 }
 
 // StopHTTP shuts down the HTTP server.
+// StopHTTPはHTTPサーバーをシャットダウンします。
 func (api *privateAdminAPI) StopHTTP() (bool, error) {
 	api.node.http.stop()
 	return true, nil
@@ -232,17 +252,21 @@ func (api *privateAdminAPI) StopHTTP() (bool, error) {
 
 // StopRPC shuts down the HTTP server.
 // Deprecated: use StopHTTP instead.
+// StopRPCはHTTPサーバーをシャットダウンします。
+//非推奨：代わりにStopHTTPを使用してください。
 func (api *privateAdminAPI) StopRPC() (bool, error) {
 	log.Warn("Deprecation warning", "method", "admin.StopRPC", "use-instead", "admin.StopHTTP")
 	return api.StopHTTP()
 }
 
 // StartWS starts the websocket RPC API server.
+// StartWSは、WebSocket RPCAPIサーバーを起動します。
 func (api *privateAdminAPI) StartWS(host *string, port *int, allowedOrigins *string, apis *string) (bool, error) {
 	api.node.lock.Lock()
 	defer api.node.lock.Unlock()
 
 	// Determine host and port.
+	// ホストとポートを決定します。
 	if host == nil {
 		h := DefaultWSHost
 		if api.node.config.WSHost != "" {
@@ -255,6 +279,7 @@ func (api *privateAdminAPI) StartWS(host *string, port *int, allowedOrigins *str
 	}
 
 	// Determine config.
+	// 構成を決定します。
 	config := wsConfig{
 		Modules: api.node.config.WSModules,
 		Origins: api.node.config.WSOrigins,
@@ -274,6 +299,7 @@ func (api *privateAdminAPI) StartWS(host *string, port *int, allowedOrigins *str
 	}
 
 	// Enable WebSocket on the server.
+	// サーバーでWebSocketを有効にします。
 	server := api.node.wsServerForPort(*port)
 	if err := server.setListenAddr(*host, *port); err != nil {
 		return false, err
@@ -289,6 +315,7 @@ func (api *privateAdminAPI) StartWS(host *string, port *int, allowedOrigins *str
 }
 
 // StopWS terminates all WebSocket servers.
+// StopWSは、すべてのWebSocketサーバーを終了します。
 func (api *privateAdminAPI) StopWS() (bool, error) {
 	api.node.http.stopWS()
 	api.node.ws.stop()
@@ -297,12 +324,14 @@ func (api *privateAdminAPI) StopWS() (bool, error) {
 
 // publicAdminAPI is the collection of administrative API methods exposed over
 // both secure and unsecure RPC channels.
+// publicAdminAPIは、セキュアRPCチャネルと非セキュアRPCチャネルの両方で公開される管理APIメソッドのコレクションです。
 type publicAdminAPI struct {
-	node *Node // Node interfaced by this API
+	node *Node // Node interfaced by this API このAPIによってインターフェースされるノード
 }
 
 // Peers retrieves all the information we know about each individual peer at the
 // protocol granularity.
+// ピアは、プロトコルの粒度で個々のピアについてわかっているすべての情報を取得します。
 func (api *publicAdminAPI) Peers() ([]*p2p.PeerInfo, error) {
 	server := api.node.Server()
 	if server == nil {
@@ -313,6 +342,7 @@ func (api *publicAdminAPI) Peers() ([]*p2p.PeerInfo, error) {
 
 // NodeInfo retrieves all the information we know about the host node at the
 // protocol granularity.
+// NodeInfoは、プロトコルの粒度でホストノードについてわかっているすべての情報を取得します。
 func (api *publicAdminAPI) NodeInfo() (*p2p.NodeInfo, error) {
 	server := api.node.Server()
 	if server == nil {
@@ -322,22 +352,27 @@ func (api *publicAdminAPI) NodeInfo() (*p2p.NodeInfo, error) {
 }
 
 // Datadir retrieves the current data directory the node is using.
+// Datadirは、ノードが使用している現在のデータディレクトリを取得します。
 func (api *publicAdminAPI) Datadir() string {
 	return api.node.DataDir()
 }
 
 // publicWeb3API offers helper utils
+// publicWeb3APIはヘルパーユーティリティを提供します
 type publicWeb3API struct {
 	stack *Node
 }
 
 // ClientVersion returns the node name
+// ClientVersionはノード名を返します
 func (s *publicWeb3API) ClientVersion() string {
 	return s.stack.Server().Name
 }
 
 // Sha3 applies the ethereum sha3 implementation on the input.
 // It assumes the input is hex encoded.
+// Sha3は、入力にイーサリアムsha3実装を適用します。
+// 入力が16進エンコードされていることを前提としています。
 func (s *publicWeb3API) Sha3(input hexutil.Bytes) hexutil.Bytes {
 	return crypto.Keccak256(input)
 }

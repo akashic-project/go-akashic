@@ -215,6 +215,7 @@ type benchmarkSetup struct {
 
 // runBenchmark runs a benchmark cycle for all benchmark types in the specified
 // number of passes
+// runBenchmarkは、指定されたパス数ですべてのベンチマークタイプのベンチマークサイクルを実行します
 func (h *serverHandler) runBenchmark(benchmarks []requestBenchmark, passCount int, targetTime time.Duration) []*benchmarkSetup {
 	setup := make([]*benchmarkSetup, len(benchmarks))
 	for i, b := range benchmarks {
@@ -226,6 +227,7 @@ func (h *serverHandler) runBenchmark(benchmarks []requestBenchmark, passCount in
 		copy(todo, setup)
 		for len(todo) > 0 {
 			// select a random element
+			// ランダムな要素を選択します
 			index := rand.Intn(len(todo))
 			next := todo[index]
 			todo[index] = todo[len(todo)-1]
@@ -233,6 +235,7 @@ func (h *serverHandler) runBenchmark(benchmarks []requestBenchmark, passCount in
 
 			if next.err == nil {
 				// calculate request count
+				// リクエスト数を計算する
 				count := 50
 				if next.totalTime > 0 {
 					count = int(uint64(next.totalCount) * uint64(targetTime) / uint64(next.totalTime))
@@ -255,6 +258,7 @@ func (h *serverHandler) runBenchmark(benchmarks []requestBenchmark, passCount in
 
 // meteredPipe implements p2p.MsgReadWriter and remembers the largest single
 // message size sent through the pipe
+// MeteredPipeはp2p.MsgReadWriterを実装し、パイプを介して送信された最大の単一メッセージサイズを記憶します
 type meteredPipe struct {
 	rw      p2p.MsgReadWriter
 	maxSize uint32
@@ -273,6 +277,7 @@ func (m *meteredPipe) WriteMsg(msg p2p.Msg) error {
 
 // measure runs a benchmark for a single type in a single pass, with the given
 // number of requests
+// メジャーは、指定された数のリクエストを使用して、単一のパスで単一のタイプのベンチマークを実行します
 func (h *serverHandler) measure(setup *benchmarkSetup, count int) error {
 	clientPipe, serverPipe := p2p.MsgPipe()
 	clientMeteredPipe := &meteredPipe{rw: clientPipe}

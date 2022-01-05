@@ -31,13 +31,16 @@ type bytesBacked interface {
 
 const (
 	// BloomByteLength represents the number of bytes used in a header log bloom.
+	// BloomByteLengthは、ヘッダーログブルームで使用されるバイト数を表します。
 	BloomByteLength = 256
 
 	// BloomBitLength represents the number of bits used in a header log bloom.
+	// BloomBitLengthは、ヘッダーログブルームで使用されるビット数を表します。
 	BloomBitLength = 8 * BloomByteLength
 )
 
 // Bloom represents a 2048 bit bloom filter.
+// ブルームは2048ビットのブルームフィルターを表します。
 type Bloom [BloomByteLength]byte
 
 // BytesToBloom converts a byte slice to a bloom filter.

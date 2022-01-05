@@ -102,6 +102,7 @@ func TestServerListen(t *testing.T) {
 	defer srv.Stop()
 
 	// dial the test server
+	// テストサーバーにダイヤルします
 	conn, err := net.DialTimeout("tcp", srv.ListenAddr, 5*time.Second)
 	if err != nil {
 		t.Fatalf("could not dial: %v", err)
@@ -125,6 +126,7 @@ func TestServerListen(t *testing.T) {
 
 func TestServerDial(t *testing.T) {
 	// run a one-shot TCP server to handle the connection.
+	// ワンショットTCPサーバーを実行して接続を処理します。
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("could not setup listener: %v", err)
@@ -147,6 +149,7 @@ func TestServerDial(t *testing.T) {
 	defer srv.Stop()
 
 	// tell the server to connect
+	// サーバーに接続するように指示します
 	tcpAddr := listener.Addr().(*net.TCPAddr)
 	node := enode.NewV4(remid, tcpAddr.IP, tcpAddr.Port, 0)
 	srv.AddPeer(node)
@@ -174,6 +177,8 @@ func TestServerDial(t *testing.T) {
 
 			// Test AddTrustedPeer/RemoveTrustedPeer and changing Trusted flags
 			// Particularly for race conditions on changing the flag state.
+			// AddTrustedPeer / RemoveTrustedPeerをテストし、信頼できるフラグを変更します。
+			// 特に、フラグの状態を変更する際の競合状態についてテストします。
 			if peer := srv.Peers()[0]; peer.Info().Network.Trusted {
 				t.Errorf("peer is trusted prematurely: %v", peer)
 			}
@@ -190,6 +195,7 @@ func TestServerDial(t *testing.T) {
 				done <- true
 			}()
 			// Trigger potential race conditions
+			// 潜在的な競合状態をトリガーします
 			peer = srv.Peers()[0]
 			_ = peer.Inbound()
 			_ = peer.Info()
@@ -204,6 +210,7 @@ func TestServerDial(t *testing.T) {
 }
 
 // This test checks that RemovePeer disconnects the peer if it is connected.
+// このテストでは、RemovePeerが接続されている場合にピアを切断することを確認します。
 func TestServerRemovePeerDisconnect(t *testing.T) {
 	srv1 := &Server{Config: Config{
 		PrivateKey:  newkey(),
@@ -235,6 +242,9 @@ func TestServerRemovePeerDisconnect(t *testing.T) {
 
 // This test checks that connections are disconnected just after the encryption handshake
 // when the server is at capacity. Trusted connections should still be accepted.
+// このテストでは、サーバーの容量がいっぱいになったときに、
+// 暗号化ハンドシェイクの直後に接続が切断されていることを確認します。
+// 信頼できる接続は引き続き受け入れられます。
 func TestServerAtCap(t *testing.T) {
 	trustedNode := newkey()
 	trustedID := enode.PubkeyToIDV4(&trustedNode.PublicKey)
@@ -261,6 +271,7 @@ func TestServerAtCap(t *testing.T) {
 	}
 
 	// Inject a few connections to fill up the peer set.
+	// ピアセットを埋めるためにいくつかの接続を注入します。
 	for i := 0; i < 10; i++ {
 		c := newconn(randomID())
 		if err := srv.checkpoint(c, srv.checkpointAddPeer); err != nil {
@@ -268,12 +279,14 @@ func TestServerAtCap(t *testing.T) {
 		}
 	}
 	// Try inserting a non-trusted connection.
+	// 信頼できない接続を挿入してみてください。
 	anotherID := randomID()
 	c := newconn(anotherID)
 	if err := srv.checkpoint(c, srv.checkpointPostHandshake); err != DiscTooManyPeers {
 		t.Error("wrong error for insert:", err)
 	}
 	// Try inserting a trusted connection.
+	// 信頼できる接続を挿入してみてください。
 	c = newconn(trustedID)
 	if err := srv.checkpoint(c, srv.checkpointPostHandshake); err != nil {
 		t.Error("unexpected error for trusted conn @posthandshake:", err)
@@ -283,6 +296,7 @@ func TestServerAtCap(t *testing.T) {
 	}
 
 	// Remove from trusted set and try again
+	// 信頼できるセットから削除して、再試行してください
 	srv.RemoveTrustedPeer(newNode(trustedID, ""))
 	c = newconn(trustedID)
 	if err := srv.checkpoint(c, srv.checkpointPostHandshake); err != DiscTooManyPeers {
@@ -290,6 +304,7 @@ func TestServerAtCap(t *testing.T) {
 	}
 
 	// Add anotherID to trusted set and try again
+	// 信頼できるセットにanotherIDを追加して、再試行してください
 	srv.AddTrustedPeer(newNode(anotherID, ""))
 	c = newconn(anotherID)
 	if err := srv.checkpoint(c, srv.checkpointPostHandshake); err != nil {
@@ -310,6 +325,7 @@ func TestServerPeerLimits(t *testing.T) {
 		phs: protoHandshake{
 			ID: crypto.FromECDSAPub(&clientkey.PublicKey)[1:],
 			// Force "DiscUselessPeer" due to unmatching caps
+			// キャップが一致しないため、「DiscUselessPeer」を強制します
 			// Caps: []Cap{discard.cap()},
 		},
 	}
@@ -331,6 +347,7 @@ func TestServerPeerLimits(t *testing.T) {
 	defer srv.Stop()
 
 	// Check that server is full (MaxPeers=0)
+	// サーバーがいっぱいであることを確認します（MaxPeers = 0）
 	flags := dynDialedConn
 	dialDest := clientnode
 	conn, _ := net.Pipe()
@@ -343,6 +360,7 @@ func TestServerPeerLimits(t *testing.T) {
 	srv.AddTrustedPeer(clientnode)
 
 	// Check that server allows a trusted peer despite being full.
+	// サーバーがいっぱいであるにもかかわらず、信頼できるピアを許可していることを確認してください。
 	conn, _ = net.Pipe()
 	srv.SetupConn(conn, flags, dialDest)
 	if tp.closeErr == DiscTooManyPeers {
@@ -357,6 +375,7 @@ func TestServerPeerLimits(t *testing.T) {
 	srv.RemoveTrustedPeer(clientnode)
 
 	// Check that server is full again.
+	// サーバーが再びいっぱいになっていることを確認します。
 	conn, _ = net.Pipe()
 	srv.SetupConn(conn, flags, dialDest)
 	if tp.closeErr != DiscTooManyPeers {
@@ -483,6 +502,7 @@ func (c *setupTransport) close(err error) {
 }
 
 // setupConn shouldn't write to/read from the connection.
+// setupConnは、接続への書き込み/接続からの読み取りを行うべきではありません。
 func (c *setupTransport) WriteMsg(Msg) error {
 	panic("WriteMsg called on setupTransport")
 }
@@ -506,6 +526,7 @@ func randomID() (id enode.ID) {
 }
 
 // This test checks that inbound connections are throttled by IP.
+// このテストは、インバウンド接続がIPによって抑制されていることを確認します。
 func TestServerInboundThrottle(t *testing.T) {
 	const timeout = 5 * time.Second
 	newTransportCalled := make(chan struct{})
@@ -534,6 +555,7 @@ func TestServerInboundThrottle(t *testing.T) {
 	defer srv.Stop()
 
 	// Dial the test server.
+	// テストサーバーにダイヤルします。
 	conn, err := net.DialTimeout("tcp", srv.ListenAddr, timeout)
 	if err != nil {
 		t.Fatalf("could not dial: %v", err)
@@ -547,6 +569,7 @@ func TestServerInboundThrottle(t *testing.T) {
 	conn.Close()
 
 	// Dial again. This time the server should close the connection immediately.
+	// もう一度ダイヤルします。今回は、サーバーはすぐに接続を閉じる必要があります。
 	connClosed := make(chan struct{}, 1)
 	conn, err = net.DialTimeout("tcp", srv.ListenAddr, timeout)
 	if err != nil {
@@ -580,6 +603,7 @@ func listenFakeAddr(network, laddr string, remoteAddr net.Addr) (net.Listener, e
 }
 
 // fakeAddrListener is a listener that creates connections with a mocked remote address.
+// fakeAddrListenerは、モックされたリモートアドレスとの接続を作成するリスナーです。
 type fakeAddrListener struct {
 	net.Listener
 	remoteAddr net.Addr

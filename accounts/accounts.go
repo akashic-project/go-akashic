@@ -15,6 +15,7 @@
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
 // Package accounts implements high level Ethereum account management.
+// パッケージアカウントは、高レベルのイーサリアムアカウント管理を実装します。
 package accounts
 
 import (
@@ -30,9 +31,10 @@ import (
 
 // Account represents an Ethereum account located at a specific location defined
 // by the optional URL field.
+// アカウントは、オプションのURLフィールドで定義された特定の場所にあるイーサリアムアカウントを表します。
 type Account struct {
-	Address common.Address `json:"address"` // Ethereum account address derived from the key
-	URL     URL            `json:"url"`     // Optional resource locator within a backend
+	Address common.Address `json:"address"` // キーから派生したイーサリアムアカウントアドレス // Ethereum account address derived from the key
+	URL     URL            `json:"url"`     // バックエンド内のオプションのリソースロケーター// Optional resource locator within a backend
 }
 
 const (
@@ -206,10 +208,12 @@ type WalletEventType int
 const (
 	// WalletArrived is fired when a new wallet is detected either via USB or via
 	// a filesystem event in the keystore.
+	// WalletArrivedは、USBまたはキーストアのファイルシステムイベントを介して新しいウォレットが検出されたときに発生します。
 	WalletArrived WalletEventType = iota
 
 	// WalletOpened is fired when a wallet is successfully opened with the purpose
 	// of starting any background processes such as automatic key derivation.
+	// WalletOpenedは、自動キー導出などのバックグラウンドプロセスを開始する目的でウォレットが正常に開かれたときに発生します。
 	WalletOpened
 
 	// WalletDropped
@@ -218,7 +222,8 @@ const (
 
 // WalletEvent is an event fired by an account backend when a wallet arrival or
 // departure is detected.
+// WalletEventは、ウォレットの到着または出発が検出されたときにアカウントバックエンドによって発生するイベントです。
 type WalletEvent struct {
-	Wallet Wallet          // Wallet instance arrived or departed
-	Kind   WalletEventType // Event type that happened in the system
+	Wallet Wallet          // ウォレットインスタンスが到着または出発しました // Wallet instance arrived or departed
+	Kind   WalletEventType // システムで発生したイベントタイプ             // Event type that happened in the system
 }

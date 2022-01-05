@@ -35,21 +35,22 @@ import (
 )
 
 const (
-	datasetInitBytes   = 1 << 30 // Bytes in dataset at genesis
-	datasetGrowthBytes = 1 << 23 // Dataset growth per epoch
-	cacheInitBytes     = 1 << 24 // Bytes in cache at genesis
-	cacheGrowthBytes   = 1 << 17 // Cache growth per epoch
-	epochLength        = 30000   // Blocks per epoch
-	mixBytes           = 128     // Width of mix
-	hashBytes          = 64      // Hash length in bytes
-	hashWords          = 16      // Number of 32 bit ints in a hash
-	datasetParents     = 256     // Number of parents of each dataset element
-	cacheRounds        = 3       // Number of rounds in cache production
-	loopAccesses       = 64      // Number of accesses in hashimoto loop
+	datasetInitBytes   = 1 << 30 // ジェネシスでのデータセットのバイト // Bytes in dataset at genesis
+	datasetGrowthBytes = 1 << 23 // エポックごとのデータセットの増加 // Dataset growth per epoch
+	cacheInitBytes     = 1 << 24 // ジェネシスでキャッシュ内のバイト // Bytes in cache at genesis
+	cacheGrowthBytes   = 1 << 17 // エポックごとのキャッシュの増加  // Cache growth per epoch
+	epochLength        = 30000   // エポックあたりのブロック       // Blocks per epoch
+	mixBytes           = 128     // ミックスの幅                  // Width of mix
+	hashBytes          = 64      // バイト単位のハッシュ長         // Hash length in bytes
+	hashWords          = 16      // ハッシュ内の32ビット整数の数   // Number of 32 bit ints in a hash
+	datasetParents     = 256     // 各データセット要素の親の数     // Number of parents of each dataset element
+	cacheRounds        = 3       // キャッシュ生成のラウンド数     // Number of rounds in cache production
+	loopAccesses       = 64      // 橋本ループのアクセス数         // Number of accesses in hashimoto loop
 )
 
 // cacheSize returns the size of the ethash verification cache that belongs to a certain
 // block number.
+// cacheSizeは、特定のブロック番号に属するethash検証キャッシュのサイズを返します。
 func cacheSize(block uint64) uint64 {
 	epoch := int(block / epochLength)
 	if epoch < maxEpoch {
@@ -61,6 +62,8 @@ func cacheSize(block uint64) uint64 {
 // calcCacheSize calculates the cache size for epoch. The cache size grows linearly,
 // however, we always take the highest prime below the linearly growing threshold in order
 // to reduce the risk of accidental regularities leading to cyclic behavior.
+// calcCacheSizeは、エポックのキャッシュサイズを計算します。キャッシュサイズは直線的に増加しますが、
+// 周期的な動作につながる偶発的な規則性のリスクを減らすために、常に直線的に増加するしきい値を下回る最高の素数を取ります。
 func calcCacheSize(epoch int) uint64 {
 	size := cacheInitBytes + cacheGrowthBytes*uint64(epoch) - hashBytes
 	for !new(big.Int).SetUint64(size / hashBytes).ProbablyPrime(1) { // Always accurate for n < 2^64
@@ -71,6 +74,7 @@ func calcCacheSize(epoch int) uint64 {
 
 // datasetSize returns the size of the ethash mining dataset that belongs to a certain
 // block number.
+// datasetSizeは特定のブロック番号に属するethashマイニングデータセットのサイズを返します。
 func datasetSize(block uint64) uint64 {
 	epoch := int(block / epochLength)
 	if epoch < maxEpoch {
@@ -82,6 +86,8 @@ func datasetSize(block uint64) uint64 {
 // calcDatasetSize calculates the dataset size for epoch. The dataset size grows linearly,
 // however, we always take the highest prime below the linearly growing threshold in order
 // to reduce the risk of accidental regularities leading to cyclic behavior.
+// calcDatasetSizeは、エポックのデータセットサイズを計算します。データセットのサイズは直線的に増加しますが、
+// 周期的な動作につながる偶発的な規則性のリスクを減らすために、常に直線的に増加するしきい値を下回る最高の素数を取ります。
 func calcDatasetSize(epoch int) uint64 {
 	size := datasetInitBytes + datasetGrowthBytes*uint64(epoch) - mixBytes
 	for !new(big.Int).SetUint64(size / mixBytes).ProbablyPrime(1) { // Always accurate for n < 2^64
@@ -92,14 +98,21 @@ func calcDatasetSize(epoch int) uint64 {
 
 // hasher is a repetitive hasher allowing the same hash data structures to be
 // reused between hash runs instead of requiring new ones to be created.
+// ハッシュは反復ハッシュであり、
+// 新しいハッシュデータ構造を作成する代わりに、ハッシュ実行間で同じハッシュデータ構造を再利用できます。
 type hasher func(dest []byte, data []byte)
 
 // makeHasher creates a repetitive hasher, allowing the same hash data structures to
 // be reused between hash runs instead of requiring new ones to be created. The returned
 // function is not thread safe!
+// makeHasherは反復ハッシャーを作成し、新しいハッシュデータ構造を作成する代わりに、
+// 同じハッシュデータ構造をハッシュ実行間で再利用できるようにします。
+// 返された関数はスレッドセーフではありません！
 func makeHasher(h hash.Hash) hasher {
 	// sha3.state supports Read to get the sum, use it to avoid the overhead of Sum.
 	// Read alters the state but we reset the hash before every operation.
+	// sha3.stateは、合計を取得するために読み取りをサポートし、合計のオーバーヘッドを回避するためにそれを使用します。
+	// 読み取りは状態を変更しますが、すべての操作の前にハッシュをリセットします。
 	type readerHash interface {
 		hash.Hash
 		Read([]byte) (int, error)
@@ -118,6 +131,7 @@ func makeHasher(h hash.Hash) hasher {
 
 // seedHash is the seed to use for generating a verification cache and the mining
 // dataset.
+// seedHashは、検証キャッシュとマイニングデータセットを生成するために使用するシードです。
 func seedHash(block uint64) []byte {
 	seed := make([]byte, 32)
 	if block < epochLength {
@@ -136,8 +150,14 @@ func seedHash(block uint64) []byte {
 // algorithm from Strict Memory Hard Hashing Functions (2014). The output is a
 // set of 524288 64-byte values.
 // This method places the result into dest in machine byte order.
+// generateCacheは、入力シードに対して指定されたサイズの検証キャッシュを作成します。
+// キャッシュ生成プロセスでは、最初に32 MBのメモリを順番にいっぱいにし、
+// 次にStrict Memory Hard Hashing Functions（2014）のSergio DemianLernerのRandMemoHashアルゴリズムを2回実行します。
+// 出力は、524288の64バイト値のセットです。
+// このメソッドは、結果をマシンのバイト順でdestに配置します。
 func generateCache(dest []uint32, epoch uint64, seed []byte) {
 	// Print some debug logs to allow analysis on low end devices
+	// いくつかのデバッグログを印刷して、ローエンドデバイスで分析できるようにします
 	logger := log.New("epoch", epoch)
 
 	start := time.Now()
@@ -151,6 +171,7 @@ func generateCache(dest []uint32, epoch uint64, seed []byte) {
 		logFn("Generated ethash verification cache", "elapsed", common.PrettyDuration(elapsed))
 	}()
 	// Convert our destination slice to a byte buffer
+	// 宛先スライスをバイトバッファに変換します
 	var cache []byte
 	cacheHdr := (*reflect.SliceHeader)(unsafe.Pointer(&cache))
 	dstHdr := (*reflect.SliceHeader)(unsafe.Pointer(&dest))
@@ -159,10 +180,12 @@ func generateCache(dest []uint32, epoch uint64, seed []byte) {
 	cacheHdr.Cap = dstHdr.Cap * 4
 
 	// Calculate the number of theoretical rows (we'll store in one buffer nonetheless)
+	// 理論上の行数を計算します（それでも1つのバッファーに格納します）
 	size := uint64(len(cache))
 	rows := int(size) / hashBytes
 
 	// Start a monitoring goroutine to report progress on low end devices
+	// 監視ゴルーチンを開始して、ローエンドデバイスの進捗状況を報告します
 	var progress uint32
 
 	done := make(chan struct{})
@@ -179,15 +202,18 @@ func generateCache(dest []uint32, epoch uint64, seed []byte) {
 		}
 	}()
 	// Create a hasher to reuse between invocations
+	// 呼び出し間で再利用するハッシャーを作成します
 	keccak512 := makeHasher(sha3.NewLegacyKeccak512())
 
 	// Sequentially produce the initial dataset
+	// 初期データセットを順次生成します
 	keccak512(cache, seed)
 	for offset := uint64(hashBytes); offset < size; offset += hashBytes {
 		keccak512(cache[offset:], cache[offset-hashBytes:offset])
 		atomic.AddUint32(&progress, 1)
 	}
 	// Use a low-round version of randmemohash
+	// 低ラウンドバージョンのrandmemohashを使用します
 	temp := make([]byte, hashBytes)
 
 	for i := 0; i < cacheRounds; i++ {
@@ -204,12 +230,14 @@ func generateCache(dest []uint32, epoch uint64, seed []byte) {
 		}
 	}
 	// Swap the byte order on big endian systems and return
+	// ビッグエンディアンシステムでバイト順序を入れ替えて、
 	if !isLittleEndian() {
 		swap(cache)
 	}
 }
 
 // swap changes the byte order of the buffer assuming a uint32 representation.
+// スワップは、uint32表現を想定してバッファのバイト順序を変更します。
 func swap(buffer []byte) {
 	for i := 0; i < len(buffer); i += 4 {
 		binary.BigEndian.PutUint32(buffer[i:], binary.LittleEndian.Uint32(buffer[i:]))
@@ -220,11 +248,14 @@ func swap(buffer []byte) {
 // a non-associative substitute for XOR. Note that we multiply the prime with
 // the full 32-bit input, in contrast with the FNV-1 spec which multiplies the
 // prime with one byte (octet) in turn.
+// fnvは、FNVハッシュに触発されたアルゴリズムであり、XORの非結合的代替として使用される場合があります。プライムに1バイト（オクテット）を順番に乗算するFNV-1仕様とは対照的に、
+// プライムに完全な32ビット入力を乗算することに注意してください。
 func fnv(a, b uint32) uint32 {
 	return a*0x01000193 ^ b
 }
 
 // fnvHash mixes in data into mix using the ethash fnv method.
+// fnvHashは、ethashfnvメソッドを使用してデータをミックスにミックスします。
 func fnvHash(mix []uint32, data []uint32) {
 	for i := 0; i < len(mix); i++ {
 		mix[i] = mix[i]*0x01000193 ^ data[i]
@@ -233,11 +264,15 @@ func fnvHash(mix []uint32, data []uint32) {
 
 // generateDatasetItem combines data from 256 pseudorandomly selected cache nodes,
 // and hashes that to compute a single dataset node.
+// generateDatasetItemは、256の疑似ランダムに選択されたキャッシュノードからのデータを結合し、
+// それをハッシュして単一のデータセットノードを計算します。
 func generateDatasetItem(cache []uint32, index uint32, keccak512 hasher) []byte {
 	// Calculate the number of theoretical rows (we use one buffer nonetheless)
+	// 理論上の行数を計算します（それでも1つのバッファーを使用します）
 	rows := uint32(len(cache) / hashWords)
 
 	// Initialize the mix
+	// ミックスを初期化します
 	mix := make([]byte, hashBytes)
 
 	binary.LittleEndian.PutUint32(mix, cache[(index%rows)*hashWords]^index)
@@ -247,16 +282,19 @@ func generateDatasetItem(cache []uint32, index uint32, keccak512 hasher) []byte 
 	keccak512(mix, mix)
 
 	// Convert the mix to uint32s to avoid constant bit shifting
+	// 一定のビットシフトを回避するために、ミックスをuint32sに変換します
 	intMix := make([]uint32, hashWords)
 	for i := 0; i < len(intMix); i++ {
 		intMix[i] = binary.LittleEndian.Uint32(mix[i*4:])
 	}
 	// fnv it with a lot of random cache nodes based on index
+	// インデックスに基づいてランダムなキャッシュノードを多数使用してfnvします
 	for i := uint32(0); i < datasetParents; i++ {
 		parent := fnv(index^i, intMix[i%16]) % rows
 		fnvHash(intMix, cache[parent*hashWords:])
 	}
 	// Flatten the uint32 mix into a binary one and return
+	// uint32ミックスをバイナリミックスにフラット化して、
 	for i, val := range intMix {
 		binary.LittleEndian.PutUint32(mix[i*4:], val)
 	}
@@ -266,8 +304,11 @@ func generateDatasetItem(cache []uint32, index uint32, keccak512 hasher) []byte 
 
 // generateDataset generates the entire ethash dataset for mining.
 // This method places the result into dest in machine byte order.
+// generateDatasetは、マイニング用のethashデータセット全体を生成します。
+// このメソッドは、結果をマシンのバイト順でdestに配置します。
 func generateDataset(dest []uint32, epoch uint64, cache []uint32) {
 	// Print some debug logs to allow analysis on low end devices
+	// いくつかのデバッグログを印刷して、ローエンドデバイスで分析できるようにします
 	logger := log.New("epoch", epoch)
 
 	start := time.Now()
@@ -282,9 +323,11 @@ func generateDataset(dest []uint32, epoch uint64, cache []uint32) {
 	}()
 
 	// Figure out whether the bytes need to be swapped for the machine
+	// バイトをマシンと交換する必要があるかどうかを判断します
 	swapped := !isLittleEndian()
 
 	// Convert our destination slice to a byte buffer
+	// 宛先スライスをバイトバッファに変換します
 	var dataset []byte
 	datasetHdr := (*reflect.SliceHeader)(unsafe.Pointer(&dataset))
 	destHdr := (*reflect.SliceHeader)(unsafe.Pointer(&dest))
@@ -293,6 +336,7 @@ func generateDataset(dest []uint32, epoch uint64, cache []uint32) {
 	datasetHdr.Cap = destHdr.Cap * 4
 
 	// Generate the dataset on many goroutines since it takes a while
+	// 時間がかかるため、多くのgoroutineでデータセットを生成します
 	threads := runtime.NumCPU()
 	size := uint64(len(dataset))
 
@@ -305,9 +349,11 @@ func generateDataset(dest []uint32, epoch uint64, cache []uint32) {
 			defer pend.Done()
 
 			// Create a hasher to reuse between invocations
+			// 呼び出し間で再利用するハッシャーを作成します
 			keccak512 := makeHasher(sha3.NewLegacyKeccak512())
 
 			// Calculate the data segment this thread should generate
+			// このスレッドが生成するデータセグメントを計算します
 			batch := (size + hashBytes*uint64(threads) - 1) / (hashBytes * uint64(threads))
 			first := uint64(id) * batch
 			limit := first + batch
@@ -315,6 +361,7 @@ func generateDataset(dest []uint32, epoch uint64, cache []uint32) {
 				limit = size / hashBytes
 			}
 			// Calculate the dataset segment
+			// データセットセグメントを計算します
 			percent := size / hashBytes / 100
 			for index := first; index < limit; index++ {
 				item := generateDatasetItem(cache, uint32(index), keccak512)
@@ -330,16 +377,20 @@ func generateDataset(dest []uint32, epoch uint64, cache []uint32) {
 		}(i)
 	}
 	// Wait for all the generators to finish and return
+	// すべてのジェネレータが終了して戻るのを待ちます
 	pend.Wait()
 }
 
 // hashimoto aggregates data from the full dataset in order to produce our final
 // value for a particular header hash and nonce.
+// hashimotoは、特定のヘッダーハッシュとナンスの最終値を生成するために、完全なデータセットからデータを集約します。
 func hashimoto(hash []byte, nonce uint64, size uint64, lookup func(index uint32) []uint32) ([]byte, []byte) {
 	// Calculate the number of theoretical rows (we use one buffer nonetheless)
+	// 理論上の行数を計算します（それでも1つのバッファーを使用します）
 	rows := uint32(size / mixBytes)
 
 	// Combine header+nonce into a 64 byte seed
+	// header + nonceを64バイトのシードに結合します
 	seed := make([]byte, 40)
 	copy(seed, hash)
 	binary.LittleEndian.PutUint64(seed[32:], nonce)
@@ -348,11 +399,13 @@ func hashimoto(hash []byte, nonce uint64, size uint64, lookup func(index uint32)
 	seedHead := binary.LittleEndian.Uint32(seed)
 
 	// Start the mix with replicated seed
+	// 複製されたシードでミックスを開始します
 	mix := make([]uint32, mixBytes/4)
 	for i := 0; i < len(mix); i++ {
 		mix[i] = binary.LittleEndian.Uint32(seed[i%16*4:])
 	}
 	// Mix in random dataset nodes
+	// ランダムなデータセットノードを混在させる
 	temp := make([]uint32, len(mix))
 
 	for i := 0; i < loopAccesses; i++ {
@@ -363,6 +416,7 @@ func hashimoto(hash []byte, nonce uint64, size uint64, lookup func(index uint32)
 		fnvHash(mix, temp)
 	}
 	// Compress mix
+	// ミックスを圧縮します
 	for i := 0; i < len(mix); i += 4 {
 		mix[i/4] = fnv(fnv(fnv(mix[i], mix[i+1]), mix[i+2]), mix[i+3])
 	}
@@ -378,6 +432,8 @@ func hashimoto(hash []byte, nonce uint64, size uint64, lookup func(index uint32)
 // hashimotoLight aggregates data from the full dataset (using only a small
 // in-memory cache) in order to produce our final value for a particular header
 // hash and nonce.
+// hashimotoLightは、特定のヘッダーハッシュとナンスの最終値を生成するために、
+// （小さなメモリ内キャッシュのみを使用して）完全なデータセットからデータを集約します。
 func hashimotoLight(size uint64, cache []uint32, hash []byte, nonce uint64) ([]byte, []byte) {
 	keccak512 := makeHasher(sha3.NewLegacyKeccak512())
 
@@ -396,6 +452,8 @@ func hashimotoLight(size uint64, cache []uint32, hash []byte, nonce uint64) ([]b
 // hashimotoFull aggregates data from the full dataset (using the full in-memory
 // dataset) in order to produce our final value for a particular header hash and
 // nonce.
+// hashimotoFullは、特定のヘッダーハッシュとナンスの最終値を生成するために、
+// （完全なメモリ内データセットを使用して）完全なデータセットからデータを集約します。
 func hashimotoFull(dataset []uint32, hash []byte, nonce uint64) ([]byte, []byte) {
 	lookup := func(index uint32) []uint32 {
 		offset := index * hashWords
@@ -408,6 +466,7 @@ const maxEpoch = 2048
 
 // datasetSizes is a lookup table for the ethash dataset size for the first 2048
 // epochs (i.e. 61440000 blocks).
+// datasetSizesは、最初の2048エポック（つまり、61440000ブロック）のethashデータセットサイズのルックアップテーブルです。
 var datasetSizes = [maxEpoch]uint64{
 	1073739904, 1082130304, 1090514816, 1098906752, 1107293056,
 	1115684224, 1124070016, 1132461952, 1140849536, 1149232768,
@@ -822,6 +881,7 @@ var datasetSizes = [maxEpoch]uint64{
 
 // cacheSizes is a lookup table for the ethash verification cache size for the
 // first 2048 epochs (i.e. 61440000 blocks).
+// cacheSizesは、最初の2048エポック（つまり、61440000ブロック）のethash検証キャッシュサイズのルックアップテーブルです。
 var cacheSizes = [maxEpoch]uint64{
 	16776896, 16907456, 17039296, 17170112, 17301056, 17432512, 17563072,
 	17693888, 17824192, 17955904, 18087488, 18218176, 18349504, 18481088,

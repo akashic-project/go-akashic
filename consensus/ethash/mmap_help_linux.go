@@ -29,6 +29,9 @@ import (
 // errors later on, if the underlying file expands beyond the disk capacity,
 // even though it ostensibly is already expanded, but due to being sparse
 // does not actually occupy the full declared size on disk.
+// sureSizeはファイルを指定されたサイズに拡張します。これは、基になるファイルがディスク容量を超えて拡張された場合に、
+// 実行時エラーを防ぐためです。
+// 表面上はすでに拡張されていますが、スパースであるため、実際にはディスク上で宣言されたサイズ全体を占有しません。
 func ensureSize(f *os.File, size int64) error {
 	// Docs: https://www.man7.org/linux/man-pages/man2/fallocate.2.html
 	return unix.Fallocate(int(f.Fd()), 0, 0, size)

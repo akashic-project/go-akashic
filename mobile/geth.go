@@ -180,6 +180,7 @@ func NewNode(datadir string, config *NodeConfig) (stack *Node, _ error) {
 			}
 		}
 		// If we have the Goerli testnet, hard code the chain configs too
+		// Goerliテストネットがある場合は、チェーン構成もハードコーディングします
 		if config.EthereumGenesis == GoerliGenesis() {
 			genesis.Config = params.GoerliChainConfig
 			if config.EthereumNetworkID == 1 {

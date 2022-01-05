@@ -45,7 +45,7 @@ var (
 	initCommand = cli.Command{
 		Action:    utils.MigrateFlags(initGenesis),
 		Name:      "init",
-		Usage:     "Bootstrap and initialize a new genesis block",
+		Usage:     "Bootstrap and initialize a new genesis block", // 新しいジェネシスブロックをブートストラップして初期化します
 		ArgsUsage: "<genesisPath>",
 		Flags: []cli.Flag{
 			utils.DataDirFlag,
@@ -57,11 +57,14 @@ This is a destructive action and changes the network in which you will be
 participating.
 
 It expects the genesis file as argument.`,
+		// initコマンドは、ネットワークの新しいジェネシスブロックと定義を初期化します。
+		// これは破壊的な行動であり、参加するネットワークを変更します。
+		// ジェネシスファイルを引数として想定しています。
 	}
 	dumpGenesisCommand = cli.Command{
 		Action:    utils.MigrateFlags(dumpGenesis),
 		Name:      "dumpgenesis",
-		Usage:     "Dumps genesis block JSON configuration to stdout",
+		Usage:     "Dumps genesis block JSON configuration to stdout", // ジェネシスブロックJSON構成をstdoutにダンプします
 		ArgsUsage: "",
 		Flags: []cli.Flag{
 			utils.MainnetFlag,
@@ -73,11 +76,12 @@ It expects the genesis file as argument.`,
 		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 The dumpgenesis command dumps the genesis block configuration in JSON format to stdout.`,
+		// dumpgenesisコマンドは、ジェネシスブロック構成をJSON形式でstdoutにダンプします。
 	}
 	importCommand = cli.Command{
 		Action:    utils.MigrateFlags(importChain),
 		Name:      "import",
-		Usage:     "Import a blockchain file",
+		Usage:     "Import a blockchain file", // ブロックチェーンファイルをインポートする
 		ArgsUsage: "<filename> (<filename 2> ... <filename N>) ",
 		Flags: []cli.Flag{
 			utils.DataDirFlag,
@@ -110,11 +114,17 @@ with several RLP-encoded blocks, or several files can be used.
 
 If only one file is used, import error will result in failure. If several files are used,
 processing will proceed even if an individual RLP-file import failure occurs.`,
+		// importコマンドは、RLPでエンコードされたフォームからブロックをインポートします。
+		// フォームは、複数のRLPエンコードブロックを含む1つのファイルにすることも、
+		// 複数のファイルを使用することもできます。
+
+		// ファイルを1つだけ使用すると、インポートエラーが発生して失敗します。
+		// 複数のファイルを使用している場合は、個別のRLPファイルのインポートに失敗しても処理は続行されます。
 	}
 	exportCommand = cli.Command{
 		Action:    utils.MigrateFlags(exportChain),
 		Name:      "export",
-		Usage:     "Export blockchain into file",
+		Usage:     "Export blockchain into file", // ブロックチェーンをファイルにエクスポート
 		ArgsUsage: "<filename> [<blockNumFirst> <blockNumLast>]",
 		Flags: []cli.Flag{
 			utils.DataDirFlag,
@@ -128,11 +138,15 @@ Optional second and third arguments control the first and
 last block to write. In this mode, the file will be appended
 if already existing. If the file ends with .gz, the output will
 be gzipped.`,
+		// 書き込むファイルの最初の引数が必要です。
+		// オプションの2番目と3番目の引数は、書き込む最初と最後のブロックを制御します。
+		// このモードでは、ファイルがすでに存在する場合は追加されます。
+		// ファイルが.gzで終わる場合、出力はgzipで圧縮されます。
 	}
 	importPreimagesCommand = cli.Command{
 		Action:    utils.MigrateFlags(importPreimages),
 		Name:      "import-preimages",
-		Usage:     "Import the preimage database from an RLP stream",
+		Usage:     "Import the preimage database from an RLP stream", // RLPストリームからプリイメージデータベースをインポートします
 		ArgsUsage: "<datafile>",
 		Flags: []cli.Flag{
 			utils.DataDirFlag,
@@ -144,11 +158,13 @@ be gzipped.`,
 The import-preimages command imports hash preimages from an RLP encoded stream.
 It's deprecated, please use "geth db import" instead.
 `,
+		// import-preimagesコマンドは、RLPでエンコードされたストリームからハッシュプレイメージをインポートします。
+		// 非推奨です。代わりに「gethdbimport」を使用してください。
 	}
 	exportPreimagesCommand = cli.Command{
 		Action:    utils.MigrateFlags(exportPreimages),
 		Name:      "export-preimages",
-		Usage:     "Export the preimage database into an RLP stream",
+		Usage:     "Export the preimage database into an RLP stream", // プリイメージデータベースをRLPストリームにエクスポートします
 		ArgsUsage: "<dumpfile>",
 		Flags: []cli.Flag{
 			utils.DataDirFlag,
@@ -160,6 +176,8 @@ It's deprecated, please use "geth db import" instead.
 The export-preimages command exports hash preimages to an RLP encoded stream.
 It's deprecated, please use "geth db export" instead.
 `,
+		// export-preimagesコマンドは、ハッシュプレイメージをRLPエンコードされたストリームにエクスポートします。
+		// 非推奨です。代わりに「gethdbexport」を使用してください
 	}
 	dumpCommand = cli.Command{
 		Action:    utils.MigrateFlags(dump),
@@ -185,8 +203,11 @@ This command dumps out the state for a given block (or latest, if none provided)
 
 // initGenesis will initialise the given JSON format genesis file and writes it as
 // the zero'd block (i.e. genesis) or will fail hard if it can't succeed.
+// initGenesisは、指定されたJSON形式のジェネシスファイルを初期化し、
+// それをゼロ化ブロック（つまり、ジェネシス）として書き込むか、成功しない場合はハードに失敗します。
 func initGenesis(ctx *cli.Context) error {
 	// Make sure we have a valid genesis JSON
+	// 有効なジェネシスJSONがあることを確認します
 	genesisPath := ctx.Args().First()
 	if len(genesisPath) == 0 {
 		utils.Fatalf("Must supply path to genesis JSON file")
@@ -202,6 +223,7 @@ func initGenesis(ctx *cli.Context) error {
 		utils.Fatalf("invalid genesis file: %v", err)
 	}
 	// Open and initialise both full and light databases
+	// フルデータベースとライトデータベースの両方を開いて初期化します
 	stack, _ := makeConfigNode(ctx)
 	defer stack.Close()
 
@@ -222,23 +244,26 @@ func initGenesis(ctx *cli.Context) error {
 
 func dumpGenesis(ctx *cli.Context) error {
 	// TODO(rjl493456442) support loading from the custom datadir
+	// TODO（rjl493456442）はカスタムデータディレクトリからの読み込みをサポートします
 	genesis := utils.MakeGenesis(ctx)
 	if genesis == nil {
 		genesis = core.DefaultGenesisBlock()
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(genesis); err != nil {
-		utils.Fatalf("could not encode genesis")
+		utils.Fatalf("could not encode genesis") // 創世記をエンコードできませんでした
 	}
 	return nil
 }
 
 func importChain(ctx *cli.Context) error {
 	if len(ctx.Args()) < 1 {
-		utils.Fatalf("This command requires an argument.")
+		utils.Fatalf("This command requires an argument.") // このコマンドには引数が必要です。
 	}
 	// Start metrics export if enabled
+	// 有効になっている場合は、メトリックのエクスポートを開始します
 	utils.SetupMetrics(ctx)
 	// Start system runtime metrics collection
+	// システムランタイムメトリックの収集を開始します
 	go metrics.CollectProcessMetrics(3 * time.Second)
 
 	stack, _ := makeConfigNode(ctx)
@@ -248,6 +273,7 @@ func importChain(ctx *cli.Context) error {
 	defer db.Close()
 
 	// Start periodically gathering memory profiles
+	// メモリプロファイルの定期的な収集を開始します
 	var peakMemAlloc, peakMemSys uint64
 	go func() {
 		stats := new(runtime.MemStats)
@@ -263,6 +289,7 @@ func importChain(ctx *cli.Context) error {
 		}
 	}()
 	// Import the chain
+	// チェーンをインポートします
 	start := time.Now()
 
 	var importErr error
@@ -284,9 +311,11 @@ func importChain(ctx *cli.Context) error {
 	fmt.Printf("Import done in %v.\n\n", time.Since(start))
 
 	// Output pre-compaction stats mostly to see the import trashing
+	// 圧縮前の統計を出力して、インポートのトラッシングを確認します
 	showLeveldbStats(db)
 
 	// Print the memory statistics used by the importing
+	// インポートで使用されたメモリ統計を出力します
 	mem := new(runtime.MemStats)
 	runtime.ReadMemStats(mem)
 
@@ -300,6 +329,7 @@ func importChain(ctx *cli.Context) error {
 	}
 
 	// Compact the entire database to more accurately measure disk io and print the stats
+	// データベース全体を圧縮して、ディスクIOをより正確に測定し、統計を出力します
 	start = time.Now()
 	fmt.Println("Compacting entire database...")
 	if err := db.Compact(nil, nil); err != nil {
@@ -328,13 +358,14 @@ func exportChain(ctx *cli.Context) error {
 		err = utils.ExportChain(chain, fp)
 	} else {
 		// This can be improved to allow for numbers larger than 9223372036854775807
+		// これを改善して、9223372036854775807より大きい数値を許可することができます
 		first, ferr := strconv.ParseInt(ctx.Args().Get(1), 10, 64)
 		last, lerr := strconv.ParseInt(ctx.Args().Get(2), 10, 64)
 		if ferr != nil || lerr != nil {
-			utils.Fatalf("Export error in parsing parameters: block number not an integer\n")
+			utils.Fatalf("Export error in parsing parameters: block number not an integer\n") // パラメータの解析でのエクスポートエラー：ブロック番号が整数ではありません
 		}
 		if first < 0 || last < 0 {
-			utils.Fatalf("Export error: block number must be greater than 0\n")
+			utils.Fatalf("Export error: block number must be greater than 0\n") // エクスポートエラー：ブロック番号は0より大きくなければなりません
 		}
 		if head := chain.CurrentFastBlock(); uint64(last) > head.NumberU64() {
 			utils.Fatalf("Export error: block number %d larger than head block %d\n", uint64(last), head.NumberU64())
@@ -350,6 +381,7 @@ func exportChain(ctx *cli.Context) error {
 }
 
 // importPreimages imports preimage data from the specified file.
+// importPreimagesは、指定されたファイルからプリイメージデータをインポートします。
 func importPreimages(ctx *cli.Context) error {
 	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
@@ -369,6 +401,7 @@ func importPreimages(ctx *cli.Context) error {
 }
 
 // exportPreimages dumps the preimage data to specified json file in streaming way.
+// exportPreimagesは、ストリーミング方式でプレイメージデータを指定されたjsonファイルにダンプします。
 func exportPreimages(ctx *cli.Context) error {
 	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
@@ -414,6 +447,7 @@ func parseDumpConfig(ctx *cli.Context, stack *node.Node) (*state.DumpConfig, eth
 		}
 	} else {
 		// Use latest
+		// 最新のものを使用します
 		header = rawdb.ReadHeadHeader(db)
 	}
 	if header == nil {
@@ -460,9 +494,9 @@ func dump(ctx *cli.Context) error {
 		state.IterativeDump(conf, json.NewEncoder(os.Stdout))
 	} else {
 		if conf.OnlyWithAddresses {
-			fmt.Fprintf(os.Stderr, "If you want to include accounts with missing preimages, you need iterative output, since"+
-				" otherwise the accounts will overwrite each other in the resulting mapping.")
-			return fmt.Errorf("incompatible options")
+			fmt.Fprintf(os.Stderr, "If you want to include accounts with missing preimages, you need iterative output, since"+ // プレイメージが欠落しているアカウントを含める場合は、反復出力が必要です。
+				" otherwise the accounts will overwrite each other in the resulting mapping.") // そうしないと、結果のマッピングでアカウントが相互に上書きされるためです。
+			return fmt.Errorf("incompatible options") // 互換性のないオプション
 		}
 		fmt.Println(string(state.Dump(conf)))
 	}
@@ -470,6 +504,7 @@ func dump(ctx *cli.Context) error {
 }
 
 // hashish returns true for strings that look like hashes.
+// ハッシュは、ハッシュのように見える文字列に対してtrueを返します。
 func hashish(x string) bool {
 	_, err := strconv.Atoi(x)
 	return err != nil

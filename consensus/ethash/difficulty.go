@@ -79,6 +79,10 @@ func CalcDifficultyFrontierU256(time uint64, parent *types.Header) *big.Int {
 // CalcDifficultyHomesteadU256 is the difficulty adjustment algorithm. It returns
 // the difficulty that a new block should have when created at time given the
 // parent block's time and difficulty. The calculation uses the Homestead rules.
+
+// CalcDifficultyHomesteadU256は難易度調整アルゴリズムです。
+// 親ブロックの時間と難易度を考慮して、新しいブロックがその時点で作成されたときに持つべき難易度を返します。
+// 計算にはホームステッドルールが使用されます。
 func CalcDifficultyHomesteadU256(time uint64, parent *types.Header) *big.Int {
 	/*
 		https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2.md
@@ -120,6 +124,7 @@ func CalcDifficultyHomesteadU256(time uint64, parent *types.Header) *big.Int {
 		pDiff.SetUint64(minimumDifficulty)
 	}
 	// for the exponential factor, a.k.a "the bomb"
+	// 指数因子の場合、別名「爆弾」
 	// diff = diff + 2^(periodCount - 2)
 	if periodCount := (1 + parent.Number.Uint64()) / expDiffPeriodUint; periodCount > 1 {
 		expFactor := adjust.Lsh(adjust.SetOne(), uint(periodCount-2))
@@ -131,9 +136,13 @@ func CalcDifficultyHomesteadU256(time uint64, parent *types.Header) *big.Int {
 // MakeDifficultyCalculatorU256 creates a difficultyCalculator with the given bomb-delay.
 // the difficulty is calculated with Byzantium rules, which differs from Homestead in
 // how uncles affect the calculation
+// MakeDifficultyCalculatorU256は、指定された爆弾遅延で難易​​度計算機を作成します。
+//難易度はビザンチウムのルールで計算されます。これは、叔父が計算に与える影響がホームステッドとは異なります。
 func MakeDifficultyCalculatorU256(bombDelay *big.Int) func(time uint64, parent *types.Header) *big.Int {
 	// Note, the calculations below looks at the parent number, which is 1 below
 	// the block number. Thus we remove one from the delay given
+	// 以下の計算では、ブロック番号の1つ下にある親番号を調べていることに注意してください。
+	// したがって、与えられた遅延から1つを削除します
 	bombDelayFromParent := bombDelay.Uint64() - 1
 	return func(time uint64, parent *types.Header) *big.Int {
 		/*
@@ -145,13 +154,14 @@ func MakeDifficultyCalculatorU256(bombDelay *big.Int) func(time uint64, parent *
 			child_diff = max(a,b )
 		*/
 		x := (time - parent.Time) / 9 // (block_timestamp - parent_timestamp) // 9
-		c := uint64(1)                // if parent.unclehash == emptyUncleHashHash
+		c := uint64(1)                // parent.unclehash == emptyUncleHashHashの場合 // if parent.unclehash == emptyUncleHashHash
 		if parent.UncleHash != types.EmptyUncleHash {
 			c = 2
 		}
 		xNeg := x >= c
 		if xNeg {
 			// x is now _negative_ adjustment factor
+			// xは_negative_調整係数になりました
 			x = x - c // - ( (t-p)/p -( 2 or 1) )
 		} else {
 			x = c - x // (2 or 1) - (t-p)/9
@@ -173,10 +183,12 @@ func MakeDifficultyCalculatorU256(bombDelay *big.Int) func(time uint64, parent *
 			y.Add(pDiff, z) // y: parent_diff + parent_diff/2048 * adjustment_factor
 		}
 		// minimum difficulty can ever be (before exponential factor)
+		// 最小の難易度は（指数因子の前に）あり得る
 		if y.LtUint64(minimumDifficulty) {
 			y.SetUint64(minimumDifficulty)
 		}
 		// calculate a fake block number for the ice-age delay
+		// 氷河期の遅延の偽のブロック番号を計算します
 		// Specification: https://eips.ethereum.org/EIPS/eip-1234
 		var pNum = parent.Number.Uint64()
 		if pNum >= bombDelayFromParent {

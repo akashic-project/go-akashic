@@ -37,13 +37,16 @@ var adapterType = flag.String("adapter", "sim", `node adapter to use (one of "si
 
 // main() starts a simulation network which contains nodes running a simple
 // ping-pong protocol
+// main（）は、単純なピンポンプロトコルを実行しているノードを含むシミュレーションネットワークを開始します
 func main() {
 	flag.Parse()
 
 	// set the log level to Trace
+	// ログレベルをトレースに設定します
 	log.Root().SetHandler(log.LvlFilterHandler(log.LvlTrace, log.StreamHandler(os.Stderr, log.TerminalFormat(false))))
 
 	// register a single ping-pong service
+	// 単一のピンポンサービスを登録する
 	services := map[string]adapters.LifecycleConstructor{
 		"ping-pong": func(ctx *adapters.ServiceContext, stack *node.Node) (node.Lifecycle, error) {
 			pps := newPingPongService(ctx.Config.ID)
@@ -54,6 +57,7 @@ func main() {
 	adapters.RegisterLifecycles(services)
 
 	// create the NodeAdapter
+	// NodeAdapterを作成します
 	var adapter adapters.NodeAdapter
 
 	switch *adapterType {
@@ -76,6 +80,7 @@ func main() {
 	}
 
 	// start the HTTP API
+	// HTTPAPIを開始します
 	log.Info("starting simulation server on 0.0.0.0:8888...")
 	network := simulations.NewNetwork(adapter, &simulations.NetworkConfig{
 		DefaultService: "ping-pong",
@@ -88,6 +93,8 @@ func main() {
 // pingPongService runs a ping-pong protocol between nodes where each node
 // sends a ping to all its connected peers every 10s and receives a pong in
 // return
+// pingPongServiceは、ノード間でping-pongプロトコルを実行します。
+// 各ノードは、接続されているすべてのピアに10秒ごとにpingを送信し、代わりにpongを受信します。
 type pingPongService struct {
 	id       enode.ID
 	log      log.Logger
@@ -136,6 +143,8 @@ const (
 
 // Run implements the ping-pong protocol which sends ping messages to the peer
 // at 10s intervals, and responds to pings with pong messages.
+// Runは、pingメッセージを10秒間隔でピアに送信し、
+// pingメッセージでpingに応答するping-pongプロトコルを実装します。
 func (p *pingPongService) Run(peer *p2p.Peer, rw p2p.MsgReadWriter) error {
 	log := p.log.New("peer.id", peer.ID())
 

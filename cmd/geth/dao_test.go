@@ -29,6 +29,7 @@ import (
 )
 
 // Genesis block for nodes which don't care about the DAO fork (i.e. not configured)
+// DAOフォークを気にしない（つまり、構成されていない）ノードのジェネシスブロック
 var daoOldGenesis = `{
 	"alloc"      : {},
 	"coinbase"   : "0x0000000000000000000000000000000000000000",
@@ -45,6 +46,7 @@ var daoOldGenesis = `{
 }`
 
 // Genesis block for nodes which actively oppose the DAO fork
+// DAOフォークに積極的に反対するノードのジェネシスブロック
 var daoNoForkGenesis = `{
 	"alloc"      : {},
 	"coinbase"   : "0x0000000000000000000000000000000000000000",
@@ -63,6 +65,7 @@ var daoNoForkGenesis = `{
 }`
 
 // Genesis block for nodes which actively support the DAO fork
+// DAOフォークをアクティブにサポートするノードのジェネシスブロック
 var daoProForkGenesis = `{
 	"alloc"      : {},
 	"coinbase"   : "0x0000000000000000000000000000000000000000",
@@ -85,6 +88,8 @@ var daoGenesisForkBlock = big.NewInt(314)
 
 // TestDAOForkBlockNewChain tests that the DAO hard-fork number and the nodes support/opposition is correctly
 // set in the database after various initialization procedures and invocations.
+// TestDAOForkBlockNewChainは、さまざまな初期化手順と呼び出しの後に、
+// DAOハードフォーク番号とノードのサポート/反対がデータベースに正しく設定されていることをテストします。
 func TestDAOForkBlockNewChain(t *testing.T) {
 	for i, arg := range []struct {
 		genesis     string
@@ -92,12 +97,16 @@ func TestDAOForkBlockNewChain(t *testing.T) {
 		expectVote  bool
 	}{
 		// Test DAO Default Mainnet
+		// DAOのデフォルトのメインネットをテストします
 		{"", params.MainnetChainConfig.DAOForkBlock, true},
 		// test DAO Init Old Privnet
+		// DAO Init OldPrivnetをテストします
 		{daoOldGenesis, nil, false},
 		// test DAO Default No Fork Privnet
+		// DAOのデフォルトのフォークプライベートなしをテストします
 		{daoNoForkGenesis, daoGenesisForkBlock, false},
 		// test DAO Default Pro Fork Privnet
+		// DAO Default Pro ForkPrivnetをテストします
 		{daoProForkGenesis, daoGenesisForkBlock, true},
 	} {
 		testDAOForkBlockNewChain(t, i, arg.genesis, arg.expectBlock, arg.expectVote)
@@ -106,10 +115,12 @@ func TestDAOForkBlockNewChain(t *testing.T) {
 
 func testDAOForkBlockNewChain(t *testing.T, test int, genesis string, expectBlock *big.Int, expectVote bool) {
 	// Create a temporary data directory to use and inspect later
+	// 後で使用および検査するための一時データディレクトリを作成します
 	datadir := tmpdir(t)
 	defer os.RemoveAll(datadir)
 
 	// Start a Geth instance with the requested flags set and immediately terminate
+	// 要求されたフラグを設定してGethインスタンスを開始し、すぐに終了します
 	if genesis != "" {
 		json := filepath.Join(datadir, "genesis.json")
 		if err := ioutil.WriteFile(json, []byte(genesis), 0600); err != nil {
@@ -118,10 +129,12 @@ func testDAOForkBlockNewChain(t *testing.T, test int, genesis string, expectBloc
 		runGeth(t, "--datadir", datadir, "--networkid", "1337", "init", json).WaitExit()
 	} else {
 		// Force chain initialization
+		// チェーンの初期化を強制します
 		args := []string{"--port", "0", "--networkid", "1337", "--maxpeers", "0", "--nodiscover", "--nat", "none", "--ipcdisable", "--datadir", datadir}
 		runGeth(t, append(args, []string{"--exec", "2+2", "console"}...)...).WaitExit()
 	}
 	// Retrieve the DAO config flag from the database
+	// データベースからDAO構成フラグを取得します
 	path := filepath.Join(datadir, "geth", "chaindata")
 	db, err := rawdb.NewLevelDBDatabase(path, 0, 0, "", false)
 	if err != nil {
@@ -136,9 +149,10 @@ func testDAOForkBlockNewChain(t *testing.T, test int, genesis string, expectBloc
 	config := rawdb.ReadChainConfig(db, genesisHash)
 	if config == nil {
 		t.Errorf("test %d: failed to retrieve chain config: %v", test, err)
-		return // we want to return here, the other checks can't make it past this point (nil panic).
+		return // ここに戻りたいのですが、他のチェックではこのポイントを通過できません（パニックなし）。// we want to return here, the other checks can't make it past this point (nil panic).
 	}
 	// Validate the DAO hard-fork block number against the expected value
+	// DAOハードフォークブロック番号を期待値と照合して検証します
 	if config.DAOForkBlock == nil {
 		if expectBlock != nil {
 			t.Errorf("test %d: dao hard-fork block mismatch: have nil, want %v", test, expectBlock)

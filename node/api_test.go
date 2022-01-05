@@ -31,6 +31,8 @@ import (
 
 // This test uses the admin_startRPC and admin_startWS APIs,
 // checking whether the HTTP server is started correctly.
+// このテストでは、admin_startRPCおよびadmin_startWS APIを使用して、
+// HTTPサーバーが正しく起動されているかどうかを確認します。
 func TestStartRPC(t *testing.T) {
 	type test struct {
 		name string
@@ -38,10 +40,11 @@ func TestStartRPC(t *testing.T) {
 		fn   func(*testing.T, *Node, *privateAdminAPI)
 
 		// Checks. These run after the node is configured and all API calls have been made.
-		wantReachable bool // whether the HTTP server should be reachable at all
-		wantHandlers  bool // whether RegisterHandler handlers should be accessible
-		wantRPC       bool // whether JSON-RPC/HTTP should be accessible
-		wantWS        bool // whether JSON-RPC/WS should be accessible
+		// チェックします。これらは、ノードが構成され、すべてのAPI呼び出しが行われた後に実行されます。
+		wantReachable bool // whether the HTTP server should be reachable at all  HTTPサーバーに到達可能かどうか
+		wantHandlers  bool // whether RegisterHandler handlers should be accessible  RegisterHandlerハンドラーにアクセスできるかどうか
+		wantRPC       bool // whether JSON-RPC/HTTP should be accessible  		JSON-RPC / HTTPにアクセスできるかどうか
+		wantWS        bool // whether JSON-RPC/WS should be accessible     JSON-RPC / WSにアクセスできるかどうか
 	}
 
 	tests := []test{
@@ -82,6 +85,7 @@ func TestStartRPC(t *testing.T) {
 			cfg:  Config{},
 			fn: func(t *testing.T, n *Node, api *privateAdminAPI) {
 				// Listen on a random port.
+				// ランダムなポートでリッスンします。
 				listener, err := net.Listen("tcp", "127.0.0.1:0")
 				if err != nil {
 					t.Fatal("can't listen:", err)
@@ -90,12 +94,14 @@ func TestStartRPC(t *testing.T) {
 				port := listener.Addr().(*net.TCPAddr).Port
 
 				// Now try to start RPC on that port. This should fail.
+				// 次に、そのポートでRPCを開始してみます。これは失敗するはずです。
 				_, err = api.StartHTTP(sp("127.0.0.1"), ip(port), nil, nil, nil)
 				if err == nil {
 					t.Fatal("StartHTTP should have failed on port", port)
 				}
 
 				// Try again after unblocking the port. It should work this time.
+				// ポートのブロックを解除した後、もう一度やり直してください。今回はうまくいくはずです。
 				listener.Close()
 				_, err = api.StartHTTP(sp("127.0.0.1"), ip(port), nil, nil, nil)
 				assert.NoError(t, err)
@@ -249,6 +255,7 @@ func TestStartRPC(t *testing.T) {
 			t.Parallel()
 
 			// Apply some sane defaults.
+			// いくつかの正しいデフォルトを適用します。
 			config := test.cfg
 			// config.Logger = testlog.Logger(t, log.LvlDebug)
 			config.P2P.NoDiscovery = true
@@ -261,6 +268,7 @@ func TestStartRPC(t *testing.T) {
 			defer stack.Close()
 
 			// Register the test handler.
+			// テストハンドラーを登録します。
 			stack.RegisterHandler("test", "/test", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Write([]byte("OK"))
 			}))
@@ -270,11 +278,13 @@ func TestStartRPC(t *testing.T) {
 			}
 
 			// Run the API call hook.
+			// API呼び出しフックを実行します。
 			if test.fn != nil {
 				test.fn(t, stack, &privateAdminAPI{stack})
 			}
 
 			// Check if the HTTP endpoints are available.
+			// HTTPエンドポイントが使用可能かどうかを確認します。
 			baseURL := stack.HTTPEndpoint()
 			reachable := checkReachable(baseURL)
 			handlersAvailable := checkBodyOK(baseURL + "/test")
@@ -297,6 +307,7 @@ func TestStartRPC(t *testing.T) {
 }
 
 // checkReachable checks if the TCP endpoint in rawurl is open.
+// checkReachableは、rawurlのTCPエンドポイントが開いているかどうかを確認します。
 func checkReachable(rawurl string) bool {
 	u, err := url.Parse(rawurl)
 	if err != nil {
@@ -311,6 +322,7 @@ func checkReachable(rawurl string) bool {
 }
 
 // checkBodyOK checks whether the given HTTP URL responds with 200 OK and body "OK".
+// checkBodyOKは、指定されたHTTPURLが200OKおよび本文「OK」で応答するかどうかをチェックします。
 func checkBodyOK(url string) bool {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -329,6 +341,7 @@ func checkBodyOK(url string) bool {
 }
 
 // checkRPC checks whether JSON-RPC works against the given URL.
+// checkRPCは、JSON-RPCが指定されたURLに対して機能するかどうかをチェックします。
 func checkRPC(url string) bool {
 	c, err := rpc.Dial(url)
 	if err != nil {
@@ -341,6 +354,7 @@ func checkRPC(url string) bool {
 }
 
 // string/int pointer helpers.
+// 文字列/整数ポインタヘルパー。
 func sp(s string) *string { return &s }
 func ip(i int) *int       { return &i }
 

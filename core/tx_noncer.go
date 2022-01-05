@@ -26,6 +26,8 @@ import (
 // txNoncer is a tiny virtual state database to manage the executable nonces of
 // accounts in the pool, falling back to reading from a real state database if
 // an account is unknown.
+// txNoncerは、プール内のアカウントの実行可能なナンスを管理するための小さな仮想状態データベースであり、
+// アカウントが不明な場合は実際の状態データベースからの読み取りにフォールバックします。
 type txNoncer struct {
 	fallback *state.StateDB
 	nonces   map[common.Address]uint64
@@ -33,6 +35,7 @@ type txNoncer struct {
 }
 
 // newTxNoncer creates a new virtual state database to track the pool nonces.
+// newTxNoncerは、プールナンスを追跡するための新しい仮想状態データベースを作成します。
 func newTxNoncer(statedb *state.StateDB) *txNoncer {
 	return &txNoncer{
 		fallback: statedb.Copy(),
@@ -42,9 +45,11 @@ func newTxNoncer(statedb *state.StateDB) *txNoncer {
 
 // get returns the current nonce of an account, falling back to a real state
 // database if the account is unknown.
+// getはアカウントの現在のナンスを返し、アカウントが不明な場合は実際の状態のデータベースにフォールバックします。
 func (txn *txNoncer) get(addr common.Address) uint64 {
 	// We use mutex for get operation is the underlying
 	// state will mutate db even for read access.
+	// get操作にミューテックスを使用します。基礎となる状態は、読み取りアクセスの場合でもdbをミューテーションします。
 	txn.lock.Lock()
 	defer txn.lock.Unlock()
 
@@ -56,6 +61,8 @@ func (txn *txNoncer) get(addr common.Address) uint64 {
 
 // set inserts a new virtual nonce into the virtual state database to be returned
 // whenever the pool requests it instead of reaching into the real state database.
+// setは、実際の状態データベースに到達する代わりに、
+// プールが要求するたびに返される仮想状態データベースに新しい仮想ナンスを挿入します。
 func (txn *txNoncer) set(addr common.Address, nonce uint64) {
 	txn.lock.Lock()
 	defer txn.lock.Unlock()
@@ -65,6 +72,7 @@ func (txn *txNoncer) set(addr common.Address, nonce uint64) {
 
 // setIfLower updates a new virtual nonce into the virtual state database if the
 // the new one is lower.
+// setIfLowerは、新しい仮想ナンスが低い場合、新しい仮想ナンスを仮想状態データベースに更新します。
 func (txn *txNoncer) setIfLower(addr common.Address, nonce uint64) {
 	txn.lock.Lock()
 	defer txn.lock.Unlock()
@@ -79,6 +87,7 @@ func (txn *txNoncer) setIfLower(addr common.Address, nonce uint64) {
 }
 
 // setAll sets the nonces for all accounts to the given map.
+// setAllは、すべてのアカウントのナンスを指定されたマップに設定します。
 func (txn *txNoncer) setAll(all map[common.Address]uint64) {
 	txn.lock.Lock()
 	defer txn.lock.Unlock()

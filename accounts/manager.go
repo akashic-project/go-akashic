@@ -27,6 +27,7 @@ import (
 
 // managerSubBufferSize determines how many incoming wallet events
 // the manager will buffer in its channel.
+// managerSubBufferSizeは、マネージャーがチャネルにバッファリングする着信ウォレットイベントの数を決定します。
 const managerSubBufferSize = 50
 
 // Config contains the settings of the global account manager.
@@ -46,23 +47,25 @@ type newBackendEvent struct {
 
 // Manager is an overarching account manager that can communicate with various
 // backends for signing transactions.
+// Managerは、トランザクションに署名するためにさまざまなバックエンドと通信できる包括的なアカウントマネージャーです。
 type Manager struct {
-	config      *Config                    // Global account manager configurations
-	backends    map[reflect.Type][]Backend // Index of backends currently registered
-	updaters    []event.Subscription       // Wallet update subscriptions for all backends
-	updates     chan WalletEvent           // Subscription sink for backend wallet changes
-	newBackends chan newBackendEvent       // Incoming backends to be tracked by the manager
-	wallets     []Wallet                   // Cache of all wallets from all registered backends
+	config      *Config                    // グローバルアカウントマネージャーの構成                        // Global account manager configurations
+	backends    map[reflect.Type][]Backend // 現在登録されているバックエンドのインデックス                   // Index of backends currently registered
+	updaters    []event.Subscription       // すべてのバックエンドのウォレット更新サブスクリプション          // Wallet update subscriptions for all backends
+	updates     chan WalletEvent           // バックエンドウォレットの変更のためのサブスクリプションシンク     // Subscription sink for backend wallet changes
+	newBackends chan newBackendEvent       // マネージャーが追跡する着信バックエンド // Incoming backends to be tracked by the manager
+	wallets     []Wallet                   // 登録されているすべてのバックエンドからのすべてのウォレットのキャッシュ // Cache of all wallets from all registered backends
 
-	feed event.Feed // Wallet feed notifying of arrivals/departures
+	feed event.Feed //到着/出発を通知するウォレットフィード // Wallet feed notifying of arrivals/departures
 
 	quit chan chan error
-	term chan struct{} // Channel is closed upon termination of the update loop
+	term chan struct{} // 更新ループの終了時にチャネルが閉じられます // Channel is closed upon termination of the update loop
 	lock sync.RWMutex
 }
 
 // NewManager creates a generic account manager to sign transaction via various
 // supported backends.
+// NewManagerは、サポートされているさまざまなバックエンドを介してトランザクションに署名するための汎用アカウントマネージャーを作成します。
 func NewManager(config *Config, backends ...Backend) *Manager {
 	// Retrieve the initial list of wallets from the backends and sort by URL
 	var wallets []Wallet

@@ -41,12 +41,14 @@ type testgeth struct {
 	*cmdtest.TestCmd
 
 	// template variables for expect
+	// expectのテンプレート変数
 	Datadir   string
 	Etherbase string
 }
 
 func init() {
 	// Run the app if we've been exec'd as "geth-test" in runGeth.
+	// runGethで「geth-test」として実行された場合は、アプリを実行します。
 	reexec.Register("geth-test", func() {
 		if err := app.Run(os.Args); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -58,6 +60,7 @@ func init() {
 
 func TestMain(m *testing.M) {
 	// check if we have been reexec'd
+	// 再実行されたかどうかを確認します
 	if reexec.Init() {
 		return
 	}
@@ -66,6 +69,8 @@ func TestMain(m *testing.M) {
 
 // spawns geth with the given command line args. If the args don't set --datadir, the
 // child g gets a temporary data directory.
+// 指定されたコマンドライン引数でgethを生成します。
+//  argsが--datadirを設定しない場合、子gは一時データディレクトリを取得します。
 func runGeth(t *testing.T, args ...string) *testgeth {
 	tt := &testgeth{}
 	tt.TestCmd = cmdtest.NewTestCmd(t, tt)
@@ -86,6 +91,7 @@ func runGeth(t *testing.T, args ...string) *testgeth {
 		tt.Cleanup = func() { os.RemoveAll(tt.Datadir) }
 		args = append([]string{"--datadir", tt.Datadir}, args...)
 		// Remove the temporary datadir if something fails below.
+		// 以下で問題が発生した場合は、一時データディレクトリを削除します。
 		defer func() {
 			if t.Failed() {
 				tt.Cleanup()
@@ -95,12 +101,15 @@ func runGeth(t *testing.T, args ...string) *testgeth {
 
 	// Boot "geth". This actually runs the test binary but the TestMain
 	// function will prevent any tests from running.
+	//「geth」を起動します。これは実際にはテストバイナリを実行しますが、
+	// TestMain関数はテストの実行を防ぎます。
 	tt.Run("geth-test", args...)
 
 	return tt
 }
 
 // waitForEndpoint attempts to connect to an RPC endpoint until it succeeds.
+// waitForEndpointは、成功するまでRPCエンドポイントへの接続を試みます。
 func waitForEndpoint(t *testing.T, endpoint string, timeout time.Duration) {
 	probe := func() bool {
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)

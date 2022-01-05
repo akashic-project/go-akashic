@@ -23,6 +23,7 @@ import (
 )
 
 // senderCacher is a concurrent transaction sender recoverer and cacher.
+// senderCacherは、同時トランザクションの送信者リカバリとキャッシャーです。
 var senderCacher = newTxSenderCacher(runtime.NumCPU())
 
 // txSenderCacherRequest is a request for recovering transaction senders with a
@@ -31,6 +32,12 @@ var senderCacher = newTxSenderCacher(runtime.NumCPU())
 // The inc field defines the number of transactions to skip after each recovery,
 // which is used to feed the same underlying input array to different threads but
 // ensure they process the early transactions fast.
+// txSenderCacherRequestは、特定の署名スキームを使用してトランザクション送信者を回復し、
+// それをトランザクション自体にキャッシュするためのリクエストです。
+//
+// incフィールドは、各リカバリ後にスキップするトランザクションの数を定義します。
+// これは、同じ基になる入力配列を異なるスレッドにフィードするために使用されますが、
+// 初期のトランザクションを高速に処理します。
 type txSenderCacherRequest struct {
 	signer types.Signer
 	txs    []*types.Transaction
@@ -39,6 +46,8 @@ type txSenderCacherRequest struct {
 
 // txSenderCacher is a helper structure to concurrently ecrecover transaction
 // senders from digital signatures on background threads.
+// txSenderCacherは、トランザクションを同時にecrecoverするためのヘルパー構造です
+// バックグラウンドスレッドのデジタル署名からの送信者。
 type txSenderCacher struct {
 	threads int
 	tasks   chan *txSenderCacherRequest
@@ -46,6 +55,8 @@ type txSenderCacher struct {
 
 // newTxSenderCacher creates a new transaction sender background cacher and starts
 // as many processing goroutines as allowed by the GOMAXPROCS on construction.
+// newTxSenderCacherは、新しいトランザクション送信者のバックグラウンドキャッシャーを作成し、
+// 構築時にGOMAXPROCSで許可されている数の処理ゴルーチンを開始します。
 func newTxSenderCacher(threads int) *txSenderCacher {
 	cacher := &txSenderCacher{
 		tasks:   make(chan *txSenderCacherRequest, threads),
@@ -59,6 +70,7 @@ func newTxSenderCacher(threads int) *txSenderCacher {
 
 // cache is an infinite loop, caching transaction senders from various forms of
 // data structures.
+//キャッシュは無限ループであり、さまざまな形式のデータ構造からトランザクション送信者をキャッシュします。
 func (cacher *txSenderCacher) cache() {
 	for task := range cacher.tasks {
 		for i := 0; i < len(task.txs); i += task.inc {
@@ -70,12 +82,16 @@ func (cacher *txSenderCacher) cache() {
 // recover recovers the senders from a batch of transactions and caches them
 // back into the same data structures. There is no validation being done, nor
 // any reaction to invalid signatures. That is up to calling code later.
+// restoreは、トランザクションのバッチから送信者を回復し、それらを同じデータ構造にキャッシュします。
+// 検証は行われず、無効な署名に対する反応もありません。 それは後でコードを呼び出すことまでです。
 func (cacher *txSenderCacher) recover(signer types.Signer, txs []*types.Transaction) {
 	// If there's nothing to recover, abort
+	// 回復するものがない場合は、中止します
 	if len(txs) == 0 {
 		return
 	}
 	// Ensure we have meaningful task sizes and schedule the recoveries
+	// 意味のあるタスクサイズがあることを確認し、リカバリをスケジュールします
 	tasks := cacher.threads
 	if len(txs) < tasks*4 {
 		tasks = (len(txs) + 3) / 4
@@ -92,6 +108,8 @@ func (cacher *txSenderCacher) recover(signer types.Signer, txs []*types.Transact
 // recoverFromBlocks recovers the senders from a batch of blocks and caches them
 // back into the same data structures. There is no validation being done, nor
 // any reaction to invalid signatures. That is up to calling code later.
+// restoreFromBlocksは、ブロックのバッチから送信者を回復し、それらを同じデータ構造にキャッシュします。
+// 検証は行われず、無効な署名に対する反応もありません。 それは後でコードを呼び出すことまでです。
 func (cacher *txSenderCacher) recoverFromBlocks(signer types.Signer, blocks []*types.Block) {
 	count := 0
 	for _, block := range blocks {

@@ -34,12 +34,14 @@ var (
 )
 
 // PrivateLightServerAPI provides an API to access the LES light server.
+// PrivateLightServerAPIは、LESライトサーバーにアクセスするためのAPIを提供します。
 type PrivateLightServerAPI struct {
 	server                               *LesServer
 	defaultPosFactors, defaultNegFactors vfs.PriceFactors
 }
 
 // NewPrivateLightServerAPI creates a new LES light server API.
+// NewPrivateLightServerAPIは、新しいLESライトサーバーAPIを作成します。
 func NewPrivateLightServerAPI(server *LesServer) *PrivateLightServerAPI {
 	return &PrivateLightServerAPI{
 		server:            server,
@@ -49,6 +51,7 @@ func NewPrivateLightServerAPI(server *LesServer) *PrivateLightServerAPI {
 }
 
 // parseNode parses either an enode address a raw hex node id
+// parseNodeは、enodeアドレスまたは生のhexノードIDのいずれかを解析します
 func parseNode(node string) (enode.ID, error) {
 	if id, err := enode.ParseID(node); err == nil {
 		return id, nil
@@ -61,6 +64,7 @@ func parseNode(node string) (enode.ID, error) {
 }
 
 // ServerInfo returns global server parameters
+// ServerInfoはグローバルサーバーパラメータを返します
 func (api *PrivateLightServerAPI) ServerInfo() map[string]interface{} {
 	res := make(map[string]interface{})
 	res["minimumCapacity"] = api.server.minCapacity
@@ -72,6 +76,7 @@ func (api *PrivateLightServerAPI) ServerInfo() map[string]interface{} {
 }
 
 // ClientInfo returns information about clients listed in the ids list or matching the given tags
+// ClientInfoは、IDリストにリストされているクライアント、または指定されたタグに一致するクライアントに関する情報を返します
 func (api *PrivateLightServerAPI) ClientInfo(nodes []string) map[enode.ID]map[string]interface{} {
 	var ids []enode.ID
 	for _, node := range nodes {
@@ -102,6 +107,9 @@ func (api *PrivateLightServerAPI) ClientInfo(nodes []string) map[enode.ID]map[st
 // If maxCount limit is applied but there are more potential results then the ID
 // of the next potential result is included in the map with an empty structure
 // assigned to it.
+// PriorityClientInfoは、指定されたID範囲（停止を除外）で正のバランスを持つクライアントに関する情報を返します。
+// stopがnullの場合、イテレータはIDスペースの最後でのみ停止します。 MaxCountは、返される結果の数を制限します。
+// maxCount制限が適用されているが、より多くの潜在的な結果がある場合、次の潜在的な結果のIDがマップに含まれ、空の構造が割り当てられます。
 func (api *PrivateLightServerAPI) PriorityClientInfo(start, stop enode.ID, maxCount int) map[enode.ID]map[string]interface{} {
 	res := make(map[enode.ID]map[string]interface{})
 	ids := api.server.clientPool.GetPosBalanceIDs(start, stop, maxCount+1)
@@ -122,6 +130,7 @@ func (api *PrivateLightServerAPI) PriorityClientInfo(start, stop enode.ID, maxCo
 }
 
 // clientInfo creates a client info data structure
+// clientInfoは、クライアント情報データ構造を作成します
 func (api *PrivateLightServerAPI) clientInfo(peer *clientPeer, balance vfs.ReadOnlyBalance) map[string]interface{} {
 	info := make(map[string]interface{})
 	pb, nb := balance.GetBalance()
@@ -140,6 +149,8 @@ func (api *PrivateLightServerAPI) clientInfo(peer *clientPeer, balance vfs.ReadO
 
 // setParams either sets the given parameters for a single connected client (if specified)
 // or the default parameters applicable to clients connected in the future
+// setParamsは、単一の接続されたクライアント（指定されている場合）に指定されたパラメーターを設定するか、
+// 将来接続されるクライアントに適用可能なデフォルトのパラメーターを設定します。
 func (api *PrivateLightServerAPI) setParams(params map[string]interface{}, client *clientPeer, posFactors, negFactors *vfs.PriceFactors) (updateFactors bool, err error) {
 	defParams := client == nil
 	for name, value := range params {
@@ -172,6 +183,7 @@ func (api *PrivateLightServerAPI) setParams(params map[string]interface{}, clien
 			if capacity, ok := value.(float64); ok && uint64(capacity) >= api.server.minCapacity {
 				_, err = api.server.clientPool.SetCapacity(client.Node(), uint64(capacity), 0, false)
 				// time factor recalculation is performed automatically by the balance tracker
+				// 時間係数の再計算は、バランストラッカーによって自動的に実行されます
 			} else {
 				err = errValue()
 			}
@@ -191,6 +203,8 @@ func (api *PrivateLightServerAPI) setParams(params map[string]interface{}, clien
 
 // SetClientParams sets client parameters for all clients listed in the ids list
 // or all connected clients if the list is empty
+// SetClientParamsは、IDリストにリストされているすべてのクライアント、
+// またはリストが空の場合は接続されているすべてのクライアントのクライアントパラメーターを設定します
 func (api *PrivateLightServerAPI) SetClientParams(nodes []string, params map[string]interface{}) error {
 	var err error
 	for _, node := range nodes {
@@ -215,6 +229,7 @@ func (api *PrivateLightServerAPI) SetClientParams(nodes []string, params map[str
 }
 
 // SetDefaultParams sets the default parameters applicable to clients connected in the future
+// SetDefaultParamsは、将来接続されるクライアントに適用可能なデフォルトパラメータを設定します
 func (api *PrivateLightServerAPI) SetDefaultParams(params map[string]interface{}) error {
 	update, err := api.setParams(params, nil, &api.defaultPosFactors, &api.defaultNegFactors)
 	if update {
@@ -227,6 +242,10 @@ func (api *PrivateLightServerAPI) SetDefaultParams(params map[string]interface{}
 // So that already connected client won't be kicked out very soon and we can ensure all
 // connected clients can have enough time to request or sync some data.
 // When the input parameter `bias` < 0 (illegal), return error.
+// SetConnectedBiasは、すでに接続されているクライアントに適用される接続バイアスを設定します。
+// これにより、すでに接続されているクライアントがすぐに追い出されることはなく、
+// 接続されているすべてのクライアントがデータを要求または同期するのに十分な時間を確保できます。
+// 入力パラメータ `bias` <0（不正）の場合、エラーを返します。
 func (api *PrivateLightServerAPI) SetConnectedBias(bias time.Duration) error {
 	if bias < time.Duration(0) {
 		return fmt.Errorf("bias illegal: %v less than 0", bias)
@@ -237,6 +256,7 @@ func (api *PrivateLightServerAPI) SetConnectedBias(bias time.Duration) error {
 
 // AddBalance adds the given amount to the balance of a client if possible and returns
 // the balance before and after the operation
+// AddBalanceは、可能であればクライアントの残高に指定された金額を追加し、操作の前後の残高を返します
 func (api *PrivateLightServerAPI) AddBalance(node string, amount int64) (balance [2]uint64, err error) {
 	var id enode.ID
 	if id, err = parseNode(node); err != nil {
@@ -251,9 +271,14 @@ func (api *PrivateLightServerAPI) AddBalance(node string, amount int64) (balance
 // Benchmark runs a request performance benchmark with a given set of measurement setups
 // in multiple passes specified by passCount. The measurement time for each setup in each
 // pass is specified in milliseconds by length.
+// ベンチマークは、passCountで指定された複数のパスで、
+// 指定された一連の測定セットアップを使用してリクエストパフォーマンスベンチマークを実行します。
+// 各パスの各セットアップの測定時間は、ミリ秒単位の長さで指定されます。
 //
 // Note: measurement time is adjusted for each pass depending on the previous ones.
 // Therefore a controlled total measurement time is achievable in multiple passes.
+// 注：測定時間は、前のパスに応じてパスごとに調整されます。
+// したがって、制御された合計測定時間は複数のパスで達成できます。
 func (api *PrivateLightServerAPI) Benchmark(setups []map[string]interface{}, passCount, length int) ([]map[string]interface{}, error) {
 	benchmarks := make([]requestBenchmark, len(setups))
 	for i, setup := range setups {

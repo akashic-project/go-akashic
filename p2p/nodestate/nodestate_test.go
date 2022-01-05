@@ -145,6 +145,7 @@ func TestSetField(t *testing.T) {
 	ns.Start()
 
 	// Set field before setting state
+	// 状態を設定する前にフィールドを設定する
 	ns.SetField(testNode(1), fields[0], "hello world")
 	field := ns.GetField(testNode(1), fields[0])
 	if field == nil {
@@ -156,6 +157,7 @@ func TestSetField(t *testing.T) {
 		t.Fatalf("Field should be unset")
 	}
 	// Set field after setting state
+	// 状態設定後のフィールド設定
 	ns.SetState(testNode(1), flags[0], Flags{}, 0)
 	ns.SetField(testNode(1), fields[0], "hello world")
 	field = ns.GetField(testNode(1), fields[0])
@@ -166,6 +168,7 @@ func TestSetField(t *testing.T) {
 		t.Fatalf("Invalid field should be rejected")
 	}
 	// Dirty node should be written back
+	// ダーティノードは書き戻す必要があります
 	ns.Stop()
 	select {
 	case <-saveNode:
@@ -368,7 +371,7 @@ func TestDuplicatedFlags(t *testing.T) {
 	}
 	ns.SetState(testNode(1), flags[0], Flags{}, time.Second)
 	check(Flags{}, flags[0], true)
-	ns.SetState(testNode(1), flags[0], Flags{}, 2*time.Second) // extend the timeout to 2s
+	ns.SetState(testNode(1), flags[0], Flags{}, 2*time.Second) // extend the timeout to 2s 	タイムアウトを2秒に延長します
 	check(Flags{}, flags[0], false)
 
 	clock.Run(2 * time.Second)

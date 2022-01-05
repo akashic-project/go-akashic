@@ -437,6 +437,7 @@ func TestRegisterHandler_Unsuccessful(t *testing.T) {
 }
 
 // Tests whether websocket requests can be handled on the same port as a regular http server.
+// WebSocketリクエストを通常のhttpサーバーと同じポートで処理できるかどうかをテストします。
 func TestWebsocketHTTPOnSamePort_WebsocketRequest(t *testing.T) {
 	node := startHTTP(t, 0, 0)
 	defer node.Close()

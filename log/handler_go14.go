@@ -7,6 +7,7 @@ import "sync/atomic"
 
 // swapHandler wraps another handler that may be swapped out
 // dynamically at runtime in a thread-safe fashion.
+// swapHandlerは、実行時にスレッドセーフな方法で動的にスワップアウトされる可能性のある別のハンドラーをラップします。
 type swapHandler struct {
 	handler atomic.Value
 }

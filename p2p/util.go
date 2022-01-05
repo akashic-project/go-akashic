@@ -23,25 +23,30 @@ import (
 )
 
 // expHeap tracks strings and their expiry time.
+// expHeapは、文字列とその有効期限を追跡します。
 type expHeap []expItem
 
 // expItem is an entry in addrHistory.
+// expItemはaddrHistoryのエントリです。
 type expItem struct {
 	item string
 	exp  mclock.AbsTime
 }
 
 // nextExpiry returns the next expiry time.
+// nextExpiryは、次の有効期限を返します。
 func (h *expHeap) nextExpiry() mclock.AbsTime {
 	return (*h)[0].exp
 }
 
 // add adds an item and sets its expiry time.
+// addはアイテムを追加し、その有効期限を設定します。
 func (h *expHeap) add(item string, exp mclock.AbsTime) {
 	heap.Push(h, expItem{item, exp})
 }
 
 // contains checks whether an item is present.
+// アイテムが存在するかどうかのチェックが含まれます。
 func (h expHeap) contains(item string) bool {
 	for _, v := range h {
 		if v.item == item {
@@ -52,6 +57,7 @@ func (h expHeap) contains(item string) bool {
 }
 
 // expire removes items with expiry time before 'now'.
+// expireは、「now」より前の有効期限を持つアイテムを削除します。
 func (h *expHeap) expire(now mclock.AbsTime, onExp func(string)) {
 	for h.Len() > 0 && h.nextExpiry() < now {
 		item := heap.Pop(h)
@@ -62,6 +68,7 @@ func (h *expHeap) expire(now mclock.AbsTime, onExp func(string)) {
 }
 
 // heap.Interface boilerplate
+// heap.Interfaceボイラープレート
 func (h expHeap) Len() int            { return len(h) }
 func (h expHeap) Less(i, j int) bool  { return h[i].exp < h[j].exp }
 func (h expHeap) Swap(i, j int)       { h[i], h[j] = h[j], h[i] }

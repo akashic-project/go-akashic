@@ -31,6 +31,7 @@ import (
 )
 
 // Tests that ethash works correctly in test mode.
+// ethashがテストモードで正しく機能することをテストします。
 func TestTestMode(t *testing.T) {
 	header := &types.Header{Number: big.NewInt(1), Difficulty: big.NewInt(100)}
 
@@ -56,6 +57,8 @@ func TestTestMode(t *testing.T) {
 
 // This test checks that cache lru logic doesn't crash under load.
 // It reproduces https://github.com/ethereum/go-ethereum/issues/14943
+// このテストは、キャッシュlruロジックが負荷時にクラッシュしないことを確認します。
+// https://github.com/ethereum/go-ethereum/issues/14943を再現します
 func TestCacheFileEvict(t *testing.T) {
 	tmpdir, err := ioutil.TempDir("", "ethash-test")
 	if err != nil {
@@ -110,6 +113,7 @@ func TestRemoteSealer(t *testing.T) {
 	sealhash := ethash.SealHash(header)
 
 	// Push new work.
+	// 新しい作業をプッシュします。
 	results := make(chan *types.Block)
 	ethash.Seal(nil, block, results, nil)
 
@@ -125,6 +129,7 @@ func TestRemoteSealer(t *testing.T) {
 		t.Error("expect to return false when submit a fake solution")
 	}
 	// Push new block with same block number to replace the original one.
+	// 同じブロック番号の新しいブロックをプッシュして、元のブロックを置き換えます。
 	header = &types.Header{Number: big.NewInt(1), Difficulty: big.NewInt(1000)}
 	block = types.NewBlockWithHeader(header)
 	sealhash = ethash.SealHash(header)
@@ -162,7 +167,7 @@ func TestHashrate(t *testing.T) {
 
 func TestClosedRemoteSealer(t *testing.T) {
 	ethash := NewTester(nil, false)
-	time.Sleep(1 * time.Second) // ensure exit channel is listening
+	time.Sleep(1 * time.Second) //出口チャネルがリッスンしていることを確認します // ensure exit channel is listening
 	ethash.Close()
 
 	api := &API{ethash}

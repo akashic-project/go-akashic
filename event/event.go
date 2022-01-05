@@ -38,6 +38,13 @@ type TypeMuxEvent struct {
 // The zero value is ready to use.
 //
 // Deprecated: use Feed
+// TypeMuxは、登録されたレシーバーにイベントをディスパッチします。
+// 受信者は、特定のタイプのイベントを処理するように登録できます。
+// muxが停止した後に呼び出された操作は、ErrMuxClosedを返します。
+//
+// ゼロ値を使用する準備ができました。
+//
+// 非推奨：フィードを使用
 type TypeMux struct {
 	mutex   sync.RWMutex
 	subm    map[reflect.Type][]*TypeMuxSubscription

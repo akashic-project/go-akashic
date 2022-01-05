@@ -61,9 +61,12 @@ import (
 
 // Config contains the configuration options of the ETH protocol.
 // Deprecated: use ethconfig.Config instead.
+// Configには、ETHプロトコルの構成オプションが含まれています。
+// 非推奨：代わりにethconfig.Configを使用してください。
 type Config = ethconfig.Config
 
 // Ethereum implements the Ethereum full node service.
+// イーサリアムはイーサリアムフルノードサービスを実装します。
 type Ethereum struct {
 	config *ethconfig.Config
 
@@ -82,8 +85,8 @@ type Ethereum struct {
 	engine         consensus.Engine
 	accountManager *accounts.Manager
 
-	bloomRequests     chan chan *bloombits.Retrieval // Channel receiving bloom data retrieval requests
-	bloomIndexer      *core.ChainIndexer             // Bloom indexer operating during block imports
+	bloomRequests     chan chan *bloombits.Retrieval // ブルームデータ取得リクエストを受信するチャネル // Channel receiving bloom data retrieval requests
+	bloomIndexer      *core.ChainIndexer             // ブロックのインポート中に動作するブルームインデクサー// Bloom indexer operating during block imports
 	closeBloomHandler chan struct{}
 
 	APIBackend *EthAPIBackend
@@ -97,15 +100,17 @@ type Ethereum struct {
 
 	p2pServer *p2p.Server
 
-	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
+	lock sync.RWMutex //可変個引数フィールド（ガス価格やエーテルベースなど）を保護します // Protects the variadic fields (e.g. gas price and etherbase)
 
 	shutdownTracker *shutdowncheck.ShutdownTracker // Tracks if and when the node has shutdown ungracefully
 }
 
 // New creates a new Ethereum object (including the
 // initialisation of the common Ethereum object)
+// Newは新しいEthereumオブジェクトを作成します（共通のEthereumオブジェクトの初期化を含む）
 func New(stack *node.Node, config *ethconfig.Config) (*Ethereum, error) {
 	// Ensure configuration values are compatible and sane
+	// 構成値に互換性があり正常であることを確認します
 	if config.SyncMode == downloader.LightSync {
 		return nil, errors.New("can't run eth.Ethereum in light sync mode, use les.LightEthereum")
 	}
@@ -128,10 +133,12 @@ func New(stack *node.Node, config *ethconfig.Config) (*Ethereum, error) {
 	log.Info("Allocated trie memory caches", "clean", common.StorageSize(config.TrieCleanCache)*1024*1024, "dirty", common.StorageSize(config.TrieDirtyCache)*1024*1024)
 
 	// Transfer mining-related config to the ethash config.
+	// マイニング関連の構成をethash構成に転送します。
 	ethashConfig := config.Ethash
 	ethashConfig.NotifyFull = config.Miner.NotifyFull
 
 	// Assemble the Ethereum object
+	// イーサリアムオブジェクトをアセンブルします
 	chainDb, err := stack.OpenDatabaseWithFreezer("chaindata", config.DatabaseCache, config.DatabaseHandles, config.DatabaseFreezer, "eth/db/chaindata/", false)
 	if err != nil {
 		return nil, err
@@ -201,6 +208,7 @@ func New(stack *node.Node, config *ethconfig.Config) (*Ethereum, error) {
 		return nil, err
 	}
 	// Rewind the chain in case of an incompatible config upgrade.
+	// 互換性のない構成アップグレードの場合は、チェーンを巻き戻します。
 	if compat, ok := genesisErr.(*params.ConfigCompatError); ok {
 		log.Warn("Rewinding chain to upgrade configuration", "err", compat)
 		eth.blockchain.SetHead(compat.RewindTo)
@@ -248,6 +256,7 @@ func New(stack *node.Node, config *ethconfig.Config) (*Ethereum, error) {
 	eth.APIBackend.gpo = gasprice.NewOracle(eth.APIBackend, gpoParams)
 
 	// Setup DNS discovery iterators.
+	// DNS検出イテレータを設定します。
 	dnsclient := dnsdisc.NewClient(dnsdisc.Config{})
 	eth.ethDialCandidates, err = dnsclient.NewIterator(eth.config.EthDiscoveryURLs...)
 	if err != nil {
@@ -259,9 +268,11 @@ func New(stack *node.Node, config *ethconfig.Config) (*Ethereum, error) {
 	}
 
 	// Start the RPC service
+	// RPCサービスを開始します
 	eth.netRPCService = ethapi.NewPublicNetAPI(eth.p2pServer, config.NetworkId)
 
 	// Register the backend on the node
+	// ノードにバックエンドを登録します
 	stack.RegisterAPIs(eth.APIs())
 	stack.RegisterProtocols(eth.Protocols())
 	stack.RegisterLifecycle(eth)
@@ -291,13 +302,17 @@ func makeExtraData(extra []byte) []byte {
 
 // APIs return the collection of RPC services the ethereum package offers.
 // NOTE, some of these services probably need to be moved to somewhere else.
+// APIは、イーサリアムパッケージが提供するRPCサービスのコレクションを返します。
+// 注：これらのサービスの一部は、おそらく別の場所に移動する必要があります。
 func (s *Ethereum) APIs() []rpc.API {
 	apis := ethapi.GetAPIs(s.APIBackend)
 
 	// Append any APIs exposed explicitly by the consensus engine
+	// コンセンサスエンジンによって明示的に公開されたAPIを追加します
 	apis = append(apis, s.engine.APIs(s.BlockChain())...)
 
 	// Append all the local APIs and return
+	// すべてのローカルAPIを追加して、
 	return append(apis, []rpc.API{
 		{
 			Namespace: "eth",
@@ -439,27 +454,33 @@ func (s *Ethereum) SetEtherbase(etherbase common.Address) {
 // StartMining starts the miner with the given number of CPU threads. If mining
 // is already running, this method adjust the number of threads allowed to use
 // and updates the minimum price required by the transaction pool.
+// StartMiningは、指定された数のCPUスレッドでマイナーを開始します。マイニングがすでに実行されている場合、
+// このメソッドは使用できるスレッドの数を調整し、トランザクションプールに必要な最小価格を更新します。
 func (s *Ethereum) StartMining(threads int) error {
 	// Update the thread count within the consensus engine
+	// コンセンサスエンジン内のスレッド数を更新します
 	type threaded interface {
 		SetThreads(threads int)
 	}
 	if th, ok := s.engine.(threaded); ok {
 		log.Info("Updated mining threads", "threads", threads)
 		if threads == 0 {
-			threads = -1 // Disable the miner from within
+			threads = -1 // 内部からマイナーを無効にします // Disable the miner from within
 		}
 		th.SetThreads(threads)
 	}
 	// If the miner was not running, initialize it
+	// マイナーが実行されていなかった場合は、初期化します
 	if !s.IsMining() {
 		// Propagate the initial price point to the transaction pool
+		// 初期価格ポイントをトランザクションプールに伝播します
 		s.lock.RLock()
 		price := s.gasPrice
 		s.lock.RUnlock()
 		s.txPool.SetGasPrice(price)
 
 		// Configure the local mining address
+		// ローカルマイニングアドレスを構成します
 		eb, err := s.Etherbase()
 		if err != nil {
 			log.Error("Cannot start mining without etherbase", "err", err)
@@ -483,6 +504,8 @@ func (s *Ethereum) StartMining(threads int) error {
 		}
 		// If mining is started, we can disable the transaction rejection mechanism
 		// introduced to speed sync times.
+		// マイニングが開始された場合、
+		// 同期時間を短縮するために導入されたトランザクション拒否メカニズムを無効にすることができます。
 		atomic.StoreUint32(&s.handler.acceptTxs, 1)
 
 		go s.miner.Start(eb)
@@ -492,8 +515,10 @@ func (s *Ethereum) StartMining(threads int) error {
 
 // StopMining terminates the miner, both at the consensus engine level as well as
 // at the block creation level.
+// StopMiningは、コンセンサスエンジンレベルとブロック作成レベルの両方でマイナーを終了します。
 func (s *Ethereum) StopMining() {
 	// Update the thread count within the consensus engine
+	// コンセンサスエンジン内のスレッド数を更新します
 	type threaded interface {
 		SetThreads(threads int)
 	}
@@ -501,6 +526,7 @@ func (s *Ethereum) StopMining() {
 		th.SetThreads(-1)
 	}
 	// Stop the block creating itself
+	// ブロックがそれ自体を作成するのを停止します
 	s.miner.Stop()
 }
 

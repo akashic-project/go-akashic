@@ -31,27 +31,35 @@ import (
 )
 
 // Msg defines the structure of a p2p message.
+// メッセージはp2pメッセージの構造を定義します。
 //
 // Note that a Msg can only be sent once since the Payload reader is
 // consumed during sending. It is not possible to create a Msg and
 // send it any number of times. If you want to reuse an encoded
 // structure, encode the payload into a byte array and create a
 // separate Msg with a bytes.Reader as Payload for each send.
+// ペイロードリーダーは送信中に消費されるため、メッセージは1回しか送信できないことに注意してください。
+// メッセージを作成して何度も送信することはできません。
+// エンコードされた構造を再利用する場合は、ペイロードをバイト配列にエンコードし、
+// 各送信のペイロードとしてbytes.Readerを使用して個別のメッセージを作成します。
 type Msg struct {
 	Code       uint64
-	Size       uint32 // Size of the raw payload
+	Size       uint32 // Size of the raw payload 生のペイロードのサイズ
 	Payload    io.Reader
 	ReceivedAt time.Time
 
-	meterCap  Cap    // Protocol name and version for egress metering
-	meterCode uint64 // Message within protocol for egress metering
-	meterSize uint32 // Compressed message size for ingress metering
+	meterCap  Cap    // Protocol name and version for egress metering 出力メータリングのプロトコル名とバージョン
+	meterCode uint64 // Message within protocol for egress metering 出力メータリングのプロトコル内のメッセージ
+	meterSize uint32 // Compressed message size for ingress metering 入力メータリングの圧縮メッセージサイズ
 }
 
 // Decode parses the RLP content of a message into
 // the given value, which must be a pointer.
+// Decodeは、メッセージのRLPコンテンツを指定された値に解析します。
+// この値はポインターである必要があります。
 //
 // For the decoding rules, please see package rlp.
+// デコードルールについては、パッケージrlpを参照してください。
 func (msg Msg) Decode(val interface{}) error {
 	s := rlp.NewStream(msg.Payload, uint64(msg.Size))
 	if err := s.Decode(val); err != nil {
@@ -65,6 +73,7 @@ func (msg Msg) String() string {
 }
 
 // Discard reads any remaining payload data into a black hole.
+// Discardは、残りのペイロードデータをブラックホールに読み込みます。
 func (msg Msg) Discard() error {
 	_, err := io.Copy(ioutil.Discard, msg.Payload)
 	return err
@@ -81,15 +90,21 @@ type MsgReader interface {
 type MsgWriter interface {
 	// WriteMsg sends a message. It will block until the message's
 	// Payload has been consumed by the other end.
+	// WriteMsgはメッセージを送信します。
+	// メッセージのペイロードがもう一方の端で消費されるまでブロックされます。
 	//
 	// Note that messages can be sent only once because their
 	// payload reader is drained.
+	// ペイロードリーダーが空になるため、
+	// メッセージを送信できるのは1回だけであることに注意してください。
 	WriteMsg(Msg) error
 }
 
 // MsgReadWriter provides reading and writing of encoded messages.
 // Implementations should ensure that ReadMsg and WriteMsg can be
 // called simultaneously from multiple goroutines.
+// MsgReadWriterは、エンコードされたメッセージの読み取りと書き込みを提供します。
+// 実装では、ReadMsgとWriteMsgを複数のゴルーチンから同時に呼び出すことができるようにする必要があります。
 type MsgReadWriter interface {
 	MsgReader
 	MsgWriter
@@ -97,6 +112,8 @@ type MsgReadWriter interface {
 
 // Send writes an RLP-encoded message with the given code.
 // data should encode as an RLP list.
+// Sendは、指定されたコードを使用してRLPでエンコードされたメッセージを書き込みます。
+// データはRLPリストとしてエンコードする必要があります。
 func Send(w MsgWriter, msgcode uint64, data interface{}) error {
 	size, r, err := rlp.EncodeToReader(data)
 	if err != nil {
@@ -107,11 +124,13 @@ func Send(w MsgWriter, msgcode uint64, data interface{}) error {
 
 // SendItems writes an RLP with the given code and data elements.
 // For a call such as:
+// SendItemsは、指定されたコードとデータ要素を使用してRLPを書き込みます。
+// 次のような通話の場合：
 //
 //    SendItems(w, code, e1, e2, e3)
 //
 // the message payload will be an RLP list containing the items:
-//
+// メッセージペイロードは、アイテムを含むRLPリストになります。
 //    [e1, e2, e3]
 //
 func SendItems(w MsgWriter, msgcode uint64, elems ...interface{}) error {
@@ -121,14 +140,18 @@ func SendItems(w MsgWriter, msgcode uint64, elems ...interface{}) error {
 // eofSignal wraps a reader with eof signaling. the eof channel is
 // closed when the wrapped reader returns an error or when count bytes
 // have been read.
+// eofSignalは、リーダーをeofシグナリングでラップします。ラップされたリーダーがエラーを返したとき、
+// またはカウントバイトが読み取られたとき、eofチャネルは閉じられます。
 type eofSignal struct {
 	wrapped io.Reader
-	count   uint32 // number of bytes left
+	count   uint32 // number of bytes left 残りのバイト数
 	eof     chan<- struct{}
 }
 
 // note: when using eofSignal to detect whether a message payload
 // has been read, Read might not be called for zero sized messages.
+// 注：eofSignalを使用してメッセージペイロードが読み取られたかどうかを検出する場合、
+// サイズがゼロのメッセージに対してReadが呼び出されない場合があります。
 func (r *eofSignal) Read(buf []byte) (int, error) {
 	if r.count == 0 {
 		if r.eof != nil {
@@ -145,7 +168,7 @@ func (r *eofSignal) Read(buf []byte) (int, error) {
 	n, err := r.wrapped.Read(buf[:max])
 	r.count -= uint32(n)
 	if (err != nil || r.count == 0) && r.eof != nil {
-		r.eof <- struct{}{} // tell Peer that msg has been consumed
+		r.eof <- struct{}{} // tell Peer that msg has been consumed msgが消費されたことをピアに伝えます
 		r.eof = nil
 	}
 	return n, err
@@ -154,6 +177,9 @@ func (r *eofSignal) Read(buf []byte) (int, error) {
 // MsgPipe creates a message pipe. Reads on one end are matched
 // with writes on the other. The pipe is full-duplex, both ends
 // implement MsgReadWriter.
+// MsgPipeはメッセージパイプを作成します。
+// 一方の読み取りは、もう一方の書き込みと一致します。
+// パイプは全二重であり、両端にMsgReadWriterが実装されています。
 func MsgPipe() (*MsgPipeRW, *MsgPipeRW) {
 	var (
 		c1, c2  = make(chan Msg), make(chan Msg)
@@ -167,9 +193,11 @@ func MsgPipe() (*MsgPipeRW, *MsgPipeRW) {
 
 // ErrPipeClosed is returned from pipe operations after the
 // pipe has been closed.
+// ErrPipeClosedは、パイプが閉じられた後、パイプ操作から返されます。
 var ErrPipeClosed = errors.New("p2p: read or write on closed message pipe")
 
 // MsgPipeRW is an endpoint of a MsgReadWriter pipe.
+// MsgPipeRWは、MsgReadWriterパイプのエンドポイントです。
 type MsgPipeRW struct {
 	w       chan<- Msg
 	r       <-chan Msg
@@ -179,6 +207,8 @@ type MsgPipeRW struct {
 
 // WriteMsg sends a message on the pipe.
 // It blocks until the receiver has consumed the message payload.
+// WriteMsgはパイプでメッセージを送信します。
+// 受信者がメッセージペイロードを消費するまでブロックします。
 func (p *MsgPipeRW) WriteMsg(msg Msg) error {
 	if atomic.LoadInt32(p.closed) == 0 {
 		consumed := make(chan struct{}, 1)
@@ -186,7 +216,7 @@ func (p *MsgPipeRW) WriteMsg(msg Msg) error {
 		select {
 		case p.w <- msg:
 			if msg.Size > 0 {
-				// wait for payload read or discard
+				// wait for payload read or discard ペイロードの読み取りまたは破棄を待つ
 				select {
 				case <-consumed:
 				case <-p.closing:
@@ -200,6 +230,7 @@ func (p *MsgPipeRW) WriteMsg(msg Msg) error {
 }
 
 // ReadMsg returns a message sent on the other end of the pipe.
+// ReadMsgは、パイプのもう一方の端で送信されたメッセージを返します。
 func (p *MsgPipeRW) ReadMsg() (Msg, error) {
 	if atomic.LoadInt32(p.closed) == 0 {
 		select {
@@ -214,10 +245,13 @@ func (p *MsgPipeRW) ReadMsg() (Msg, error) {
 // Close unblocks any pending ReadMsg and WriteMsg calls on both ends
 // of the pipe. They will return ErrPipeClosed. Close also
 // interrupts any reads from a message payload.
+// Closeは、パイプの両端で保留中のReadMsgおよびWriteMsg呼び出しのブロックを解除します。
+// それらはErrPipeClosedを返します。
+// Closeは、メッセージペイロードからの読み取りも中断します。
 func (p *MsgPipeRW) Close() error {
 	if atomic.AddInt32(p.closed, 1) != 1 {
-		// someone else is already closing
-		atomic.StoreInt32(p.closed, 1) // avoid overflow
+		// someone else is already closing // 他の誰かがすでに閉じています
+		atomic.StoreInt32(p.closed, 1) // avoid overflow オーバーフローを回避する
 		return nil
 	}
 	close(p.closing)
@@ -227,6 +261,8 @@ func (p *MsgPipeRW) Close() error {
 // ExpectMsg reads a message from r and verifies that its
 // code and encoded RLP content match the provided values.
 // If content is nil, the payload is discarded and not verified.
+// ExpectMsgはrからメッセージを読み取り、そのコードとエンコードされたRLPコンテンツが提供された値と一致することを確認します。
+// コンテンツがnilの場合、ペイロードは破棄され、検証されません。
 func ExpectMsg(r MsgReader, code uint64, content interface{}) error {
 	msg, err := r.ReadMsg()
 	if err != nil {
@@ -257,6 +293,7 @@ func ExpectMsg(r MsgReader, code uint64, content interface{}) error {
 
 // msgEventer wraps a MsgReadWriter and sends events whenever a message is sent
 // or received
+// msgEventerはMsgReadWriterをラップし、メッセージが送受信されるたびにイベントを送信します
 type msgEventer struct {
 	MsgReadWriter
 
@@ -269,6 +306,7 @@ type msgEventer struct {
 
 // newMsgEventer returns a msgEventer which sends message events to the given
 // feed
+// newMsgEventerは、指定されたフィードにメッセージイベントを送信するmsgEventerを返します
 func newMsgEventer(rw MsgReadWriter, feed *event.Feed, peerID enode.ID, proto, remote, local string) *msgEventer {
 	return &msgEventer{
 		MsgReadWriter: rw,
@@ -282,6 +320,7 @@ func newMsgEventer(rw MsgReadWriter, feed *event.Feed, peerID enode.ID, proto, r
 
 // ReadMsg reads a message from the underlying MsgReadWriter and emits a
 // "message received" event
+// ReadMsgは、基になるMsgReadWriterからメッセージを読み取り、「メッセージ受信」イベントを発行します。
 func (ev *msgEventer) ReadMsg() (Msg, error) {
 	msg, err := ev.MsgReadWriter.ReadMsg()
 	if err != nil {
@@ -301,6 +340,7 @@ func (ev *msgEventer) ReadMsg() (Msg, error) {
 
 // WriteMsg writes a message to the underlying MsgReadWriter and emits a
 // "message sent" event
+// WriteMsgは、基になるMsgReadWriterにメッセージを書き込み、「メッセージ送信」イベントを発行します
 func (ev *msgEventer) WriteMsg(msg Msg) error {
 	err := ev.MsgReadWriter.WriteMsg(msg)
 	if err != nil {
@@ -320,6 +360,7 @@ func (ev *msgEventer) WriteMsg(msg Msg) error {
 
 // Close closes the underlying MsgReadWriter if it implements the io.Closer
 // interface
+// Closeは、io.Closerインターフェイスを実装している場合、基盤となるMsgReadWriterを閉じます。
 func (ev *msgEventer) Close() error {
 	if v, ok := ev.MsgReadWriter.(io.Closer); ok {
 		return v.Close()

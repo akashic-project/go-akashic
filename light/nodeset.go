@@ -28,6 +28,8 @@ import (
 
 // NodeSet stores a set of trie nodes. It implements trie.Database and can also
 // act as a cache for another trie.Database.
+// NodeSetは、トライノードのセットを格納します。
+// これはtrie.Databaseを実装し、別のtrie.Databaseのキャッシュとしても機能します。
 type NodeSet struct {
 	nodes map[string][]byte
 	order []string
@@ -37,6 +39,7 @@ type NodeSet struct {
 }
 
 // NewNodeSet creates an empty node set
+// NewNodeSetは空のノードセットを作成します
 func NewNodeSet() *NodeSet {
 	return &NodeSet{
 		nodes: make(map[string][]byte),
@@ -44,6 +47,7 @@ func NewNodeSet() *NodeSet {
 }
 
 // Put stores a new node in the set
+// Putは、新しいノードをセットに格納します
 func (db *NodeSet) Put(key []byte, value []byte) error {
 	db.lock.Lock()
 	defer db.lock.Unlock()
@@ -61,6 +65,7 @@ func (db *NodeSet) Put(key []byte, value []byte) error {
 }
 
 // Delete removes a node from the set
+// 削除すると、セットからノードが削除されます
 func (db *NodeSet) Delete(key []byte) error {
 	db.lock.Lock()
 	defer db.lock.Unlock()
@@ -70,6 +75,7 @@ func (db *NodeSet) Delete(key []byte) error {
 }
 
 // Get returns a stored node
+// Getは保存されたノードを返します
 func (db *NodeSet) Get(key []byte) ([]byte, error) {
 	db.lock.RLock()
 	defer db.lock.RUnlock()
@@ -81,12 +87,14 @@ func (db *NodeSet) Get(key []byte) ([]byte, error) {
 }
 
 // Has returns true if the node set contains the given key
+// ノードセットに指定されたキーが含まれている場合、trueを返します
 func (db *NodeSet) Has(key []byte) (bool, error) {
 	_, err := db.Get(key)
 	return err == nil, nil
 }
 
 // KeyCount returns the number of nodes in the set
+// KeyCountは、セット内のノードの数を返します
 func (db *NodeSet) KeyCount() int {
 	db.lock.RLock()
 	defer db.lock.RUnlock()
@@ -95,6 +103,7 @@ func (db *NodeSet) KeyCount() int {
 }
 
 // DataSize returns the aggregated data size of nodes in the set
+// DataSizeは、セット内のノードの集約データサイズを返します
 func (db *NodeSet) DataSize() int {
 	db.lock.RLock()
 	defer db.lock.RUnlock()
@@ -103,6 +112,7 @@ func (db *NodeSet) DataSize() int {
 }
 
 // NodeList converts the node set to a NodeList
+// NodeListは、ノードセットをNodeListに変換します
 func (db *NodeSet) NodeList() NodeList {
 	db.lock.RLock()
 	defer db.lock.RUnlock()
@@ -115,6 +125,7 @@ func (db *NodeSet) NodeList() NodeList {
 }
 
 // Store writes the contents of the set to the given database
+// ストアは、セットの内容を指定されたデータベースに書き込みます
 func (db *NodeSet) Store(target ethdb.KeyValueWriter) {
 	db.lock.RLock()
 	defer db.lock.RUnlock()
@@ -125,9 +136,12 @@ func (db *NodeSet) Store(target ethdb.KeyValueWriter) {
 }
 
 // NodeList stores an ordered list of trie nodes. It implements ethdb.KeyValueWriter.
+// NodeListは、トライノードの順序付きリストを格納します。
+// ethdb.KeyValueWriterを実装します。
 type NodeList []rlp.RawValue
 
 // Store writes the contents of the list to the given database
+// ストアは、リストの内容を指定されたデータベースに書き込みます
 func (n NodeList) Store(db ethdb.KeyValueWriter) {
 	for _, node := range n {
 		db.Put(crypto.Keccak256(node), node)
@@ -135,6 +149,7 @@ func (n NodeList) Store(db ethdb.KeyValueWriter) {
 }
 
 // NodeSet converts the node list to a NodeSet
+// NodeSetはノードリストをNodeSetに変換します
 func (n NodeList) NodeSet() *NodeSet {
 	db := NewNodeSet()
 	n.Store(db)
@@ -142,17 +157,20 @@ func (n NodeList) NodeSet() *NodeSet {
 }
 
 // Put stores a new node at the end of the list
+// Putは、リストの最後に新しいノードを格納します
 func (n *NodeList) Put(key []byte, value []byte) error {
 	*n = append(*n, value)
 	return nil
 }
 
 // Delete panics as there's no reason to remove a node from the list.
+// リストからノードを削除する理由がないため、パニックを削除します。
 func (n *NodeList) Delete(key []byte) error {
 	panic("not supported")
 }
 
 // DataSize returns the aggregated data size of nodes in the list
+// DataSizeは、リスト内のノードの集約データサイズを返します
 func (n NodeList) DataSize() int {
 	var size int
 	for _, node := range n {

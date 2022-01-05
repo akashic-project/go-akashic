@@ -34,7 +34,7 @@ const (
 
 type iptrackTestEvent struct {
 	op       int
-	time     int // absolute, in milliseconds
+	time     int // absolute, in milliseconds 絶対、ミリ秒単位
 	ip, from string
 }
 
@@ -54,7 +54,7 @@ func TestIPTracker(t *testing.T) {
 			{opStatement, 2000, "127.0.0.1", "127.0.0.3"},
 			{opStatement, 3000, "127.0.0.1", "127.0.0.4"},
 			{opPredict, 10000, "127.0.0.1", ""},
-			{opPredict, 10001, "", ""}, // first statement expired
+			{opPredict, 10001, "", ""}, // first statement expired 最初のステートメントの有効期限が切れました
 			{opStatement, 10100, "127.0.0.1", "127.0.0.2"},
 			{opPredict, 10200, "127.0.0.1", ""},
 		},
@@ -110,6 +110,7 @@ func runIPTrackerTest(t *testing.T, evs []iptrackTestEvent) {
 }
 
 // This checks that old statements and contacts are GCed even if Predict* isn't called.
+// これにより、Predict *が呼び出されなくても、古いステートメントと連絡先がGCされていることが確認されます。
 func TestIPTrackerForceGC(t *testing.T) {
 	var (
 		clock  mclock.Simulated

@@ -27,10 +27,18 @@ import (
 // errors later on, if the underlying file expands beyond the disk capacity,
 // even though it ostensibly is already expanded, but due to being sparse
 // does not actually occupy the full declared size on disk.
+
+// sureSizeはファイルを指定されたサイズに拡張します。
+// これは、基になるファイルがディスク容量を超えて拡張された場合に、実行時エラーを防ぐためです。
+// 表面上はすでに拡張されていますが、スパースであるため、実際にはディスク上で宣言されたサイズ全体を占有しません。
 func ensureSize(f *os.File, size int64) error {
 	// On systems which do not support fallocate, we merely truncate it.
 	// More robust alternatives  would be to
 	// - Use posix_fallocate, or
 	// - explicitly fill the file with zeroes.
+	// fallocateをサポートしていないシステムでは、単に切り捨てます。
+	// より堅牢な代替手段は
+	//-posix_fallocate、またはを使用します
+	//-ファイルを明示的にゼロで埋めます。
 	return f.Truncate(size)
 }

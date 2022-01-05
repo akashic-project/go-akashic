@@ -28,15 +28,16 @@ import (
 )
 
 const (
-	DefaultHTTPHost    = "localhost" // Default host interface for the HTTP RPC server
-	DefaultHTTPPort    = 8545        // Default TCP port for the HTTP RPC server
-	DefaultWSHost      = "localhost" // Default host interface for the websocket RPC server
-	DefaultWSPort      = 8546        // Default TCP port for the websocket RPC server
-	DefaultGraphQLHost = "localhost" // Default host interface for the GraphQL server
-	DefaultGraphQLPort = 8547        // Default TCP port for the GraphQL server
+	DefaultHTTPHost    = "localhost" // HTTPRPCサーバーのデフォルトのホストインターフェイス // Default host interface for the HTTP RPC server
+	DefaultHTTPPort    = 8545        // HTTPRPCサーバーのデフォルトのTCPポート            // Default TCP port for the HTTP RPC server
+	DefaultWSHost      = "localhost" // WebSocketRPCサーバーのデフォルトのホストインターフェイス // Default host interface for the websocket RPC server
+	DefaultWSPort      = 8546        // WebSocketRPCサーバーのデフォルトのTCPポート        // Default TCP port for the websocket RPC server
+	DefaultGraphQLHost = "localhost" // GraphQLサーバーのデフォルトのホストインターフェース // Default host interface for the GraphQL server
+	DefaultGraphQLPort = 8547        // GraphQLサーバーのデフォルトのTCPポート            // Default TCP port for the GraphQL server
 )
 
 // DefaultConfig contains reasonable default settings.
+// DefaultConfigには適切なデフォルト設定が含まれています。
 var DefaultConfig = Config{
 	DataDir:             DefaultDataDir(),
 	HTTPPort:            DefaultHTTPPort,
@@ -55,8 +56,10 @@ var DefaultConfig = Config{
 
 // DefaultDataDir is the default data directory to use for the databases and other
 // persistence requirements.
+// DefaultDataDirは、データベースおよびその他の永続性要件に使用するデフォルトのデータディレクトリです。
 func DefaultDataDir() string {
 	// Try to place the data folder in the user's home dir
+	// データフォルダをユーザーのホームディレクトリに配置してみます
 	home := homeDir()
 	if home != "" {
 		switch runtime.GOOS {
@@ -66,6 +69,8 @@ func DefaultDataDir() string {
 			// We used to put everything in %HOME%\AppData\Roaming, but this caused
 			// problems with non-typical setups. If this fallback location exists and
 			// is non-empty, use it, otherwise DTRT and check %LOCALAPPDATA%.
+			// 以前はすべてを％HOME％\ AppData \ Roamingに配置していましたが、これにより、一般的でない設定で問題が発生しました。
+			// このフォールバックロケーションが存在し、空でない場合はそれを使用し、そうでない場合はDTRTを使用して％LOCALAPPDATA％を確認します。
 			fallback := filepath.Join(home, "AppData", "Roaming", "Ethereum")
 			appdata := windowsAppData()
 			if appdata == "" || isNonEmptyDir(fallback) {
@@ -77,6 +82,7 @@ func DefaultDataDir() string {
 		}
 	}
 	// As we cannot guess a stable location, return empty and handle later
+	// 安定した場所を推測できないため、空を返し、後で処理します
 	return ""
 }
 
@@ -86,6 +92,8 @@ func windowsAppData() string {
 		// Windows XP and below don't have LocalAppData. Crash here because
 		// we don't support Windows XP and undefining the variable will cause
 		// other issues.
+		// WindowsXP以下にはLocalAppDataがありません。
+		// Windows XPをサポートしていないため、ここでクラッシュします。変数の定義を解除すると、他の問題が発生します。
 		panic("environment variable LocalAppData is undefined")
 	}
 	return v

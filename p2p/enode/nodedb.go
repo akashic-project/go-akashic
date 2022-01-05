@@ -69,14 +69,17 @@ var zeroIP = make(net.IP, 16)
 
 // DB is the node database, storing previously seen nodes and any collected metadata about
 // them for QoS purposes.
+// DBはノードデータベースであり、QoSの目的で、以前に表示されたノードとそれらについて収集されたメタデータを格納します。
 type DB struct {
-	lvl    *leveldb.DB   // Interface to the database itself
-	runner sync.Once     // Ensures we can start at most one expirer
-	quit   chan struct{} // Channel to signal the expiring thread to stop
+	lvl    *leveldb.DB   // Interface to the database itself // データベース自体へのインターフェース
+	runner sync.Once     // Ensures we can start at most one expirer // 最大で1つの有効期限を開始できることを保証します
+	quit   chan struct{} // Channel to signal the expiring thread to stop // 期限切れのスレッドに停止を通知するチャネル
 }
 
 // OpenDB opens a node database for storing and retrieving infos about known peers in the
 // network. If no path is given an in-memory, temporary database is constructed.
+// OpenDBは、ネットワーク内の既知のピアに関する情報を保存および取得するためのノードデータベースを開きます。
+// インメモリにパスが指定されていない場合、一時データベースが構築されます。
 func OpenDB(path string) (*DB, error) {
 	if path == "" {
 		return newMemoryDB()

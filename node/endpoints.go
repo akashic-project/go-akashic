@@ -26,8 +26,10 @@ import (
 )
 
 // StartHTTPEndpoint starts the HTTP RPC endpoint.
+// StartHTTPEndpointは、HTTPRPCエンドポイントを開始します。
 func StartHTTPEndpoint(endpoint string, timeouts rpc.HTTPTimeouts, handler http.Handler) (*http.Server, net.Addr, error) {
 	// start the HTTP listener
+	// HTTPリスナーを開始します
 	var (
 		listener net.Listener
 		err      error
@@ -36,8 +38,10 @@ func StartHTTPEndpoint(endpoint string, timeouts rpc.HTTPTimeouts, handler http.
 		return nil, nil, err
 	}
 	// make sure timeout values are meaningful
+	// タイムアウト値に意味があることを確認してください
 	CheckTimeouts(&timeouts)
 	// Bundle and start the HTTP server
+	// HTTPサーバーをバンドルして起動します
 	httpSrv := &http.Server{
 		Handler:      handler,
 		ReadTimeout:  timeouts.ReadTimeout,
@@ -51,6 +55,9 @@ func StartHTTPEndpoint(endpoint string, timeouts rpc.HTTPTimeouts, handler http.
 // checkModuleAvailability checks that all names given in modules are actually
 // available API services. It assumes that the MetadataApi module ("rpc") is always available;
 // the registration of this "rpc" module happens in NewServer() and is thus common to all endpoints.
+// checkModuleAvailabilityは、モジュールで指定されたすべての名前が実際に利用可能なAPIサービスであることを確認します。
+// MetadataApiモジュール（ "rpc"）が常に使用可能であることを前提としています。
+// この「rpc」モジュールの登録はNewServer（）で行われるため、すべてのエンドポイントに共通です。
 func checkModuleAvailability(modules []string, apis []rpc.API) (bad, available []string) {
 	availableSet := make(map[string]struct{})
 	for _, api := range apis {
@@ -68,6 +75,7 @@ func checkModuleAvailability(modules []string, apis []rpc.API) (bad, available [
 }
 
 // CheckTimeouts ensures that timeout values are meaningful
+// CheckTimeoutsは、タイムアウト値が意味のあるものであることを保証します
 func CheckTimeouts(timeouts *rpc.HTTPTimeouts) {
 	if timeouts.ReadTimeout < time.Second {
 		log.Warn("Sanitizing invalid HTTP read timeout", "provided", timeouts.ReadTimeout, "updated", rpc.DefaultHTTPTimeouts.ReadTimeout)

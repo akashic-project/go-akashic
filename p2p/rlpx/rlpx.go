@@ -15,6 +15,7 @@
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
 // Package rlpx implements the RLPx transport protocol.
+// パッケージrlpxは、RLPxトランスポートプロトコルを実装します。
 package rlpx
 
 import (

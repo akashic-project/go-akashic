@@ -21,6 +21,7 @@ func New(ctx ...interface{}) Logger {
 }
 
 // Root returns the root logger
+// Rootはルートロガーを返します
 func Root() Logger {
 	return root
 }

@@ -15,6 +15,7 @@
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
 // Package p2p implements the Ethereum p2p network protocols.
+// パッケージp2pは、Ethereump2pネットワークプロトコルを実装します。
 package p2p
 
 import (
@@ -47,129 +48,174 @@ const (
 	// This is the fairness knob for the discovery mixer. When looking for peers, we'll
 	// wait this long for a single source of candidates before moving on and trying other
 	// sources.
+	// これは、ディスカバリーミキサーの公平性ノブです。
+	// 仲間を探すときは、候補者の単一のソースをこれだけ長く待ってから、他のソースを試します。
 	discmixTimeout = 5 * time.Second
 
 	// Connectivity defaults.
+	// 接続のデフォルト。
 	defaultMaxPendingPeers = 50
 	defaultDialRatio       = 3
 
 	// This time limits inbound connection attempts per source IP.
+	// この時間は、送信元IPごとのインバウンド接続の試行を制限します。
 	inboundThrottleTime = 30 * time.Second
 
 	// Maximum time allowed for reading a complete message.
 	// This is effectively the amount of time a connection can be idle.
+	// 完全なメッセージを読むために許可される最大時間。
+	// これは事実上、接続がアイドル状態になることができる時間です。
 	frameReadTimeout = 30 * time.Second
 
 	// Maximum amount of time allowed for writing a complete message.
+	// 完全なメッセージを書き込むために許可される最大時間。
 	frameWriteTimeout = 20 * time.Second
 )
 
 var errServerStopped = errors.New("server stopped")
 
 // Config holds Server options.
+// Configはサーバーオプションを保持します。
 type Config struct {
 	// This field must be set to a valid secp256k1 private key.
+	// このフィールドは、有効なsecp256k1秘密鍵に設定する必要があります。
 	PrivateKey *ecdsa.PrivateKey `toml:"-"`
 
 	// MaxPeers is the maximum number of peers that can be
 	// connected. It must be greater than zero.
+	// MaxPeersは、接続できるピアの最大数です。ゼロより大きくなければなりません。
 	MaxPeers int
 
 	// MaxPendingPeers is the maximum number of peers that can be pending in the
 	// handshake phase, counted separately for inbound and outbound connections.
 	// Zero defaults to preset values.
+	// MaxPendingPeersは、ハンドシェイクフェーズで保留できるピアの最大数であり、
+	// インバウンド接続とアウトバウンド接続で別々にカウントされます。
+	// ゼロのデフォルトはプリセット値です。
 	MaxPendingPeers int `toml:",omitempty"`
 
 	// DialRatio controls the ratio of inbound to dialed connections.
 	// Example: a DialRatio of 2 allows 1/2 of connections to be dialed.
 	// Setting DialRatio to zero defaults it to 3.
+	// DialRatioは、ダイヤル接続に対するインバウンド接続の比率を制御します。
+	// 例：DialRatioが2の場合、接続の1/2をダイヤルできます。
+	// DialRatioをゼロに設定すると、デフォルトで3になります。
 	DialRatio int `toml:",omitempty"`
 
 	// NoDiscovery can be used to disable the peer discovery mechanism.
 	// Disabling is useful for protocol debugging (manual topology).
+	// NoDiscoveryを使用して、ピア検出メカニズムを無効にすることができます。
+	// 無効化は、プロトコルのデバッグ（手動トポロジ）に役立ちます。
 	NoDiscovery bool
 
 	// DiscoveryV5 specifies whether the new topic-discovery based V5 discovery
 	// protocol should be started or not.
+	// DiscoveryV5は、新しいトピック検出ベースのV5検出プロトコルを開始するかどうかを指定します。
 	DiscoveryV5 bool `toml:",omitempty"`
 
 	// Name sets the node name of this server.
 	// Use common.MakeName to create a name that follows existing conventions.
+	// Nameは、このサーバーのノード名を設定します。
+	// common.MakeNameを使用して、既存の規則に従う名前を作成します。
 	Name string `toml:"-"`
 
 	// BootstrapNodes are used to establish connectivity
 	// with the rest of the network.
+	// BootstrapNodesは、ネットワークの他の部分との接続を確立するために使用されます。
 	BootstrapNodes []*enode.Node
 
 	// BootstrapNodesV5 are used to establish connectivity
 	// with the rest of the network using the V5 discovery
 	// protocol.
+	// BootstrapNodesV5は、V5検出プロトコルを使用してネットワークの他の部分との接続を確立するために使用されます。
 	BootstrapNodesV5 []*enode.Node `toml:",omitempty"`
 
 	// Static nodes are used as pre-configured connections which are always
 	// maintained and re-connected on disconnects.
+	// 静的ノードは事前設定された接続として使用され、切断時に常に維持および再接続されます。
 	StaticNodes []*enode.Node
 
 	// Trusted nodes are used as pre-configured connections which are always
 	// allowed to connect, even above the peer limit.
+	// 信頼できるノードは、ピアの制限を超えても常に接続が許可される事前構成済みの接続として使用されます。
 	TrustedNodes []*enode.Node
 
 	// Connectivity can be restricted to certain IP networks.
 	// If this option is set to a non-nil value, only hosts which match one of the
 	// IP networks contained in the list are considered.
+	// 接続は特定のIPネットワークに制限できます。
+	// このオプションがnil以外の値に設定されている場合、
+	// リストに含まれているIPネットワークの1つに一致するホストのみが考慮されます。
 	NetRestrict *netutil.Netlist `toml:",omitempty"`
 
 	// NodeDatabase is the path to the database containing the previously seen
 	// live nodes in the network.
+	// NodeDatabaseは、ネットワーク内で以前に確認されたライブノードを含むデータベースへのパスです。
 	NodeDatabase string `toml:",omitempty"`
 
 	// Protocols should contain the protocols supported
 	// by the server. Matching protocols are launched for
 	// each peer.
+	// プロトコルには、サーバーでサポートされているプロトコルが含まれている必要があります。
+	// マッチングプロトコルは、ピアごとに起動されます。
 	Protocols []Protocol `toml:"-"`
 
 	// If ListenAddr is set to a non-nil address, the server
 	// will listen for incoming connections.
+	// ListenAddrがnil以外のアドレスに設定されている場合、サーバーは着信接続をリッスンします。
 	//
 	// If the port is zero, the operating system will pick a port. The
 	// ListenAddr field will be updated with the actual address when
 	// the server is started.
+	// ポートがゼロの場合、オペレーティングシステムはポートを選択します。
+	// ListenAddrフィールドは、サーバーの起動時に実際のアドレスで更新されます。
 	ListenAddr string
 
 	// If set to a non-nil value, the given NAT port mapper
 	// is used to make the listening port available to the
 	// Internet.
+	// nil以外の値に設定すると、指定されたNATポートマッパーを使用して、
+	// リスニングポートをインターネットで使用できるようにします。
 	NAT nat.Interface `toml:",omitempty"`
 
 	// If Dialer is set to a non-nil value, the given Dialer
 	// is used to dial outbound peer connections.
+	// Dialerがnil以外の値に設定されている場合、
+	// 指定されたDialerがアウトバウンドピア接続のダイヤルに使用されます。
 	Dialer NodeDialer `toml:"-"`
 
 	// If NoDial is true, the server will not dial any peers.
+	// NoDialがtrueの場合、サーバーはピアにダイヤルしません。
 	NoDial bool `toml:",omitempty"`
 
 	// If EnableMsgEvents is set then the server will emit PeerEvents
 	// whenever a message is sent to or received from a peer
+	// EnableMsgEventsが設定されている場合、
+	// メッセージがピアとの間で送受信されるたびに、サーバーはPeerEventsを発行します。
 	EnableMsgEvents bool
 
 	// Logger is a custom logger to use with the p2p.Server.
+	// ロガーは、p2p.Serverで使用するカスタムロガーです。
 	Logger log.Logger `toml:",omitempty"`
 
 	clock mclock.Clock
 }
 
 // Server manages all peer connections.
+// サーバーはすべてのピア接続を管理します。
 type Server struct {
 	// Config fields may not be modified while the server is running.
-	Config
+	// サーバーの実行中は、構成フィールドを変更できません。
+	Config // サーバーオプション
 
 	// Hooks for testing. These are useful because we can inhibit
 	// the whole protocol stack.
+	// テスト用のフック。これらは、プロトコルスタック全体を禁止できるので便利です。
 	newTransport func(net.Conn, *ecdsa.PublicKey) transport
 	newPeerHook  func(*Peer)
 	listenFunc   func(network, addr string) (net.Listener, error)
 
-	lock    sync.Mutex // protects running
+	lock    sync.Mutex // protects running  ランニングを保護します
 	running bool
 
 	listener     net.Listener
@@ -186,6 +232,7 @@ type Server struct {
 	dialsched *dialScheduler
 
 	// Channels into the run loop.
+	// 実行ループにチャネルします。
 	quit                    chan struct{}
 	addtrusted              chan *enode.Node
 	removetrusted           chan *enode.Node
@@ -196,6 +243,7 @@ type Server struct {
 	checkpointAddPeer       chan *conn
 
 	// State of run loop and listenLoop.
+	// 実行ループとlistenLoopの状態。
 	inboundHistory expHeap
 }
 
@@ -204,7 +252,7 @@ type peerOpFunc func(map[enode.ID]*Peer)
 type peerDrop struct {
 	*Peer
 	err       error
-	requested bool // true if signaled by the peer
+	requested bool // true if signaled by the peer  ピアから通知された場合はtrue
 }
 
 type connFlag int32
@@ -218,27 +266,36 @@ const (
 
 // conn wraps a network connection with information gathered
 // during the two handshakes.
+// connは、2回のハンドシェイク中に収集された情報でネットワーク接続をラップします。
 type conn struct {
 	fd net.Conn
 	transport
 	node  *enode.Node
 	flags connFlag
-	cont  chan error // The run loop uses cont to signal errors to SetupConn.
-	caps  []Cap      // valid after the protocol handshake
-	name  string     // valid after the protocol handshake
+	cont  chan error // The run loop uses cont to signal errors to SetupConn. 実行ループはcontを使用して、SetupConnにエラーを通知します。
+	caps  []Cap      // valid after the protocol handshake プロトコルハンドシェイク後に有効
+	name  string     // valid after the protocol handshake プロトコルハンドシェイク後に有効
 }
 
 type transport interface {
 	// The two handshakes.
+	// 2つの握手。
 	doEncHandshake(prv *ecdsa.PrivateKey) (*ecdsa.PublicKey, error)
 	doProtoHandshake(our *protoHandshake) (*protoHandshake, error)
 	// The MsgReadWriter can only be used after the encryption
 	// handshake has completed. The code uses conn.id to track this
 	// by setting it to a non-nil value after the encryption handshake.
+	// MsgReadWriterは、暗号化ハンドシェイクが完了した後にのみ使用できます。
+	// コードはconn.idを使用して、
+	// 暗号化ハンドシェイク後にnil以外の値に設定することにより、これを追跡します。
 	MsgReadWriter
 	// transports must provide Close because we use MsgPipe in some of
 	// the tests. Closing the actual network connection doesn't do
 	// anything in those tests because MsgPipe doesn't use it.
+	//
+	//一部のテストではMsgPipeを使用するため、トランスポートはCloseを提供する必要があります。
+	//MsgPipeはそれを使用しないため、
+	//実際のネットワーク接続を閉じても、これらのテストでは何も行われません。
 	close(err error)
 }
 
@@ -292,11 +349,13 @@ func (c *conn) set(f connFlag, val bool) {
 }
 
 // LocalNode returns the local node record.
+// LocalNodeは、ローカルノードレコードを返します。
 func (srv *Server) LocalNode() *enode.LocalNode {
 	return srv.localnode
 }
 
 // Peers returns all connected peers.
+// ピアは、接続されているすべてのピアを返します。
 func (srv *Server) Peers() []*Peer {
 	var ps []*Peer
 	srv.doPeerOp(func(peers map[enode.ID]*Peer) {
@@ -308,6 +367,7 @@ func (srv *Server) Peers() []*Peer {
 }
 
 // PeerCount returns the number of connected peers.
+// PeerCountは、接続されているピアの数を返します。
 func (srv *Server) PeerCount() int {
 	var count int
 	srv.doPeerOp(func(ps map[enode.ID]*Peer) {
@@ -319,21 +379,30 @@ func (srv *Server) PeerCount() int {
 // AddPeer adds the given node to the static node set. When there is room in the peer set,
 // the server will connect to the node. If the connection fails for any reason, the server
 // will attempt to reconnect the peer.
+// AddPeerは、指定されたノードを静的ノードセットに追加します。
+// ピアセットに空きがある場合、サーバーはノードに接続します。
+// 何らかの理由で接続が失敗した場合、サーバーはピアへの再接続を試みます。
 func (srv *Server) AddPeer(node *enode.Node) {
 	srv.dialsched.addStatic(node)
 }
 
 // RemovePeer removes a node from the static node set. It also disconnects from the given
 // node if it is currently connected as a peer.
+// RemovePeerは、静的ノードセットからノードを削除します。
+// また、現在ピアとして接続されている場合は、指定されたノードから切断されます。
 //
 // This method blocks until all protocols have exited and the peer is removed. Do not use
 // RemovePeer in protocol implementations, call Disconnect on the Peer instead.
+// このメソッドは、すべてのプロトコルが終了してピアが削除されるまでブロックします。
+// プロトコルの実装ではRemovePeerを使用せず、代わりにPeerでDisconnectを呼び出します。
+//
 func (srv *Server) RemovePeer(node *enode.Node) {
 	var (
 		ch  chan *PeerEvent
 		sub event.Subscription
 	)
 	// Disconnect the peer on the main loop.
+	// メインループのピアを切断します。
 	srv.doPeerOp(func(peers map[enode.ID]*Peer) {
 		srv.dialsched.removeStatic(node)
 		if peer := peers[node.ID()]; peer != nil {
@@ -343,6 +412,7 @@ func (srv *Server) RemovePeer(node *enode.Node) {
 		}
 	})
 	// Wait for the peer connection to end.
+	// ピア接続が終了するのを待ちます。
 	if ch != nil {
 		defer sub.Unsubscribe()
 		for ev := range ch {
@@ -355,6 +425,9 @@ func (srv *Server) RemovePeer(node *enode.Node) {
 
 // AddTrustedPeer adds the given node to a reserved trusted list which allows the
 // node to always connect, even if the slot are full.
+//
+// AddTrustedPeerは、指定されたノードを予約済みの信頼できるリストに追加します。
+// これにより、スロットがいっぱいの場合でも、ノードは常に接続できます。
 func (srv *Server) AddTrustedPeer(node *enode.Node) {
 	select {
 	case srv.addtrusted <- node:
@@ -363,6 +436,7 @@ func (srv *Server) AddTrustedPeer(node *enode.Node) {
 }
 
 // RemoveTrustedPeer removes the given node from the trusted peer set.
+// RemoveTrustedPeerは、指定されたノードを信頼できるピアセットから削除します。
 func (srv *Server) RemoveTrustedPeer(node *enode.Node) {
 	select {
 	case srv.removetrusted <- node:
@@ -371,11 +445,13 @@ func (srv *Server) RemoveTrustedPeer(node *enode.Node) {
 }
 
 // SubscribeEvents subscribes the given channel to peer events
+// SubscribeEventsは、指定されたチャネルをピアイベントにサブスクライブします
 func (srv *Server) SubscribeEvents(ch chan *PeerEvent) event.Subscription {
 	return srv.peerFeed.Subscribe(ch)
 }
 
 // Self returns the local node's endpoint information.
+// Selfは、ローカルノードのエンドポイント情報を返します。
 func (srv *Server) Self() *enode.Node {
 	srv.lock.Lock()
 	ln := srv.localnode
@@ -389,6 +465,8 @@ func (srv *Server) Self() *enode.Node {
 
 // Stop terminates the server and all active peer connections.
 // It blocks until all active connections have been closed.
+// Stopは、サーバーとすべてのアクティブなピア接続を終了します。
+// すべてのアクティブな接続が閉じられるまでブロックします。
 func (srv *Server) Stop() {
 	srv.lock.Lock()
 	if !srv.running {
@@ -398,6 +476,7 @@ func (srv *Server) Stop() {
 	srv.running = false
 	if srv.listener != nil {
 		// this unblocks listener Accept
+		// これにより、リスナーのブロックが解除されますAccept
 		srv.listener.Close()
 	}
 	close(srv.quit)
@@ -407,12 +486,16 @@ func (srv *Server) Stop() {
 
 // sharedUDPConn implements a shared connection. Write sends messages to the underlying connection while read returns
 // messages that were found unprocessable and sent to the unhandled channel by the primary listener.
+// sharedUDPConnは、共有接続を実装します。
+// 書き込みは基になる接続にメッセージを送信し、読み取りは処理不能であることが判明し、
+// プライマリリスナーによって未処理のチャネルに送信されたメッセージを返します。
 type sharedUDPConn struct {
 	*net.UDPConn
 	unhandled chan discover.ReadPacket
 }
 
 // ReadFromUDP implements discover.UDPConn
+// ReadFromUDPはdiscover.UDPConnを実装します
 func (s *sharedUDPConn) ReadFromUDP(b []byte) (n int, addr *net.UDPAddr, err error) {
 	packet, ok := <-s.unhandled
 	if !ok {
@@ -427,12 +510,15 @@ func (s *sharedUDPConn) ReadFromUDP(b []byte) (n int, addr *net.UDPAddr, err err
 }
 
 // Close implements discover.UDPConn
+// Closeはdiscover.UDPConnを実装します
 func (s *sharedUDPConn) Close() error {
 	return nil
 }
 
 // Start starts running the server.
 // Servers can not be re-used after stopping.
+// スタートはサーバーの実行を開始します。
+// 停止後、サーバーを再利用することはできません。
 func (srv *Server) Start() (err error) {
 	srv.lock.Lock()
 	defer srv.lock.Unlock()
@@ -448,12 +534,13 @@ func (srv *Server) Start() (err error) {
 		srv.clock = mclock.System{}
 	}
 	if srv.NoDial && srv.ListenAddr == "" {
-		srv.log.Warn("P2P server will be useless, neither dialing nor listening")
+		srv.log.Warn("P2P server will be useless, neither dialing nor listening") // P2Pサーバーは役に立たず、ダイヤルもリスニングもしません
 	}
 
 	// static fields
+	// 静的フィールド
 	if srv.PrivateKey == nil {
-		return errors.New("Server.PrivateKey must be set to a non-nil key")
+		return errors.New("Server.PrivateKey must be set to a non-nil key") // Server.PrivateKeyはnil以外のキーに設定する必要があります
 	}
 	if srv.newTransport == nil {
 		srv.newTransport = newRLPX
@@ -490,6 +577,7 @@ func (srv *Server) Start() (err error) {
 
 func (srv *Server) setupLocalNode() error {
 	// Create the devp2p handshake.
+	// devp2pハンドシェイクを作成します
 	pubkey := crypto.FromECDSAPub(&srv.PrivateKey.PublicKey)
 	srv.ourHandshake = &protoHandshake{Version: baseProtocolVersion, Name: srv.Name, ID: pubkey[1:]}
 	for _, p := range srv.Protocols {
@@ -498,6 +586,7 @@ func (srv *Server) setupLocalNode() error {
 	sort.Sort(capsByNameAndVersion(srv.ourHandshake.Caps))
 
 	// Create the local node.
+	// ローカルノードを作成します。
 	db, err := enode.OpenDB(srv.Config.NodeDatabase)
 	if err != nil {
 		return err
@@ -506,6 +595,7 @@ func (srv *Server) setupLocalNode() error {
 	srv.localnode = enode.NewLocalNode(db, srv.PrivateKey)
 	srv.localnode.SetFallbackIP(net.IP{127, 0, 0, 1})
 	// TODO: check conflicts
+	// TODO：競合を確認する
 	for _, p := range srv.Protocols {
 		for _, e := range p.Attributes {
 			srv.localnode.Set(e)
@@ -514,13 +604,17 @@ func (srv *Server) setupLocalNode() error {
 	switch srv.NAT.(type) {
 	case nil:
 		// No NAT interface, do nothing.
+		// NATインターフェースはなく、何もしません。
 	case nat.ExtIP:
 		// ExtIP doesn't block, set the IP right away.
+		// ExtIPはブロックしません。すぐにIPを設定してください。
 		ip, _ := srv.NAT.ExternalIP()
 		srv.localnode.SetStaticIP(ip)
 	default:
 		// Ask the router about the IP. This takes a while and blocks startup,
 		// do it in the background.
+		// IPについてルーターに問い合わせます。
+		// これには時間がかかり、起動がブロックされます。バックグラウンドで実行してください
 		srv.loopWG.Add(1)
 		go func() {
 			defer srv.loopWG.Done()
@@ -536,6 +630,7 @@ func (srv *Server) setupDiscovery() error {
 	srv.discmix = enode.NewFairMix(discmixTimeout)
 
 	// Add protocol-specific discovery sources.
+	// プロトコル固有の検出ソースを追加します。
 	added := make(map[string]bool)
 	for _, proto := range srv.Protocols {
 		if proto.DialCandidates != nil && !added[proto.Name] {
@@ -545,6 +640,7 @@ func (srv *Server) setupDiscovery() error {
 	}
 
 	// Don't listen on UDP endpoint if DHT is disabled.
+	// DHTが無効になっている場合は、UDPエンドポイントでリッスンしないでください。
 	if srv.NoDiscovery && !srv.DiscoveryV5 {
 		return nil
 	}
@@ -571,6 +667,7 @@ func (srv *Server) setupDiscovery() error {
 	srv.localnode.SetFallbackUDP(realaddr.Port)
 
 	// Discovery V4
+	// ディスカバリーV4
 	var unhandled chan discover.ReadPacket
 	var sconn *sharedUDPConn
 	if !srv.NoDiscovery {
@@ -657,6 +754,7 @@ func (srv *Server) maxDialedConns() (limit int) {
 
 func (srv *Server) setupListening() error {
 	// Launch the listener.
+	// リスナーを起動します。
 	listener, err := srv.listenFunc("tcp", srv.ListenAddr)
 	if err != nil {
 		return err
@@ -665,6 +763,7 @@ func (srv *Server) setupListening() error {
 	srv.ListenAddr = listener.Addr().String()
 
 	// Update the local node record and map the TCP listening port if NAT is configured.
+	// NATが構成されている場合は、ローカルノードレコードを更新し、TCPリスニングポートをマップします。
 	if tcp, ok := listener.Addr().(*net.TCPAddr); ok {
 		srv.localnode.Set(enr.TCP(tcp.Port))
 		if !tcp.IP.IsLoopback() && srv.NAT != nil {
@@ -682,6 +781,7 @@ func (srv *Server) setupListening() error {
 }
 
 // doPeerOp runs fn on the main loop.
+// doPeerOpはメインループでfnを実行します
 func (srv *Server) doPeerOp(fn peerOpFunc) {
 	select {
 	case srv.peerOp <- fn:
@@ -691,6 +791,7 @@ func (srv *Server) doPeerOp(fn peerOpFunc) {
 }
 
 // run is the main loop of the server.
+// runはサーバーのメインループです。
 func (srv *Server) run() {
 	srv.log.Info("Started P2P networking", "self", srv.localnode.Node().URLv4())
 	defer srv.loopWG.Done()
@@ -705,6 +806,8 @@ func (srv *Server) run() {
 	)
 	// Put trusted nodes into a map to speed up checks.
 	// Trusted peers are loaded on startup or added via AddTrustedPeer RPC.
+	// 信頼できるノードをマップに配置して、チェックを高速化します。
+	// 信頼できるピアは、起動時にロードされるか、AddTrustedPeerRPCを介して追加されます。
 	for _, n := range srv.TrustedNodes {
 		trusted[n.ID()] = true
 	}
@@ -714,11 +817,13 @@ running:
 		select {
 		case <-srv.quit:
 			// The server was stopped. Run the cleanup logic.
+			// サーバーが停止しました。クリーンアップロジックを実行します。
 			break running
 
 		case n := <-srv.addtrusted:
 			// This channel is used by AddTrustedPeer to add a node
 			// to the trusted node set.
+			// このチャネルは、信頼できるノードセットにノードを追加するためにAddTrustedPeerによって使用されます。
 			srv.log.Trace("Adding trusted node", "node", n)
 			trusted[n.ID()] = true
 			if p, ok := peers[n.ID()]; ok {
@@ -728,6 +833,7 @@ running:
 		case n := <-srv.removetrusted:
 			// This channel is used by RemoveTrustedPeer to remove a node
 			// from the trusted node set.
+			// このチャネルは、信頼できるノードセットからノードを削除するためにRemoveTrustedPeerによって使用されます。
 			srv.log.Trace("Removing trusted node", "node", n)
 			delete(trusted, n.ID())
 			if p, ok := peers[n.ID()]; ok {
@@ -736,25 +842,33 @@ running:
 
 		case op := <-srv.peerOp:
 			// This channel is used by Peers and PeerCount.
+			// このチャネルは、PeersとPeerCountによって使用されます。
 			op(peers)
 			srv.peerOpDone <- struct{}{}
 
 		case c := <-srv.checkpointPostHandshake:
 			// A connection has passed the encryption handshake so
 			// the remote identity is known (but hasn't been verified yet).
+			// 接続が暗号化ハンドシェイクを通過したため、リモートIDが認識されます
+			//（ただし、まだ検証されていません）。
 			if trusted[c.node.ID()] {
 				// Ensure that the trusted flag is set before checking against MaxPeers.
+				// MaxPeersと照合する前に、信頼できるフラグが設定されていることを確認してください。
 				c.flags |= trustedConn
 			}
 			// TODO: track in-progress inbound node IDs (pre-Peer) to avoid dialing them.
+			// TODO：進行中のインバウンドノードID（プレピア）を追跡して、ダイヤルを回避します。
 			c.cont <- srv.postHandshakeChecks(peers, inboundCount, c)
 
 		case c := <-srv.checkpointAddPeer:
 			// At this point the connection is past the protocol handshake.
 			// Its capabilities are known and the remote identity is verified.
+			// この時点で、接続はプロトコルハンドシェイクを通過しています。
+			// その機能は既知であり、リモートIDが検証されます。
 			err := srv.addPeerChecks(peers, inboundCount, c)
 			if err == nil {
 				// The handshakes are done and it passed all checks.
+				// ハンドシェイクが実行され、すべてのチェックに合格しました。
 				p := srv.launchPeer(c)
 				peers[c.node.ID()] = p
 				srv.log.Debug("Adding p2p peer", "peercount", len(peers), "id", p.ID(), "conn", c.flags, "addr", p.RemoteAddr(), "name", p.Name())
@@ -767,6 +881,7 @@ running:
 
 		case pd := <-srv.delpeer:
 			// A peer disconnected.
+			// ピアが切断されました。
 			d := common.PrettyDuration(mclock.Now() - pd.created)
 			delete(peers, pd.ID())
 			srv.log.Debug("Removing p2p peer", "peercount", len(peers), "id", pd.ID(), "duration", d, "req", pd.requested, "err", pd.err)
@@ -780,6 +895,7 @@ running:
 	srv.log.Trace("P2P networking is spinning down")
 
 	// Terminate discovery. If there is a running lookup it will terminate soon.
+	// 検出を終了します。実行中のルックアップがある場合は、すぐに終了します。
 	if srv.ntab != nil {
 		srv.ntab.Close()
 	}
@@ -787,12 +903,15 @@ running:
 		srv.DiscV5.Close()
 	}
 	// Disconnect all peers.
+	// すべてのピアを切断します。
 	for _, p := range peers {
 		p.Disconnect(DiscQuitting)
 	}
 	// Wait for peers to shut down. Pending connections and tasks are
 	// not handled here and will terminate soon-ish because srv.quit
 	// is closed.
+	// ピアがシャットダウンするのを待ちます。
+	// 保留中の接続とタスクはここでは処理されず、srv.quitが閉じているため、すぐに終了します。
 	for len(peers) > 0 {
 		p := <-srv.delpeer
 		p.log.Trace("<-delpeer (spindown)")
@@ -817,20 +936,25 @@ func (srv *Server) postHandshakeChecks(peers map[enode.ID]*Peer, inboundCount in
 
 func (srv *Server) addPeerChecks(peers map[enode.ID]*Peer, inboundCount int, c *conn) error {
 	// Drop connections with no matching protocols.
+	// 一致するプロトコルのない接続をドロップします。
 	if len(srv.Protocols) > 0 && countMatchingProtocols(srv.Protocols, c.caps) == 0 {
 		return DiscUselessPeer
 	}
 	// Repeat the post-handshake checks because the
 	// peer set might have changed since those checks were performed.
+	// これらのチェックが実行されてからピアセットが変更された可能性があるため、
+	// ハンドシェイク後のチェックを繰り返します。
 	return srv.postHandshakeChecks(peers, inboundCount, c)
 }
 
 // listenLoop runs in its own goroutine and accepts
 // inbound connections.
+// listenLoopは独自のゴルーチンで実行され、インバウンド接続を受け入れます。
 func (srv *Server) listenLoop() {
 	srv.log.Debug("TCP listener up", "addr", srv.listener.Addr())
 
 	// The slots channel limits accepts of new connections.
+	// スロットチャネル制限は、新しい接続を受け入れます。
 	tokens := defaultMaxPendingPeers
 	if srv.MaxPendingPeers > 0 {
 		tokens = srv.MaxPendingPeers
@@ -842,6 +966,8 @@ func (srv *Server) listenLoop() {
 
 	// Wait for slots to be returned on exit. This ensures all connection goroutines
 	// are down before listenLoop returns.
+	// 終了時にスロットが返されるのを待ちます。
+	// これにより、listenLoopが戻る前に、すべての接続ゴルーチンがダウンしていることが保証されます。
 	defer srv.loopWG.Done()
 	defer func() {
 		for i := 0; i < cap(slots); i++ {
@@ -851,6 +977,7 @@ func (srv *Server) listenLoop() {
 
 	for {
 		// Wait for a free slot before accepting.
+		// 受け入れる前に空きスロットを待ちます。
 		<-slots
 
 		var (
@@ -902,10 +1029,12 @@ func (srv *Server) checkInboundConn(remoteIP net.IP) error {
 		return nil
 	}
 	// Reject connections that do not match NetRestrict.
+	// NetRestrictと一致しない接続を拒否します。
 	if srv.NetRestrict != nil && !srv.NetRestrict.Contains(remoteIP) {
 		return fmt.Errorf("not in netrestrict list")
 	}
 	// Reject Internet peers that try too often.
+	// 頻繁に試行するインターネットピアを拒否します。
 	now := srv.clock.Now()
 	srv.inboundHistory.expire(now, nil)
 	if !netutil.IsLAN(remoteIP) && srv.inboundHistory.contains(remoteIP.String()) {
@@ -918,6 +1047,8 @@ func (srv *Server) checkInboundConn(remoteIP net.IP) error {
 // SetupConn runs the handshakes and attempts to add the connection
 // as a peer. It returns when the connection has been added as a peer
 // or the handshakes have failed.
+// SetupConnはハンドシェイクを実行し、接続をピアとして追加しようとします。
+// 接続がピアとして追加されたとき、またはハンドシェイクが失敗したときに戻ります。
 func (srv *Server) SetupConn(fd net.Conn, flags connFlag, dialDest *enode.Node) error {
 	c := &conn{fd: fd, flags: flags, cont: make(chan error)}
 	if dialDest == nil {
@@ -935,6 +1066,7 @@ func (srv *Server) SetupConn(fd net.Conn, flags connFlag, dialDest *enode.Node) 
 
 func (srv *Server) setupConn(c *conn, flags connFlag, dialDest *enode.Node) error {
 	// Prevent leftover pending conns from entering the handshake.
+	// 残りの保留中の接続がハンドシェイクに入らないようにします。
 	srv.lock.Lock()
 	running := srv.running
 	srv.lock.Unlock()
@@ -943,6 +1075,7 @@ func (srv *Server) setupConn(c *conn, flags connFlag, dialDest *enode.Node) erro
 	}
 
 	// If dialing, figure out the remote public key.
+	// ダイヤルする場合は、リモート公開鍵を見つけます。
 	var dialPubkey *ecdsa.PublicKey
 	if dialDest != nil {
 		dialPubkey = new(ecdsa.PublicKey)
@@ -954,6 +1087,7 @@ func (srv *Server) setupConn(c *conn, flags connFlag, dialDest *enode.Node) erro
 	}
 
 	// Run the RLPx handshake.
+	// RLPxハンドシェイクを実行します。
 	remotePubkey, err := c.doEncHandshake(srv.PrivateKey)
 	if err != nil {
 		srv.log.Trace("Failed RLPx handshake", "addr", c.fd.RemoteAddr(), "conn", c.flags, "err", err)
@@ -972,6 +1106,7 @@ func (srv *Server) setupConn(c *conn, flags connFlag, dialDest *enode.Node) erro
 	}
 
 	// Run the capability negotiation handshake.
+	// 機能ネゴシエーションハンドシェイクを実行します。
 	phs, err := c.doProtoHandshake(srv.ourHandshake)
 	if err != nil {
 		clog.Trace("Failed p2p handshake", "err", err)
@@ -1003,6 +1138,8 @@ func nodeFromConn(pubkey *ecdsa.PublicKey, conn net.Conn) *enode.Node {
 
 // checkpoint sends the conn to run, which performs the
 // post-handshake checks for the stage (posthandshake, addpeer).
+// チェックポイントはconnを実行に送信し、
+// ステージ（posthandshake、addpeer）のポストハンドシェイクチェックを実行します。
 func (srv *Server) checkpoint(c *conn, stage chan<- *conn) error {
 	select {
 	case stage <- c:
@@ -1017,6 +1154,7 @@ func (srv *Server) launchPeer(c *conn) *Peer {
 	if srv.EnableMsgEvents {
 		// If message events are enabled, pass the peerFeed
 		// to the peer.
+		// メッセージイベントが有効になっている場合は、peerFeedをピアに渡します。
 		p.events = &srv.peerFeed
 	}
 	go srv.runPeer(p)
@@ -1024,6 +1162,7 @@ func (srv *Server) launchPeer(c *conn) *Peer {
 }
 
 // runPeer runs in its own goroutine for each peer.
+// runPeerは、ピアごとに独自のゴルーチンで実行されます。
 func (srv *Server) runPeer(p *Peer) {
 	if srv.newPeerHook != nil {
 		srv.newPeerHook(p)
@@ -1036,17 +1175,25 @@ func (srv *Server) runPeer(p *Peer) {
 	})
 
 	// Run the per-peer main loop.
+	// ピアごとのメインループを実行します。
 	remoteRequested, err := p.run()
 
 	// Announce disconnect on the main loop to update the peer set.
 	// The main loop waits for existing peers to be sent on srv.delpeer
 	// before returning, so this send should not select on srv.quit.
+	// メインループで切断をアナウンスしてピアセットを更新します。
+	// メインループは、既存のピアがsrv.delpeerで送信されるのを待ってから戻るため、
+	// この送信はsrv.quitで選択しないでください。
 	srv.delpeer <- peerDrop{p, err, remoteRequested}
 
 	// Broadcast peer drop to external subscribers. This needs to be
 	// after the send to delpeer so subscribers have a consistent view of
 	// the peer set (i.e. Server.Peers() doesn't include the peer when the
 	// event is received.
+	// ピアドロップを外部サブスクライバにブロードキャストします。
+	// これは、サブスクライバーがピアセットの一貫したビューを持つように、
+	// delpeerへの送信後に行う必要があります
+	// （つまり、Server.Peers（）には、イベントの受信時にピアが含まれません。
 	srv.peerFeed.Send(&PeerEvent{
 		Type:          PeerEventTypeDrop,
 		Peer:          p.ID(),
@@ -1057,23 +1204,26 @@ func (srv *Server) runPeer(p *Peer) {
 }
 
 // NodeInfo represents a short summary of the information known about the host.
+// NodeInfoは、ホストについて知られている情報の短い要約を表します。
 type NodeInfo struct {
-	ID    string `json:"id"`    // Unique node identifier (also the encryption key)
-	Name  string `json:"name"`  // Name of the node, including client type, version, OS, custom data
-	Enode string `json:"enode"` // Enode URL for adding this peer from remote peers
-	ENR   string `json:"enr"`   // Ethereum Node Record
-	IP    string `json:"ip"`    // IP address of the node
+	ID    string `json:"id"`    // 一意のノード識別子（暗号化キーでもあります）                       // Unique node identifier (also the encryption key)
+	Name  string `json:"name"`  // クライアントタイプ、バージョン、OS、カスタムデータを含むノードの名前 // Name of the node, including client type, version, OS, custom data
+	Enode string `json:"enode"` // リモートピアからこのピアを追加するためのEnodeURL                   // Enode URL for adding this peer from remote peers
+	ENR   string `json:"enr"`   // イーサリアムノードレコード                                       // Ethereum Node Record
+	IP    string `json:"ip"`    // ノードのIPアドレス                                              // IP address of the node
 	Ports struct {
-		Discovery int `json:"discovery"` // UDP listening port for discovery protocol
-		Listener  int `json:"listener"`  // TCP listening port for RLPx
+		Discovery int `json:"discovery"` // 検出プロトコルのUDPリスニングポート // UDP listening port for discovery protocol
+		Listener  int `json:"listener"`  // RLPxのTCPリスニングポート         // TCP listening port for RLPx
 	} `json:"ports"`
 	ListenAddr string                 `json:"listenAddr"`
 	Protocols  map[string]interface{} `json:"protocols"`
 }
 
 // NodeInfo gathers and returns a collection of metadata known about the host.
+// NodeInfoは、ホストについて認識されているメタデータのコレクションを収集して返します。
 func (srv *Server) NodeInfo() *NodeInfo {
 	// Gather and assemble the generic node infos
+	// 一般的なノード情報を収集してアセンブルします
 	node := srv.Self()
 	info := &NodeInfo{
 		Name:       srv.Name,
@@ -1088,6 +1238,7 @@ func (srv *Server) NodeInfo() *NodeInfo {
 	info.ENR = node.String()
 
 	// Gather all the running protocol infos (only once per protocol type)
+	// 実行中のすべてのプロトコル情報を収集します（プロトコルタイプごとに1回のみ）
 	for _, proto := range srv.Protocols {
 		if _, ok := info.Protocols[proto.Name]; !ok {
 			nodeInfo := interface{}("unknown")
@@ -1101,8 +1252,10 @@ func (srv *Server) NodeInfo() *NodeInfo {
 }
 
 // PeersInfo returns an array of metadata objects describing connected peers.
+// PeersInfoは、接続されたピアを説明するメタデータオブジェクトの配列を返します。
 func (srv *Server) PeersInfo() []*PeerInfo {
 	// Gather all the generic and sub-protocol specific infos
+	// すべての一般的およびサブプロトコル固有の情報を収集します
 	infos := make([]*PeerInfo, 0, srv.PeerCount())
 	for _, peer := range srv.Peers() {
 		if peer != nil {
@@ -1110,6 +1263,7 @@ func (srv *Server) PeersInfo() []*PeerInfo {
 		}
 	}
 	// Sort the result array alphabetically by node identifier
+	// 結果の配列をノード識別子のアルファベット順に並べ替えます
 	for i := 0; i < len(infos); i++ {
 		for j := i + 1; j < len(infos); j++ {
 			if infos[i].ID > infos[j].ID {

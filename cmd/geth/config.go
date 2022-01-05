@@ -45,20 +45,21 @@ var (
 	dumpConfigCommand = cli.Command{
 		Action:      utils.MigrateFlags(dumpConfig),
 		Name:        "dumpconfig",
-		Usage:       "Show configuration values",
+		Usage:       "Show configuration values", // 構成値を表示する
 		ArgsUsage:   "",
 		Flags:       append(nodeFlags, rpcFlags...),
 		Category:    "MISCELLANEOUS COMMANDS",
-		Description: `The dumpconfig command shows configuration values.`,
+		Description: `The dumpconfig command shows configuration values.`, // dumpconfigコマンドは、構成値を表示します。
 	}
 
 	configFileFlag = cli.StringFlag{
 		Name:  "config",
-		Usage: "TOML configuration file",
+		Usage: "TOML configuration file", // TOML構成ファイル
 	}
 )
 
 // These settings ensure that TOML keys use the same names as Go struct fields.
+// これらの設定により、TOMLキーがGo構造体フィールドと同じ名前を使用するようになります。
 var tomlSettings = toml.Config{
 	NormFieldName: func(rt reflect.Type, key string) string {
 		return key
@@ -100,6 +101,7 @@ func loadConfig(file string, cfg *gethConfig) error {
 
 	err = tomlSettings.NewDecoder(bufio.NewReader(f)).Decode(cfg)
 	// Add file name to errors that have a line number.
+	// 行番号のあるエラーにファイル名を追加します。
 	if _, ok := err.(*toml.LineError); ok {
 		err = errors.New(file + ", " + err.Error())
 	}
@@ -117,8 +119,10 @@ func defaultNodeConfig() node.Config {
 }
 
 // makeConfigNode loads geth configuration and creates a blank node instance.
+// makeConfigNodeはgeth構成をロードし、空のノードインスタンスを作成します。
 func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 	// Load defaults.
+	// デフォルトをロードします。
 	cfg := gethConfig{
 		Eth:     ethconfig.Defaults,
 		Node:    defaultNodeConfig(),
@@ -126,6 +130,7 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 	}
 
 	// Load config file.
+	// 構成ファイルをロードします。
 	if file := ctx.GlobalString(configFileFlag.Name); file != "" {
 		if err := loadConfig(file, &cfg); err != nil {
 			utils.Fatalf("%v", err)
@@ -133,12 +138,14 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 	}
 
 	// Apply flags.
+	// フラグを適用します。
 	utils.SetNodeConfig(ctx, &cfg.Node)
 	stack, err := node.New(&cfg.Node)
 	if err != nil {
 		utils.Fatalf("Failed to create the protocol stack: %v", err)
 	}
 	// Node doesn't by default populate account manager backends
+	// ノードはデフォルトではアカウントマネージャーバックエンドにデータを入力しません
 	if err := setAccountManagerBackends(stack); err != nil {
 		utils.Fatalf("Failed to set account manager backends: %v", err)
 	}
@@ -153,6 +160,7 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gethConfig) {
 }
 
 // makeFullNode loads geth configuration and creates the Ethereum backend.
+// makeFullNodeはgeth構成をロードし、Ethereumバックエンドを作成します。
 func makeFullNode(ctx *cli.Context) (*node.Node, ethapi.Backend) {
 	stack, cfg := makeConfigNode(ctx)
 	if ctx.GlobalIsSet(utils.OverrideArrowGlacierFlag.Name) {
@@ -164,10 +172,12 @@ func makeFullNode(ctx *cli.Context) (*node.Node, ethapi.Backend) {
 	backend, _ := utils.RegisterEthService(stack, &cfg.Eth, ctx.GlobalBool(utils.CatalystFlag.Name))
 
 	// Configure GraphQL if requested
+	// 要求された場合はGraphQLを構成します
 	if ctx.GlobalIsSet(utils.GraphQLEnabledFlag.Name) {
 		utils.RegisterGraphQLService(stack, backend, cfg.Node)
 	}
 	// Add the Ethereum Stats daemon if requested.
+	// 必要に応じて、EthereumStatsデーモンを追加します。
 	if cfg.Ethstats.URL != "" {
 		utils.RegisterEthStatsService(stack, backend, cfg.Ethstats.URL)
 	}
@@ -175,6 +185,7 @@ func makeFullNode(ctx *cli.Context) (*node.Node, ethapi.Backend) {
 }
 
 // dumpConfig is the dumpconfig command.
+// dumpConfigはdumpconfigコマンドです。
 func dumpConfig(ctx *cli.Context) error {
 	_, cfg := makeConfigNode(ctx)
 	comment := ""
@@ -271,6 +282,7 @@ func setAccountManagerBackends(stack *node.Node) error {
 	}
 
 	// Assemble the supported backends
+	// サポートされているバックエンドを組み立てます
 	if len(conf.ExternalSigner) > 0 {
 		log.Info("Using external signer", "url", conf.ExternalSigner)
 		if extapi, err := external.NewExternalBackend(conf.ExternalSigner); err == nil {
@@ -285,21 +297,28 @@ func setAccountManagerBackends(stack *node.Node) error {
 	// If/when we implement some form of lockfile for USB and keystore wallets,
 	// we can have both, but it's very confusing for the user to see the same
 	// accounts in both externally and locally, plus very racey.
+	// 今のところ、外部署名者またはローカル署名者のいずれかを使用しています。
+	// USBウォレットとキーストアウォレットに何らかの形式のロックファイルを実装する場合、
+	// 両方を使用できますが、ユーザーが外部とローカルの両方で同じアカウントを表示するのは非常に混乱し、
+	// 非常に競争が激しくなります。
 	am.AddBackend(keystore.NewKeyStore(keydir, scryptN, scryptP))
 	if conf.USB {
 		// Start a USB hub for Ledger hardware wallets
+		// LedgerハードウェアウォレットのUSBハブを起動します
 		if ledgerhub, err := usbwallet.NewLedgerHub(); err != nil {
 			log.Warn(fmt.Sprintf("Failed to start Ledger hub, disabling: %v", err))
 		} else {
 			am.AddBackend(ledgerhub)
 		}
 		// Start a USB hub for Trezor hardware wallets (HID version)
+		// Trezorハードウェアウォレット用のUSBハブを起動します（HIDバージョン）
 		if trezorhub, err := usbwallet.NewTrezorHubWithHID(); err != nil {
 			log.Warn(fmt.Sprintf("Failed to start HID Trezor hub, disabling: %v", err))
 		} else {
 			am.AddBackend(trezorhub)
 		}
 		// Start a USB hub for Trezor hardware wallets (WebUSB version)
+		// Trezorハードウェアウォレット用のUSBハブを起動します（WebUSBバージョン）
 		if trezorhub, err := usbwallet.NewTrezorHubWithWebUSB(); err != nil {
 			log.Warn(fmt.Sprintf("Failed to start WebUSB Trezor hub, disabling: %v", err))
 		} else {
@@ -308,6 +327,7 @@ func setAccountManagerBackends(stack *node.Node) error {
 	}
 	if len(conf.SmartCardDaemonPath) > 0 {
 		// Start a smart card hub
+		// スマートカードハブを開始する
 		if schub, err := scwallet.NewHub(conf.SmartCardDaemonPath, scwallet.Scheme, keydir); err != nil {
 			log.Warn(fmt.Sprintf("Failed to start smart card hub, disabling: %v", err))
 		} else {

@@ -30,21 +30,26 @@ import (
 
 // ReadTxLookupEntry retrieves the positional metadata associated with a transaction
 // hash to allow retrieving the transaction or receipt by hash.
+// ReadTxLookupEntryは、トランザクションハッシュに関連付けられた位置メタデータを取得して、
+// トランザクションまたはハッシュによるレシートを取得できるようにします。
 func ReadTxLookupEntry(db ethdb.Reader, hash common.Hash) *uint64 {
 	data, _ := db.Get(txLookupKey(hash))
 	if len(data) == 0 {
 		return nil
 	}
 	// Database v6 tx lookup just stores the block number
+	// データベースv6txルックアップはブロック番号を格納するだけです
 	if len(data) < common.HashLength {
 		number := new(big.Int).SetBytes(data).Uint64()
 		return &number
 	}
 	// Database v4-v5 tx lookup format just stores the hash
+	// データベースv4-v5txルックアップ形式はハッシュを格納するだけです
 	if len(data) == common.HashLength {
 		return ReadHeaderNumber(db, common.BytesToHash(data))
 	}
 	// Finally try database v3 tx lookup format
+	// 最後にデータベースv3txルックアップ形式を試してください
 	var entry LegacyTxLookupEntry
 	if err := rlp.DecodeBytes(data, &entry); err != nil {
 		log.Error("Invalid transaction lookup entry RLP", "hash", hash, "blob", data, "err", err)
@@ -55,6 +60,8 @@ func ReadTxLookupEntry(db ethdb.Reader, hash common.Hash) *uint64 {
 
 // writeTxLookupEntry stores a positional metadata for a transaction,
 // enabling hash based transaction and receipt lookups.
+// writeTxLookupEntryは、トランザクションの位置メタデータを格納し、
+// ハッシュベースのトランザクションとレシートのルックアップを有効にします。
 func writeTxLookupEntry(db ethdb.KeyValueWriter, hash common.Hash, numberBytes []byte) {
 	if err := db.Put(txLookupKey(hash), numberBytes); err != nil {
 		log.Crit("Failed to store transaction lookup entry", "err", err)
@@ -63,6 +70,7 @@ func writeTxLookupEntry(db ethdb.KeyValueWriter, hash common.Hash, numberBytes [
 
 // WriteTxLookupEntries is identical to WriteTxLookupEntry, but it works on
 // a list of hashes
+// WriteTxLookupEntriesはWriteTxLookupEntryと同じですが、ハッシュのリストで機能します
 func WriteTxLookupEntries(db ethdb.KeyValueWriter, number uint64, hashes []common.Hash) {
 	numberBytes := new(big.Int).SetUint64(number).Bytes()
 	for _, hash := range hashes {
@@ -72,6 +80,8 @@ func WriteTxLookupEntries(db ethdb.KeyValueWriter, number uint64, hashes []commo
 
 // WriteTxLookupEntriesByBlock stores a positional metadata for every transaction from
 // a block, enabling hash based transaction and receipt lookups.
+// WriteTxLookupEntriesByBlockは、ブロックからのすべてのトランザクションの位置メタデータを格納し、
+// ハッシュベースのトランザクションとレシートのルックアップを有効にします。
 func WriteTxLookupEntriesByBlock(db ethdb.KeyValueWriter, block *types.Block) {
 	numberBytes := block.Number().Bytes()
 	for _, tx := range block.Transactions() {
@@ -80,6 +90,7 @@ func WriteTxLookupEntriesByBlock(db ethdb.KeyValueWriter, block *types.Block) {
 }
 
 // DeleteTxLookupEntry removes all transaction data associated with a hash.
+// DeleteTxLookupEntryは、ハッシュに関連付けられているすべてのトランザクションデータを削除します。
 func DeleteTxLookupEntry(db ethdb.KeyValueWriter, hash common.Hash) {
 	if err := db.Delete(txLookupKey(hash)); err != nil {
 		log.Crit("Failed to delete transaction lookup entry", "err", err)

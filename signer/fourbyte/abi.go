@@ -43,6 +43,7 @@ type decodedArgument struct {
 }
 
 // String implements stringer interface, tries to use the underlying value-type
+// 文字列はストリンガーインターフェイスを実装し、基になる値型を使用しようとします
 func (arg decodedArgument) String() string {
 	var value string
 	switch val := arg.value.(type) {

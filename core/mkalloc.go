@@ -25,6 +25,14 @@
        go run mkalloc.go genesis.json
 
 */
+/*
+
+    mkallocツールは、genesis_alloc.goにジェネシス割り当て定数を作成します
+    RLPでエンコードされた（アドレス、バランス）タプルのリストを含むconst宣言を出力します。
+
+	    go run mkalloc.go genesis.json
+
+*/
 package main
 
 import (

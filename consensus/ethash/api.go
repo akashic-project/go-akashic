@@ -27,6 +27,7 @@ import (
 var errEthashStopped = errors.New("ethash stopped")
 
 // API exposes ethash related methods for the RPC interface.
+// APIは、RPCインターフェースのethash関連のメソッドを公開します。
 type API struct {
 	ethash *Ethash
 }
@@ -38,6 +39,13 @@ type API struct {
 //   result[1] - 32 bytes hex encoded seed hash used for DAG
 //   result[2] - 32 bytes hex encoded boundary condition ("target"), 2^256/difficulty
 //   result[3] - hex encoded block number
+// GetWorkは、外部マイナーのワークパッケージを返します。
+//
+// ワークパッケージは3つの文字列で構成されています：
+// result [0] -32バイトの16進エンコードされた現在のブロックヘッダーpow-hash
+// result [1] -DAGに使用される32バイトの16進エンコードシードハッシュ
+// result [2] -32バイトの16進エンコード境界条件（「ターゲット」）、2 ^ 256 /難易度
+// result [3] -16進数でエンコードされたブロック番号
 func (api *API) GetWork() ([4]string, error) {
 	if api.ethash.remote == nil {
 		return [4]string{}, errors.New("not supported")
@@ -63,6 +71,9 @@ func (api *API) GetWork() ([4]string, error) {
 // SubmitWork can be used by external miner to submit their POW solution.
 // It returns an indication if the work was accepted.
 // Note either an invalid solution, a stale work a non-existent work will return false.
+// SubmitWorkは、外部マイナーがPOWソリューションを送信するために使用できます。
+// 作業が受け入れられたかどうかの指示を返します。
+// 無効な解決策、古い作品、存在しない作品のいずれかがfalseを返すことに注意してください。
 func (api *API) SubmitWork(nonce types.BlockNonce, hash, digest common.Hash) bool {
 	if api.ethash.remote == nil {
 		return false
@@ -89,6 +100,10 @@ func (api *API) SubmitWork(nonce types.BlockNonce, hash, digest common.Hash) boo
 //
 // It accepts the miner hash rate and an identifier which must be unique
 // between nodes.
+// SubmitHashrateは、リモートマイナーがハッシュレートを送信するために使用できます。
+// これにより、ノードは、このノードを介して作業を送信するすべてのマイナーの合計ハッシュレートをレポートできます。
+//
+// マイナーハッシュレートとノード間で一意である必要がある識別子を受け入れます。
 func (api *API) SubmitHashrate(rate hexutil.Uint64, id common.Hash) bool {
 	if api.ethash.remote == nil {
 		return false
@@ -102,11 +117,13 @@ func (api *API) SubmitHashrate(rate hexutil.Uint64, id common.Hash) bool {
 	}
 
 	// Block until hash rate submitted successfully.
+	// ハッシュレートが正常に送信されるまでブロックします。
 	<-done
 	return true
 }
 
 // GetHashrate returns the current hashrate for local CPU miner and remote miner.
+// GetHashrateは、ローカルCPUマイナーとリモートマイナーの現在のハッシュレートを返します。
 func (api *API) GetHashrate() uint64 {
 	return uint64(api.ethash.Hashrate())
 }

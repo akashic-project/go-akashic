@@ -111,6 +111,7 @@ func TestNetPipe(t *testing.T) {
 	defer wg.Wait()
 
 	// netPipe is blocking, so writes are emitted asynchronously
+	// netPipeがブロックしているため、書き込みは非同期で発行されます
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -151,6 +152,7 @@ func TestNetPipeBidirections(t *testing.T) {
 	defer wg.Wait()
 
 	// netPipe is blocking, so writes are emitted asynchronously
+	// netPipeがブロックしているため、書き込みは非同期で発行されます
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -164,6 +166,7 @@ func TestNetPipeBidirections(t *testing.T) {
 	}()
 
 	// netPipe is blocking, so reads for pong are emitted asynchronously
+	// netPipeがブロックしているため、pongの読み取りは非同期で発行されます
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -181,6 +184,7 @@ func TestNetPipeBidirections(t *testing.T) {
 	}()
 
 	// expect to read pings, and respond with pongs to the alternate connection
+	// pingを読み取り、代替接続にpongで応答することを期待します
 	for i := 0; i < msgs; i++ {
 		expected := []byte(fmt.Sprintf(pingTemplate, i))
 

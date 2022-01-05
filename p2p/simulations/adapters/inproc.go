@@ -36,6 +36,8 @@ import (
 
 // SimAdapter is a NodeAdapter which creates in-memory simulation nodes and
 // connects them using net.Pipe
+// SimAdapterは、メモリ内シミュレーションノードを作成し、
+// net.Pipeを使用してそれらを接続するNodeAdapterです。
 type SimAdapter struct {
 	pipe       func() (net.Conn, net.Conn, error)
 	mtx        sync.RWMutex
@@ -47,6 +49,9 @@ type SimAdapter struct {
 // simulation nodes running any of the given services (the services to run on a
 // particular node are passed to the NewNode function in the NodeConfig)
 // the adapter uses a net.Pipe for in-memory simulated network connections
+// NewSimAdapterは、指定されたサービスのいずれかを実行するメモリ内シミュレーションノードを実行できる
+// SimAdapterを作成します（特定のノードで実行するサービスはNodeConfigのNewNode関数に渡されます）。
+// アダプターはメモリ内にnet.Pipeを使用します。シミュレートされたネットワーク接続
 func NewSimAdapter(services LifecycleConstructors) *SimAdapter {
 	return &SimAdapter{
 		pipe:       pipes.NetPipe,
@@ -56,27 +61,32 @@ func NewSimAdapter(services LifecycleConstructors) *SimAdapter {
 }
 
 // Name returns the name of the adapter for logging purposes
+// Nameは、ロギングの目的でアダプターの名前を返します
 func (s *SimAdapter) Name() string {
 	return "sim-adapter"
 }
 
 // NewNode returns a new SimNode using the given config
+// NewNodeは、指定された構成を使用して新しいSimNodeを返します
 func (s *SimAdapter) NewNode(config *NodeConfig) (Node, error) {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 
 	id := config.ID
 	// verify that the node has a private key in the config
+	// ノードの構成に秘密鍵があることを確認します
 	if config.PrivateKey == nil {
 		return nil, fmt.Errorf("node is missing private key: %s", id)
 	}
 
 	// check a node with the ID doesn't already exist
+	// IDを持つノードがまだ存在しないことを確認してください
 	if _, exists := s.nodes[id]; exists {
 		return nil, fmt.Errorf("node already exists: %s", id)
 	}
 
 	// check the services are valid
+	// サービスが有効であることを確認してください
 	if len(config.Lifecycles) == 0 {
 		return nil, errors.New("node must have at least one service")
 	}
@@ -119,6 +129,8 @@ func (s *SimAdapter) NewNode(config *NodeConfig) (Node, error) {
 
 // Dial implements the p2p.NodeDialer interface by connecting to the node using
 // an in-memory net.Pipe
+// Dialは、メモリ内のnet.Pipeを使用してノードに接続することにより、
+// p2p.NodeDialerインターフェイスを実装します。
 func (s *SimAdapter) Dial(ctx context.Context, dest *enode.Node) (conn net.Conn, err error) {
 	node, ok := s.GetNode(dest.ID())
 	if !ok {
@@ -129,6 +141,7 @@ func (s *SimAdapter) Dial(ctx context.Context, dest *enode.Node) (conn net.Conn,
 		return nil, fmt.Errorf("node not running: %s", dest.ID())
 	}
 	// SimAdapter.pipe is net.Pipe (NewSimAdapter)
+	// SimAdapter.pipeはnet.Pipe（NewSimAdapter）です
 	pipe1, pipe2, err := s.pipe()
 	if err != nil {
 		return nil, err
@@ -136,12 +149,17 @@ func (s *SimAdapter) Dial(ctx context.Context, dest *enode.Node) (conn net.Conn,
 	// this is simulated 'listening'
 	// asynchronously call the dialed destination node's p2p server
 	// to set up connection on the 'listening' side
+	// これはシミュレートされます。
+	// 「リスニング」は、ダイヤルされた宛先ノードのp2pサーバーを非同期的に呼び出して、
+	// 「リスニング」側で接続をセットアップします。
 	go srv.SetupConn(pipe1, 0, nil)
 	return pipe2, nil
 }
 
 // DialRPC implements the RPCDialer interface by creating an in-memory RPC
 // client of the given node
+// DialRPCは、指定されたノードのメモリ内RPCクライアントを作成することにより、
+// RPCDialerインターフェイスを実装します。
 func (s *SimAdapter) DialRPC(id enode.ID) (*rpc.Client, error) {
 	node, ok := s.GetNode(id)
 	if !ok {
@@ -151,6 +169,7 @@ func (s *SimAdapter) DialRPC(id enode.ID) (*rpc.Client, error) {
 }
 
 // GetNode returns the node with the given ID if it exists
+// GetNodeは、指定されたIDのノードが存在する場合、それを返します。
 func (s *SimAdapter) GetNode(id enode.ID) (*SimNode, bool) {
 	s.mtx.RLock()
 	defer s.mtx.RUnlock()
@@ -161,6 +180,8 @@ func (s *SimAdapter) GetNode(id enode.ID) (*SimNode, bool) {
 // SimNode is an in-memory simulation node which connects to other nodes using
 // net.Pipe (see SimAdapter.Dial), running devp2p protocols directly over that
 // pipe
+// SimNodeは、net.Pipe（SimAdapter.Dialを参照）を使用して他のノードに接続し、
+// そのパイプ上で直接devp2pプロトコルを実行するインメモリシミュレーションノードです。
 type SimNode struct {
 	lock         sync.RWMutex
 	ID           enode.ID
@@ -174,22 +195,26 @@ type SimNode struct {
 
 // Close closes the underlaying node.Node to release
 // acquired resources.
+// Closeは、下にあるnode.Nodeを閉じて、取得したリソースを解放します。
 func (sn *SimNode) Close() error {
 	return sn.node.Close()
 }
 
 // Addr returns the node's discovery address
+// Addrはノードの検出アドレスを返します
 func (sn *SimNode) Addr() []byte {
 	return []byte(sn.Node().String())
 }
 
 // Node returns a node descriptor representing the SimNode
+// Nodeは、SimNodeを表すノード記述子を返します
 func (sn *SimNode) Node() *enode.Node {
 	return sn.config.Node()
 }
 
 // Client returns an rpc.Client which can be used to communicate with the
 // underlying services (it is set once the node has started)
+// クライアントは、基盤となるサービスとの通信に使用できるrpc.Clientを返します（ノードが開始されると設定されます）
 func (sn *SimNode) Client() (*rpc.Client, error) {
 	sn.lock.RLock()
 	defer sn.lock.RUnlock()
@@ -201,6 +226,8 @@ func (sn *SimNode) Client() (*rpc.Client, error) {
 
 // ServeRPC serves RPC requests over the given connection by creating an
 // in-memory client to the node's RPC server.
+// ServeRPCは、ノードのRPCサーバーへのメモリ内クライアントを作成することにより、
+// 指定された接続を介してRPC要求を処理します。
 func (sn *SimNode) ServeRPC(conn *websocket.Conn) error {
 	handler, err := sn.node.RPCHandler()
 	if err != nil {
@@ -213,6 +240,8 @@ func (sn *SimNode) ServeRPC(conn *websocket.Conn) error {
 
 // Snapshots creates snapshots of the services by calling the
 // simulation_snapshot RPC method
+// スナップショットは、simulation_snapshotRPCメソッドを呼び出すことによって
+// サービスのスナップショットを作成します
 func (sn *SimNode) Snapshots() (map[string][]byte, error) {
 	sn.lock.RLock()
 	services := make(map[string]node.Lifecycle, len(sn.running))
@@ -239,9 +268,11 @@ func (sn *SimNode) Snapshots() (map[string][]byte, error) {
 }
 
 // Start registers the services and starts the underlying devp2p node
+// Startはサービスを登録し、基盤となるdevp2pノードを開始します
 func (sn *SimNode) Start(snapshots map[string][]byte) error {
 	// ensure we only register the services once in the case of the node
 	// being stopped and then started again
+	// ノードが停止してから再開する場合は、サービスを1回だけ登録するようにしてください。
 	var regErr error
 	sn.registerOnce.Do(func() {
 		for _, name := range sn.config.Lifecycles {
@@ -259,6 +290,7 @@ func (sn *SimNode) Start(snapshots map[string][]byte) error {
 				break
 			}
 			// if the service has already been registered, don't register it again.
+			// サービスがすでに登録されている場合は、再度登録しないでください。
 			if _, ok := sn.running[name]; ok {
 				continue
 			}
@@ -274,6 +306,7 @@ func (sn *SimNode) Start(snapshots map[string][]byte) error {
 	}
 
 	// create an in-process RPC client
+	// インプロセスRPCクライアントを作成する
 	client, err := sn.node.Attach()
 	if err != nil {
 		return err
@@ -286,6 +319,7 @@ func (sn *SimNode) Start(snapshots map[string][]byte) error {
 }
 
 // Stop closes the RPC client and stops the underlying devp2p node
+// Stopは、RPCクライアントを閉じ、基になるdevp2pノードを停止します
 func (sn *SimNode) Stop() error {
 	sn.lock.Lock()
 	if sn.client != nil {
@@ -297,6 +331,7 @@ func (sn *SimNode) Stop() error {
 }
 
 // Service returns a running service by name
+// サービスは実行中のサービスを名前で返します
 func (sn *SimNode) Service(name string) node.Lifecycle {
 	sn.lock.RLock()
 	defer sn.lock.RUnlock()
@@ -304,6 +339,7 @@ func (sn *SimNode) Service(name string) node.Lifecycle {
 }
 
 // Services returns a copy of the underlying services
+// Servicesは、基になるサービスのコピーを返します
 func (sn *SimNode) Services() []node.Lifecycle {
 	sn.lock.RLock()
 	defer sn.lock.RUnlock()
@@ -315,6 +351,7 @@ func (sn *SimNode) Services() []node.Lifecycle {
 }
 
 // ServiceMap returns a map by names of the underlying services
+// ServiceMapは、基になるサービスの名前でマップを返します
 func (sn *SimNode) ServiceMap() map[string]node.Lifecycle {
 	sn.lock.RLock()
 	defer sn.lock.RUnlock()
@@ -326,12 +363,14 @@ func (sn *SimNode) ServiceMap() map[string]node.Lifecycle {
 }
 
 // Server returns the underlying p2p.Server
+// サーバーは基盤となるp2p.Serverを返します
 func (sn *SimNode) Server() *p2p.Server {
 	return sn.node.Server()
 }
 
 // SubscribeEvents subscribes the given channel to peer events from the
 // underlying p2p.Server
+// SubscribeEventsは、基になるp2p.Serverからのピアイベントに指定されたチャネルをサブスクライブします
 func (sn *SimNode) SubscribeEvents(ch chan *p2p.PeerEvent) event.Subscription {
 	srv := sn.Server()
 	if srv == nil {
@@ -341,6 +380,7 @@ func (sn *SimNode) SubscribeEvents(ch chan *p2p.PeerEvent) event.Subscription {
 }
 
 // NodeInfo returns information about the node
+// NodeInfoは、ノードに関する情報を返します
 func (sn *SimNode) NodeInfo() *p2p.NodeInfo {
 	server := sn.Server()
 	if server == nil {
