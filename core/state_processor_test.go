@@ -42,7 +42,7 @@ import (
 func TestStateProcessorErrors(t *testing.T) {
 	var (
 		config = &params.ChainConfig{
-			ChainID:             big.NewInt(1),
+			ChainID:             big.NewInt(11111),
 			HomesteadBlock:      big.NewInt(0),
 			EIP150Block:         big.NewInt(0),
 			EIP155Block:         big.NewInt(0),
@@ -214,7 +214,7 @@ func TestStateProcessorErrors(t *testing.T) {
 			db    = rawdb.NewMemoryDatabase()
 			gspec = &Genesis{
 				Config: &params.ChainConfig{
-					ChainID:             big.NewInt(1),
+					ChainID:             big.NewInt(11111),
 					HomesteadBlock:      big.NewInt(0),
 					EIP150Block:         big.NewInt(0),
 					EIP155Block:         big.NewInt(0),

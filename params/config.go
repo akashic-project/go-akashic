@@ -60,7 +60,7 @@ var (
 	// MainnetChainConfig is the chain parameters to run a node on the main network.
 	// MainnetChainConfigは、メインネットワーク上でノードを実行するためのチェーンパラメーターです。
 	MainnetChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(1),
+		ChainID:             big.NewInt(11111),
 		HomesteadBlock:      big.NewInt(1_150_000),
 		DAOForkBlock:        big.NewInt(1_920_000),
 		DAOForkSupport:      true,
@@ -105,7 +105,7 @@ var (
 	// RopstenChainConfig contains the chain parameters to run a node on the Ropsten test network.
 	// RopstenChainConfigには、Ropstenテストネットワークでノードを実行するためのチェーンパラメーターが含まれています。
 	RopstenChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(3),
+		ChainID:             big.NewInt(11113),
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -149,7 +149,7 @@ var (
 	// SepoliaChainConfig contains the chain parameters to run a node on the Sepolia test network.
 	// SepoliaChainConfigには、Sepoliaテストネットワークでノードを実行するためのチェーンパラメーターが含まれています。
 	SepoliaChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(11155111),
+		ChainID:             big.NewInt(11155),
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -178,7 +178,7 @@ var (
 	// RinkebyChainConfig contains the chain parameters to run a node on the Rinkeby test network.
 	// RinkebyChainConfigには、Rinkebyテストネットワークでノードを実行するためのチェーンパラメーターが含まれています。
 	RinkebyChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(4),
+		ChainID:             big.NewInt(11114),
 		HomesteadBlock:      big.NewInt(1),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -225,7 +225,7 @@ var (
 	// GoerliChainConfig contains the chain parameters to run a node on the Görli test network.
 	// GoerliChainConfigには、Görliテストネットワークでノードを実行するためのチェーンパラメーターが含まれています。
 	GoerliChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(5),
+		ChainID:             big.NewInt(11115),
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,

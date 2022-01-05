@@ -157,7 +157,7 @@ const primaryType = "Mail"
 var domainStandard = apitypes.TypedDataDomain{
 	Name:              "Ether Mail",
 	Version:           "1",
-	ChainId:           math.NewHexOrDecimal256(1),
+	ChainId:           math.NewHexOrDecimal256(11111),
 	VerifyingContract: "0xCcCCccccCCCCcCCCCCCcCcCccCcCCCcCcccccccC",
 	Salt:              "",
 }
@@ -260,7 +260,7 @@ func TestDomainChainId(t *testing.T) {
 		},
 		Domain: apitypes.TypedDataDomain{
 			Name:    "test",
-			ChainId: math.NewHexOrDecimal256(1),
+			ChainId: math.NewHexOrDecimal256(11111),
 		},
 	}
 

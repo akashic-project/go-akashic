@@ -57,7 +57,7 @@ var (
 	)
 
 	emptyEip2718Tx = NewTx(&AccessListTx{
-		ChainID:  big.NewInt(1),
+		ChainID:  big.NewInt(11111),
 		Nonce:    3,
 		To:       &testAddr,
 		Value:    big.NewInt(10),
@@ -121,8 +121,8 @@ func TestEIP2930Signer(t *testing.T) {
 		signer1 = NewEIP2930Signer(big.NewInt(1))
 		signer2 = NewEIP2930Signer(big.NewInt(2))
 		tx0     = NewTx(&AccessListTx{Nonce: 1})
-		tx1     = NewTx(&AccessListTx{ChainID: big.NewInt(1), Nonce: 1})
-		tx2, _  = SignNewTx(key, signer2, &AccessListTx{ChainID: big.NewInt(2), Nonce: 1})
+		tx1     = NewTx(&AccessListTx{ChainID: big.NewInt(11111), Nonce: 1})
+		tx2, _  = SignNewTx(key, signer2, &AccessListTx{ChainID: big.NewInt(11112), Nonce: 1})
 	)
 
 	tests := []struct {
@@ -440,7 +440,7 @@ func TestTransactionCoding(t *testing.T) {
 		case 2:
 			// Tx with non-zero access list.
 			txdata = &AccessListTx{
-				ChainID:    big.NewInt(1),
+				ChainID:    big.NewInt(11111),
 				Nonce:      i,
 				To:         &recipient,
 				Gas:        123457,
@@ -451,7 +451,7 @@ func TestTransactionCoding(t *testing.T) {
 		case 3:
 			// Tx with empty access list.
 			txdata = &AccessListTx{
-				ChainID:  big.NewInt(1),
+				ChainID:  big.NewInt(11111),
 				Nonce:    i,
 				To:       &recipient,
 				Gas:      123457,
@@ -461,7 +461,7 @@ func TestTransactionCoding(t *testing.T) {
 		case 4:
 			// Contract creation with access list.
 			txdata = &AccessListTx{
-				ChainID:    big.NewInt(1),
+				ChainID:    big.NewInt(11111),
 				Nonce:      i,
 				Gas:        123457,
 				GasPrice:   big.NewInt(10),
