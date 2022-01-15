@@ -139,6 +139,8 @@ func (api *PublicFilterAPI) NewPendingTransactionFilter() rpc.ID {
 
 // NewPendingTransactions creates a subscription that is triggered each time a transaction
 // enters the transaction pool and was signed from one of the transactions this nodes manages.
+// NewPendingTransactionsは、トランザクションがトランザクションプールに入るたびにトリガーされ、
+// このノードが管理するトランザクションの1つから署名されたサブスクリプションを作成します。
 func (api *PublicFilterAPI) NewPendingTransactions(ctx context.Context) (*rpc.Subscription, error) {
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
@@ -156,6 +158,8 @@ func (api *PublicFilterAPI) NewPendingTransactions(ctx context.Context) (*rpc.Su
 			case hashes := <-txHashes:
 				// To keep the original behaviour, send a single tx hash in one notification.
 				// TODO(rjl493456442) Send a batch of tx hashes in one notification
+				// 元の動作を維持するには、1つの通知で単一のtxハッシュを送信します。
+				// TODO（rjl493456442）1つの通知でtxハッシュのバッチを送信します
 				for _, h := range hashes {
 					notifier.Notify(rpcSub.ID, h)
 				}

@@ -32,6 +32,7 @@ import (
 )
 
 // Client defines typed wrappers for the Ethereum RPC API.
+// クライアントはEthereumRPCAPIの型付きラッパーを定義します。
 type Client struct {
 	c *rpc.Client
 }
@@ -50,6 +51,7 @@ func DialContext(ctx context.Context, rawurl string) (*Client, error) {
 }
 
 // NewClient creates a client that uses the given RPC client.
+// NewClientは、指定されたRPCクライアントを使用するクライアントを作成します。
 func NewClient(c *rpc.Client) *Client {
 	return &Client{c}
 }
@@ -328,6 +330,8 @@ func (ec *Client) NetworkID(ctx context.Context) (*big.Int, error) {
 
 // BalanceAt returns the wei balance of the given account.
 // The block number can be nil, in which case the balance is taken from the latest known block.
+// BalanceAtは、指定されたアカウントのwei残高を返します。
+// ブロック番号はnilにすることができます。その場合、残高は最新の既知のブロックから取得されます。
 func (ec *Client) BalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
 	var result hexutil.Big
 	err := ec.c.CallContext(ctx, &result, "eth_getBalance", account, toBlockNumArg(blockNumber))
@@ -336,6 +340,8 @@ func (ec *Client) BalanceAt(ctx context.Context, account common.Address, blockNu
 
 // StorageAt returns the value of key in the contract storage of the given account.
 // The block number can be nil, in which case the value is taken from the latest known block.
+// StorageAtは、指定されたアカウントのコントラクトストレージ内のキーの値を返します。
+// ブロック番号はnilにすることができます。その場合、値は最新の既知のブロックから取得されます。
 func (ec *Client) StorageAt(ctx context.Context, account common.Address, key common.Hash, blockNumber *big.Int) ([]byte, error) {
 	var result hexutil.Bytes
 	err := ec.c.CallContext(ctx, &result, "eth_getStorageAt", account, key, toBlockNumArg(blockNumber))
@@ -344,6 +350,8 @@ func (ec *Client) StorageAt(ctx context.Context, account common.Address, key com
 
 // CodeAt returns the contract code of the given account.
 // The block number can be nil, in which case the code is taken from the latest known block.
+// CodeAtは、指定されたアカウントの契約コードを返します。
+// ブロック番号はnilにすることができます。その場合、コードは最新の既知のブロックから取得されます。
 func (ec *Client) CodeAt(ctx context.Context, account common.Address, blockNumber *big.Int) ([]byte, error) {
 	var result hexutil.Bytes
 	err := ec.c.CallContext(ctx, &result, "eth_getCode", account, toBlockNumArg(blockNumber))
@@ -352,6 +360,8 @@ func (ec *Client) CodeAt(ctx context.Context, account common.Address, blockNumbe
 
 // NonceAt returns the account nonce of the given account.
 // The block number can be nil, in which case the nonce is taken from the latest known block.
+// NonceAtは、指定されたアカウントのアカウントナンスを返します。
+// ブロック番号はnilにすることができます。その場合、ナンスは最新の既知のブロックから取得されます。
 func (ec *Client) NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error) {
 	var result hexutil.Uint64
 	err := ec.c.CallContext(ctx, &result, "eth_getTransactionCount", account, toBlockNumArg(blockNumber))
@@ -504,6 +514,10 @@ func (ec *Client) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64
 //
 // If the transaction was a contract creation use the TransactionReceipt method to get the
 // contract address after the transaction has been mined.
+// SendTransactionは、実行のために保留中のプールに署名されたトランザクションを挿入します。
+//
+// トランザクションがコントラクトの作成であった場合は、TransactionReceiptメソッドを使用して
+// トランザクションがマイニングされた後のコントラクトアドレス。
 func (ec *Client) SendTransaction(ctx context.Context, tx *types.Transaction) error {
 	data, err := tx.MarshalBinary()
 	if err != nil {

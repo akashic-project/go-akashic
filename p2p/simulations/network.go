@@ -303,6 +303,8 @@ func (net *Network) Stop(id enode.ID) error {
 
 // Connect connects two nodes together by calling the "admin_addPeer" RPC
 // method on the "one" node so that it connects to the "other" node
+// Connectは、「admin_addPeer」RPCを呼び出して2つのノードを接続します
+//「1つの」ノードでメソッドを実行して「他の」ノードに接続する
 func (net *Network) Connect(oneID, otherID enode.ID) error {
 	net.lock.Lock()
 	defer net.lock.Unlock()

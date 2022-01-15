@@ -48,11 +48,15 @@ type ServerCodec interface {
 
 // jsonWriter can write JSON messages to its underlying connection.
 // Implementations must be safe for concurrent use.
+// jsonWriterは、基礎となる接続にJSONメッセージを書き込むことができます。
+// 実装は同時使用に対して安全でなければなりません。
 type jsonWriter interface {
 	writeJSON(context.Context, interface{}) error
 	// Closed returns a channel which is closed when the connection is closed.
+	// Closedは、接続が閉じられたときに閉じられたチャネルを返します。
 	closed() <-chan interface{}
 	// RemoteAddr returns the peer address of the connection.
+	// RemoteAddrは接続のピアアドレスを返します。
 	remoteAddr() string
 }
 

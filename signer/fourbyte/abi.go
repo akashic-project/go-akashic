@@ -29,6 +29,7 @@ import (
 
 // decodedCallData is an internal type to represent a method call parsed according
 // to an ABI method signature.
+// decodeCallDataは、ABIメソッドシグネチャに従って解析されたメソッド呼び出しを表す内​​部型です。
 type decodedCallData struct {
 	signature string
 	name      string
@@ -37,6 +38,7 @@ type decodedCallData struct {
 
 // decodedArgument is an internal type to represent an argument parsed according
 // to an ABI method signature.
+// decodeArgumentは、ABIメソッドシグネチャに従って解析された引数を表す内部型です。
 type decodedArgument struct {
 	soltype abi.Argument
 	value   interface{}
@@ -56,6 +58,7 @@ func (arg decodedArgument) String() string {
 }
 
 // String implements stringer interface for decodedCallData
+// Stringは、decodeCallDataのストリンガーインターフェイスを実装します
 func (cd decodedCallData) String() string {
 	args := make([]string, len(cd.inputs))
 	for i, arg := range cd.inputs {

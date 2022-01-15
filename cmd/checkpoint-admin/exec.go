@@ -83,8 +83,13 @@ var commandPublish = cli.Command{
 //
 // Note the network where the contract is deployed depends on
 // the network where the connected node is located.
+// deployは、チェックポイントレジストラコントラクトをデプロイします。
+//
+// コントラクトが展開されるネットワークは、
+// 接続されたノードが配置されているネットワークに依存することに注意してください。
 func deploy(ctx *cli.Context) error {
 	// Gather all the addresses that should be permitted to sign
+	//署名を許可する必要のあるすべてのアドレスを収集します
 	var addrs []common.Address
 	for _, account := range strings.Split(ctx.String(signersFlag.Name), ",") {
 		if trimmed := strings.TrimSpace(account); !common.IsHexAddress(trimmed) {
@@ -93,11 +98,13 @@ func deploy(ctx *cli.Context) error {
 		addrs = append(addrs, common.HexToAddress(account))
 	}
 	// Retrieve and validate the signing threshold
+	// 署名のしきい値を取得して検証します
 	needed := ctx.Int(thresholdFlag.Name)
 	if needed == 0 || needed > len(addrs) {
 		utils.Fatalf("Invalid signature threshold %d", needed)
 	}
 	// Print a summary to ensure the user understands what they're signing
+	// 要約を印刷して、ユーザーが署名内容を確実に理解できるようにします
 	fmt.Printf("Deploying new checkpoint oracle:\n\n")
 	for i, addr := range addrs {
 		fmt.Printf("Admin %d => %s\n", i+1, addr.Hex())
@@ -105,9 +112,11 @@ func deploy(ctx *cli.Context) error {
 	fmt.Printf("\nSignatures needed to publish: %d\n", needed)
 
 	// setup clef signer, create an abigen transactor and an RPC client
+	// 音部記号の署名者を設定し、アビゲントランザクションとRPCクライアントを作成します
 	transactor, client := newClefSigner(ctx), newClient(ctx)
 
 	// Deploy the checkpoint oracle
+	// チェックポイントオラクルをデプロイします
 	fmt.Println("Sending deploy request to Clef...")
 	oracle, tx, _, err := contract.DeployCheckpointOracle(transactor, client, addrs, big.NewInt(int64(params.CheckpointFrequency)),
 		big.NewInt(int64(params.CheckpointProcessConfirmations)), big.NewInt(int64(needed)))

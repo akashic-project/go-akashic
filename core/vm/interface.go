@@ -24,6 +24,7 @@ import (
 )
 
 // StateDB is an EVM database for full state querying.
+// StateDBは、完全な状態クエリ用のEVMデータベースです。
 type StateDB interface {
 	CreateAccount(common.Address)
 
@@ -52,9 +53,13 @@ type StateDB interface {
 
 	// Exist reports whether the given account exists in state.
 	// Notably this should also return true for suicided accounts.
+	// Existは、指定されたアカウントが状態で存在するかどうかを報告します。
+	// 特に、これは自殺したアカウントに対してもtrueを返すはずです。
 	Exist(common.Address) bool
 	// Empty returns whether the given account is empty. Empty
 	// is defined according to EIP161 (balance = nonce = code = 0).
+	// Emptyは、指定されたアカウントが空かどうかを返します。
+	// 空はEIP161に従って定義されます（バランス=ナンス=コード= 0）。
 	Empty(common.Address) bool
 
 	PrepareAccessList(sender common.Address, dest *common.Address, precompiles []common.Address, txAccesses types.AccessList)
@@ -62,9 +67,13 @@ type StateDB interface {
 	SlotInAccessList(addr common.Address, slot common.Hash) (addressOk bool, slotOk bool)
 	// AddAddressToAccessList adds the given address to the access list. This operation is safe to perform
 	// even if the feature/fork is not active yet
+	// AddAddressToAccessListは、指定されたアドレスをアクセスリストに追加します。
+	// この操作は、機能/フォークがまだアクティブになっていない場合でも安全に実行できます
 	AddAddressToAccessList(addr common.Address)
 	// AddSlotToAccessList adds the given (address,slot) to the access list. This operation is safe to perform
 	// even if the feature/fork is not active yet
+	// AddSlotToAccessListは、指定された（address、slot）をアクセスリストに追加します。
+	// この操作は、機能/フォークがまだアクティブになっていない場合でも安全に実行できます
 	AddSlotToAccessList(addr common.Address, slot common.Hash)
 
 	RevertToSnapshot(int)
@@ -78,13 +87,19 @@ type StateDB interface {
 
 // CallContext provides a basic interface for the EVM calling conventions. The EVM
 // depends on this context being implemented for doing subcalls and initialising new EVM contracts.
+// CallContextは、EVM呼び出し規約の基本的なインターフェイスを提供します。
+// EVMは、サブコールを実行し、新しいEVMコントラクトを初期化するために実装されているこのコンテキストに依存します。
 type CallContext interface {
 	// Call another contract
+	// 別の契約を呼び出す
 	Call(env *EVM, me ContractRef, addr common.Address, data []byte, gas, value *big.Int) ([]byte, error)
 	// Take another's contract code and execute within our own context
+	// 他の人の契約コードを取得し、独自のコンテキスト内で実行します
 	CallCode(env *EVM, me ContractRef, addr common.Address, data []byte, gas, value *big.Int) ([]byte, error)
 	// Same as CallCode except sender and value is propagated from parent to child scope
+	// 送信者と値が親から子のスコープに伝播されることを除いて、CallCodeと同じ
 	DelegateCall(env *EVM, me ContractRef, addr common.Address, data []byte, gas *big.Int) ([]byte, error)
 	// Create a new contract
+	// 新しい契約を作成します
 	Create(env *EVM, me ContractRef, data []byte, gas, value *big.Int) ([]byte, common.Address, error)
 }

@@ -104,12 +104,14 @@ func (m *MetaData) GetAbi() (*abi.ABI, error) {
 // BoundContract is the base wrapper object that reflects a contract on the
 // Ethereum network. It contains a collection of methods that are used by the
 // higher level contract bindings to operate.
+// BoundContractは、Ethereumネットワーク上のコントラクトを反映するベースラッパーオブジェクトです。
+// これには、上位レベルのコントラクトバインディングが操作に使用するメソッドのコレクションが含まれています。
 type BoundContract struct {
-	address    common.Address     // Deployment address of the contract on the Ethereum blockchain
-	abi        abi.ABI            // Reflect based ABI to access the correct Ethereum methods
-	caller     ContractCaller     // Read interface to interact with the blockchain
-	transactor ContractTransactor // Write interface to interact with the blockchain
-	filterer   ContractFilterer   // Event filtering to interact with the blockchain
+	address    common.Address     // イーサリアムブロックチェーン上のコントラクトのデプロイメントアドレス // Deployment address of the contract on the Ethereum blockchain
+	abi        abi.ABI            // ベースのABIを反映して、正しいイーサリアムメソッドにアクセスします // Reflect based ABI to access the correct Ethereum methods
+	caller     ContractCaller     // ブロックチェーンと対話するためのインターフェースを読み取ります // Read interface to interact with the blockchain
+	transactor ContractTransactor // ブロックチェーンと対話するためのインターフェイスを作成します   // Write interface to interact with the blockchain
+	filterer   ContractFilterer   //ブロックチェーンと対話するためのイベントフィルタリング         // Event filtering to interact with the blockchain
 }
 
 // NewBoundContract creates a low level contract interface through which calls
@@ -357,6 +359,8 @@ func (c *BoundContract) getNonce(opts *TransactOpts) (uint64, error) {
 
 // transact executes an actual transaction invocation, first deriving any missing
 // authorization fields, and then scheduling the transaction for execution.
+// transactは実際のトランザクション呼び出しを実行し、
+// 最初に欠落している承認フィールドを取得してから、トランザクションの実行をスケジュールします。
 func (c *BoundContract) transact(opts *TransactOpts, contract *common.Address, input []byte) (*types.Transaction, error) {
 	if opts.GasPrice != nil && (opts.GasFeeCap != nil || opts.GasTipCap != nil) {
 		return nil, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")

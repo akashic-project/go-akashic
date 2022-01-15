@@ -36,6 +36,7 @@ type ChainContext interface {
 }
 
 // NewEVMBlockContext creates a new context for use in the EVM.
+// NewEVMBlockContextは、EVMで使用するための新しいコンテキストを作成します。
 func NewEVMBlockContext(header *types.Header, chain ChainContext, author *common.Address) vm.BlockContext {
 	var (
 		beneficiary common.Address
@@ -43,8 +44,9 @@ func NewEVMBlockContext(header *types.Header, chain ChainContext, author *common
 	)
 
 	// If we don't have an explicit author (i.e. not mining), extract from the header
+	// 明示的な作成者がいない場合（つまり、マイニングしていない場合）、ヘッダーから抽出します
 	if author == nil {
-		beneficiary, _ = chain.Engine().Author(header) // Ignore error, we're past header validation
+		beneficiary, _ = chain.Engine().Author(header) // エラーを無視し、ヘッダーの検証を過ぎました // Ignore error, we're past header validation
 	} else {
 		beneficiary = *author
 	}
@@ -65,6 +67,7 @@ func NewEVMBlockContext(header *types.Header, chain ChainContext, author *common
 }
 
 // NewEVMTxContext creates a new transaction context for a single transaction.
+// NewEVMTxContextは、単一のトランザクションの新しいトランザクションコンテキストを作成します。
 func NewEVMTxContext(msg Message) vm.TxContext {
 	return vm.TxContext{
 		Origin:   msg.From(),
@@ -73,13 +76,17 @@ func NewEVMTxContext(msg Message) vm.TxContext {
 }
 
 // GetHashFn returns a GetHashFunc which retrieves header hashes by number
+// GetHashFnは、ヘッダーハッシュを数値で取得するGetHashFuncを返します
 func GetHashFn(ref *types.Header, chain ChainContext) func(n uint64) common.Hash {
 	// Cache will initially contain [refHash.parent],
 	// Then fill up with [refHash.p, refHash.pp, refHash.ppp, ...]
+	// キャッシュには、最初は[refHash.parent]が含まれます。
+	// 次に、[refHash.p、refHash.pp、refHash.ppp、...]で埋めます
 	var cache []common.Hash
 
 	return func(n uint64) common.Hash {
 		// If there's no hash cache yet, make one
+		//ハッシュキャッシュがまだない場合は、作成します
 		if len(cache) == 0 {
 			cache = append(cache, ref.ParentHash)
 		}
@@ -87,6 +94,7 @@ func GetHashFn(ref *types.Header, chain ChainContext) func(n uint64) common.Hash
 			return cache[idx]
 		}
 		// No luck in the cache, but we can start iterating from the last element we already know
+		// キャッシュに運がありませんが、すでに知っている最後の要素から反復を開始できます
 		lastKnownHash := cache[len(cache)-1]
 		lastKnownNumber := ref.Number.Uint64() - uint64(len(cache))
 
@@ -108,11 +116,14 @@ func GetHashFn(ref *types.Header, chain ChainContext) func(n uint64) common.Hash
 
 // CanTransfer checks whether there are enough funds in the address' account to make a transfer.
 // This does not take the necessary gas in to account to make the transfer valid.
+// CanTransferは、送金を行うのに十分な資金が住所のアカウントにあるかどうかを確認します。
+// これは、転送を有効にするために必要なガスを考慮に入れていません。
 func CanTransfer(db vm.StateDB, addr common.Address, amount *big.Int) bool {
 	return db.GetBalance(addr).Cmp(amount) >= 0
 }
 
 // Transfer subtracts amount from sender and adds amount to recipient using the given Db
+// 転送は送信者から金額を差し引き、指定されたDbを使用して受信者に金額を追加します
 func Transfer(db vm.StateDB, sender, recipient common.Address, amount *big.Int) {
 	db.SubBalance(sender, amount)
 	db.AddBalance(recipient, amount)

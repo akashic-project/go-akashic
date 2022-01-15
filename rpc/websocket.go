@@ -265,6 +265,7 @@ func (wc *websocketCodec) writeJSON(ctx context.Context, v interface{}) error {
 	err := wc.jsonCodec.writeJSON(ctx, v)
 	if err == nil {
 		// Notify pingLoop to delay the next idle ping.
+		// 次のアイドル状態のpingを遅らせるようにpingLoopに通知します。
 		select {
 		case wc.pingReset <- struct{}{}:
 		default:

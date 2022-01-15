@@ -61,10 +61,14 @@ func (n *proofList) Delete(key []byte) error {
 // nested states. It's the general query interface to retrieve:
 // * Contracts
 // * Accounts
+// イーサリアムプロトコル内のStateDB構造体は、マークルトライ内に何かを格納するために使用されます。
+// StateDBは、ネストされた状態のキャッシュと保存を処理します。 これは、取得する一般的なクエリインターフェイスです。
+// *契約
+// *アカウント
 type StateDB struct {
 	db           Database
 	prefetcher   *triePrefetcher
-	originalRoot common.Hash // The pre-state root, before any changes were made
+	originalRoot common.Hash // 変更が行われる前の状態前のルート // The pre-state root, before any changes were made
 	trie         Trie
 	hasher       crypto.KeccakState
 
@@ -75,18 +79,23 @@ type StateDB struct {
 	snapStorage   map[common.Hash]map[common.Hash][]byte
 
 	// This map holds 'live' objects, which will get modified while processing a state transition.
+	// このマップは、状態遷移の処理中に変更される「ライブ」オブジェクトを保持します。
 	stateObjects        map[common.Address]*stateObject
-	stateObjectsPending map[common.Address]struct{} // State objects finalized but not yet written to the trie
-	stateObjectsDirty   map[common.Address]struct{} // State objects modified in the current execution
+	stateObjectsPending map[common.Address]struct{} // 状態オブジェクトは完成しましたが、まだトライに書き込まれていません // State objects finalized but not yet written to the trie
+	stateObjectsDirty   map[common.Address]struct{} // 現在の実行で変更された状態オブジェクト                          // State objects modified in the current execution
 
 	// DB error.
 	// State objects are used by the consensus core and VM which are
 	// unable to deal with database-level errors. Any error that occurs
 	// during a database read is memoized here and will eventually be returned
 	// by StateDB.Commit.
+	// DBエラー。
+	// 状態オブジェクトは、データベースレベルのエラーを処理できないコンセンサスコアとVMによって使用されます。
+	// データベースの読み取り中に発生したエラーはすべてここにメモされ、最終的にStateDB.Commitによって返されます。
 	dbErr error
 
 	// The refund counter, also used by state transitioning.
+	// 払い戻しカウンター。状態遷移でも使用されます。
 	refund uint64
 
 	thash   common.Hash
@@ -97,15 +106,18 @@ type StateDB struct {
 	preimages map[common.Hash][]byte
 
 	// Per-transaction access list
+	// トランザクションごとのアクセスリスト
 	accessList *accessList
 
 	// Journal of state modifications. This is the backbone of
 	// Snapshot and RevertToSnapshot.
+	// 状態変更のジャーナル。 これは、SnapshotとRevertToSnapshotのバックボーンです。
 	journal        *journal
 	validRevisions []revision
 	nextRevisionId int
 
 	// Measurements gathered during execution for debugging purposes
+	// デバッグ目的で実行中に収集された測定値
 	AccountReads         time.Duration
 	AccountHashes        time.Duration
 	AccountUpdates       time.Duration
@@ -125,6 +137,7 @@ type StateDB struct {
 }
 
 // New creates a new state from a given trie.
+// Newは、指定されたトライから新しい状態を作成します。
 func New(root common.Hash, db Database, snaps *snapshot.Tree) (*StateDB, error) {
 	tr, err := db.OpenTrie(root)
 	if err != nil {
@@ -157,6 +170,8 @@ func New(root common.Hash, db Database, snaps *snapshot.Tree) (*StateDB, error) 
 // StartPrefetcher initializes a new trie prefetcher to pull in nodes from the
 // state trie concurrently while the state is mutated so that when we reach the
 // commit phase, most of the needed data is already hot.
+// StartPrefetcherは、新しいトライプリフェッチャーを初期化して、状態が変更されている間、状態トライからノードを同時にプルします。
+// これにより、コミットフェーズに到達したときに、必要なデータのほとんどがすでにホットになっています。
 func (s *StateDB) StartPrefetcher(namespace string) {
 	if s.prefetcher != nil {
 		s.prefetcher.close()
@@ -169,6 +184,7 @@ func (s *StateDB) StartPrefetcher(namespace string) {
 
 // StopPrefetcher terminates a running prefetcher and reports any leftover stats
 // from the gathered metrics.
+// StopPrefetcherは、実行中のプリフェッチャーを終了し、収集されたメトリックから残った統計を報告します。
 func (s *StateDB) StopPrefetcher() {
 	if s.prefetcher != nil {
 		s.prefetcher.close()
@@ -177,6 +193,7 @@ func (s *StateDB) StopPrefetcher() {
 }
 
 // setError remembers the first non-nil error it is called with.
+// setErrorは、呼び出された最初のnil以外のエラーを記憶します。
 func (s *StateDB) setError(err error) {
 	if s.dbErr == nil {
 		s.dbErr = err
@@ -214,6 +231,7 @@ func (s *StateDB) Logs() []*types.Log {
 }
 
 // AddPreimage records a SHA3 preimage seen by the VM.
+// AddPreimageは、VMから見たSHA3プレイメージを記録します。
 func (s *StateDB) AddPreimage(hash common.Hash, preimage []byte) {
 	if _, ok := s.preimages[hash]; !ok {
 		s.journal.append(addPreimageChange{hash: hash})
@@ -224,11 +242,13 @@ func (s *StateDB) AddPreimage(hash common.Hash, preimage []byte) {
 }
 
 // Preimages returns a list of SHA3 preimages that have been submitted.
+// Preimagesは、送信されたSHA3preimagesのリストを返します。
 func (s *StateDB) Preimages() map[common.Hash][]byte {
 	return s.preimages
 }
 
 // AddRefund adds gas to the refund counter
+// AddRefundは、払い戻しカウンターにガスを追加します
 func (s *StateDB) AddRefund(gas uint64) {
 	s.journal.append(refundChange{prev: s.refund})
 	s.refund += gas
@@ -236,6 +256,8 @@ func (s *StateDB) AddRefund(gas uint64) {
 
 // SubRefund removes gas from the refund counter.
 // This method will panic if the refund counter goes below zero
+// SubRefundは、払い戻しカウンターからガスを取り除きます。
+// 払い戻しカウンターがゼロを下回ると、このメソッドはパニックになります
 func (s *StateDB) SubRefund(gas uint64) {
 	s.journal.append(refundChange{prev: s.refund})
 	if gas > s.refund {
@@ -246,18 +268,22 @@ func (s *StateDB) SubRefund(gas uint64) {
 
 // Exist reports whether the given account address exists in the state.
 // Notably this also returns true for suicided accounts.
+// Existは、指定されたアカウントアドレスが州に存在するかどうかを報告します。
+// 特に、これは自殺したアカウントにも当てはまります。
 func (s *StateDB) Exist(addr common.Address) bool {
 	return s.getStateObject(addr) != nil
 }
 
 // Empty returns whether the state object is either non-existent
 // or empty according to the EIP161 specification (balance = nonce = code = 0)
+// Emptyは、EIP161仕様に従って、状態オブジェクトが存在しないか空であるかを返します（balance = nonce = code = 0）
 func (s *StateDB) Empty(addr common.Address) bool {
 	so := s.getStateObject(addr)
 	return so == nil || so.empty()
 }
 
 // GetBalance retrieves the balance from the given address or 0 if object not found
+// GetBalanceは、指定されたアドレスから残高を取得します。オブジェクトが見つからない場合は0を取得します。
 func (s *StateDB) GetBalance(addr common.Address) *big.Int {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
@@ -276,6 +302,7 @@ func (s *StateDB) GetNonce(addr common.Address) uint64 {
 }
 
 // TxIndex returns the current transaction index set by Prepare.
+// TxIndexは、Prepareによって設定された現在のトランザクションインデックスを返します。
 func (s *StateDB) TxIndex() int {
 	return s.txIndex
 }
@@ -305,6 +332,7 @@ func (s *StateDB) GetCodeHash(addr common.Address) common.Hash {
 }
 
 // GetState retrieves a value from the given account's storage trie.
+// GetStateは、指定されたアカウントのストレージトライから値を取得します。
 func (s *StateDB) GetState(addr common.Address, hash common.Hash) common.Hash {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
@@ -314,11 +342,13 @@ func (s *StateDB) GetState(addr common.Address, hash common.Hash) common.Hash {
 }
 
 // GetProof returns the Merkle proof for a given account.
+// GetProofは、指定されたアカウントのMerkleプルーフを返します。
 func (s *StateDB) GetProof(addr common.Address) ([][]byte, error) {
 	return s.GetProofByHash(crypto.Keccak256Hash(addr.Bytes()))
 }
 
 // GetProofByHash returns the Merkle proof for a given account.
+// GetProofByHashは、指定されたアカウントのMerkle証明を返します。
 func (s *StateDB) GetProofByHash(addrHash common.Hash) ([][]byte, error) {
 	var proof proofList
 	err := s.trie.Prove(addrHash[:], 0, &proof)
@@ -326,6 +356,7 @@ func (s *StateDB) GetProofByHash(addrHash common.Hash) ([][]byte, error) {
 }
 
 // GetStorageProof returns the Merkle proof for given storage slot.
+// GetStorageProofは、指定されたストレージスロットのマークルプルーフを返します。
 func (s *StateDB) GetStorageProof(a common.Address, key common.Hash) ([][]byte, error) {
 	var proof proofList
 	trie := s.StorageTrie(a)
@@ -337,6 +368,7 @@ func (s *StateDB) GetStorageProof(a common.Address, key common.Hash) ([][]byte, 
 }
 
 // GetCommittedState retrieves a value from the given account's committed storage trie.
+// GetCommittedStateは、指定されたアカウントのコミットされたストレージトライから値を取得します。
 func (s *StateDB) GetCommittedState(addr common.Address, hash common.Hash) common.Hash {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
@@ -346,12 +378,15 @@ func (s *StateDB) GetCommittedState(addr common.Address, hash common.Hash) commo
 }
 
 // Database retrieves the low level database supporting the lower level trie ops.
+// データベースは、低レベルのトライ操作をサポートする低レベルのデータベースを取得します。
 func (s *StateDB) Database() Database {
 	return s.db
 }
 
 // StorageTrie returns the storage trie of an account.
 // The return value is a copy and is nil for non-existent accounts.
+// StorageTrieは、アカウントのストレージトライを返します。
+// 戻り値はコピーであり、存在しないアカウントの場合はnilです。
 func (s *StateDB) StorageTrie(addr common.Address) Trie {
 	stateObject := s.getStateObject(addr)
 	if stateObject == nil {
@@ -375,6 +410,7 @@ func (s *StateDB) HasSuicided(addr common.Address) bool {
  */
 
 // AddBalance adds amount to the account associated with addr.
+// AddBalanceは、addrに関連付けられたアカウントに金額を追加します。
 func (s *StateDB) AddBalance(addr common.Address, amount *big.Int) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
@@ -383,6 +419,7 @@ func (s *StateDB) AddBalance(addr common.Address, amount *big.Int) {
 }
 
 // SubBalance subtracts amount from the account associated with addr.
+// SubBalanceは、addrに関連付けられたアカウントから金額を減算します。
 func (s *StateDB) SubBalance(addr common.Address, amount *big.Int) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
@@ -420,6 +457,8 @@ func (s *StateDB) SetState(addr common.Address, key, value common.Hash) {
 
 // SetStorage replaces the entire storage for the specified account with given
 // storage. This function should only be used for debugging.
+// SetStorageは、指定されたアカウントのストレージ全体を指定されたストレージに置き換えます。
+// この関数は、デバッグにのみ使用してください。
 func (s *StateDB) SetStorage(addr common.Address, storage map[common.Hash]common.Hash) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
@@ -432,6 +471,11 @@ func (s *StateDB) SetStorage(addr common.Address, storage map[common.Hash]common
 //
 // The account's state object is still available until the state is committed,
 // getStateObject will return a non-nil account after Suicide.
+// 自殺は、指定されたアカウントを自殺としてマークします。
+// これによりアカウントの残高がクリアされます。
+//
+// アカウントの状態オブジェクトは、状態がコミットされるまで引き続き使用できます。
+// getStateObjectは、Suicideの後にnil以外のアカウントを返します。
 func (s *StateDB) Suicide(addr common.Address) bool {
 	stateObject := s.getStateObject(addr)
 	if stateObject == nil {
@@ -451,14 +495,20 @@ func (s *StateDB) Suicide(addr common.Address) bool {
 //
 // Setting, updating & deleting state object methods.
 //
+//
+//状態オブジェクトメソッドの設定、更新、削除。
+//
 
 // updateStateObject writes the given object to the trie.
+// updateStateObjectは、指定されたオブジェクトをトライに書き込みます。
 func (s *StateDB) updateStateObject(obj *stateObject) {
 	// Track the amount of time wasted on updating the account from the trie
+	// トライからアカウントを更新するために浪費された時間を追跡します
 	if metrics.EnabledExpensive {
 		defer func(start time.Time) { s.AccountUpdates += time.Since(start) }(time.Now())
 	}
 	// Encode the account and update the account trie
+	// アカウントをエンコードし、アカウントトライを更新します
 	addr := obj.Address()
 	if err := s.trie.TryUpdateAccount(addr[:], &obj.data); err != nil {
 		s.setError(fmt.Errorf("updateStateObject (%x) error: %v", addr[:], err))
@@ -468,18 +518,25 @@ func (s *StateDB) updateStateObject(obj *stateObject) {
 	// update mechanism is not symmetric to the deletion, because whereas it is
 	// enough to track account updates at commit time, deletions need tracking
 	// at transaction boundary level to ensure we capture state clearing.
+	// 状態のスナップショットがアクティブな場合、コミットするまでデータをキャッシュします。
+	// この更新メカニズムは削除と対称的ではないことに注意してください。
+	// コミット時にアカウントの更新を追跡するだけで十分ですが、
+	// 状態のクリアを確実にキャプチャするには、削除をトランザクション境界レベルで追跡する必要があります。
 	if s.snap != nil {
 		s.snapAccounts[obj.addrHash] = snapshot.SlimAccountRLP(obj.data.Nonce, obj.data.Balance, obj.data.Root, obj.data.CodeHash)
 	}
 }
 
 // deleteStateObject removes the given object from the state trie.
+// deleteStateObjectは、指定されたオブジェクトを状態トライから削除します。
 func (s *StateDB) deleteStateObject(obj *stateObject) {
 	// Track the amount of time wasted on deleting the account from the trie
+	//トライからアカウントを削除するために浪費された時間を追跡します
 	if metrics.EnabledExpensive {
 		defer func(start time.Time) { s.AccountUpdates += time.Since(start) }(time.Now())
 	}
 	// Delete the account from the trie
+	//トライからアカウントを削除します
 	addr := obj.Address()
 	if err := s.trie.TryDelete(addr[:]); err != nil {
 		s.setError(fmt.Errorf("deleteStateObject (%x) error: %v", addr[:], err))
@@ -489,6 +546,9 @@ func (s *StateDB) deleteStateObject(obj *stateObject) {
 // getStateObject retrieves a state object given by the address, returning nil if
 // the object is not found or was deleted in this execution context. If you need
 // to differentiate between non-existent/just-deleted, use getDeletedStateObject.
+// getStateObjectは、アドレスで指定された状態オブジェクトを取得し、オブジェクトが見つからないか、
+// この実行コンテキストで削除された場合はnilを返します。
+// 存在しない/削除されたばかりを区別する必要がある場合は、getDeletedStateObjectを使用してください。
 func (s *StateDB) getStateObject(addr common.Address) *stateObject {
 	if obj := s.getDeletedStateObject(addr); obj != nil && !obj.deleted {
 		return obj
@@ -500,12 +560,19 @@ func (s *StateDB) getStateObject(addr common.Address) *stateObject {
 // nil for a deleted state object, it returns the actual object with the deleted
 // flag set. This is needed by the state journal to revert to the correct s-
 // destructed object instead of wiping all knowledge about the state object.
+// getDeletedStateObjectはgetStateObjectに似ていますが、
+// 削除された状態オブジェクトに対してnilを返す代わりに、
+// 削除されたフラグが設定された実際のオブジェクトを返します。
+// これは、状態オブジェクトに関するすべての知識を消去するのではなく、
+// 正しい破壊されたオブジェクトに戻すために状態ジャーナルによって必要になります。
 func (s *StateDB) getDeletedStateObject(addr common.Address) *stateObject {
 	// Prefer live objects if any is available
+	// ライブオブジェクトが利用可能な場合はそれを優先します
 	if obj := s.stateObjects[addr]; obj != nil {
 		return obj
 	}
 	// If no live objects are available, attempt to use snapshots
+	// 使用可能なライブオブジェクトがない場合は、スナップショットの使用を試みます
 	var (
 		data *types.StateAccount
 		err  error
@@ -534,6 +601,7 @@ func (s *StateDB) getDeletedStateObject(addr common.Address) *stateObject {
 		}
 	}
 	// If snapshot unavailable or reading from it failed, load from the database
+	// スナップショットが利用できないか、スナップショットからの読み取りに失敗した場合は、データベースからロードします
 	if s.snap == nil || err != nil {
 		if metrics.EnabledExpensive {
 			defer func(start time.Time) { s.AccountReads += time.Since(start) }(time.Now())
@@ -553,6 +621,7 @@ func (s *StateDB) getDeletedStateObject(addr common.Address) *stateObject {
 		}
 	}
 	// Insert into the live set
+	// ライブセットに挿入します
 	obj := newObject(s, addr, *data)
 	s.setStateObject(obj)
 	return obj
@@ -563,6 +632,7 @@ func (s *StateDB) setStateObject(object *stateObject) {
 }
 
 // GetOrNewStateObject retrieves a state object or create a new state object if nil.
+// GetOrNewStateObjectは、状態オブジェクトを取得するか、nilの場合は新しい状態オブジェクトを作成します。
 func (s *StateDB) GetOrNewStateObject(addr common.Address) *stateObject {
 	stateObject := s.getStateObject(addr)
 	if stateObject == nil {
@@ -573,8 +643,10 @@ func (s *StateDB) GetOrNewStateObject(addr common.Address) *stateObject {
 
 // createObject creates a new state object. If there is an existing account with
 // the given address, it is overwritten and returned as the second return value.
+// createObjectは新しい状態オブジェクトを作成します。
+// 指定されたアドレスを持つ既存のアカウントがある場合、それは上書きされ、2番目の戻り値として返されます。
 func (s *StateDB) createObject(addr common.Address) (newobj, prev *stateObject) {
-	prev = s.getDeletedStateObject(addr) // Note, prev might have been deleted, we need that!
+	prev = s.getDeletedStateObject(addr) // prevが削除されている可能性があることに注意してください、それが必要です！ // Note, prev might have been deleted, we need that!
 
 	var prevdestruct bool
 	if s.snap != nil && prev != nil {
@@ -606,6 +678,14 @@ func (s *StateDB) createObject(addr common.Address) (newobj, prev *stateObject) 
 //   2. tx_create(sha(account ++ nonce)) (note that this gets the address of 1)
 //
 // Carrying over the balance ensures that Ether doesn't disappear.
+// CreateAccountは明示的に状態オブジェクトを作成します。 アドレスを持つ状態オブジェクトがすでに存在する場合、残高は新しいアカウントに繰り越されます。
+//
+// CreateAccountは、EVMCREATE操作中に呼び出されます。 契約が次のことを行う状況が発生する可能性があります。
+//
+// 1.資金をsha（account ++（nonce + 1））に送信します
+// 2. tx_create（sha（account ++ nonce））（これは1のアドレスを取得することに注意してください）
+//
+// 天びんを引き継ぐことで、Etherが消えないようにします。
 func (s *StateDB) CreateAccount(addr common.Address) {
 	newObj, prev := s.createObject(addr)
 	if prev != nil {
@@ -644,8 +724,11 @@ func (db *StateDB) ForEachStorage(addr common.Address, cb func(key, value common
 
 // Copy creates a deep, independent copy of the state.
 // Snapshots of the copied state cannot be applied to the copy.
+// コピーは、状態の深い独立したコピーを作成します。
+// コピーされた状態のスナップショットをコピーに適用できません。
 func (s *StateDB) Copy() *StateDB {
 	// Copy all the basic fields, initialize the memory ones
+	// すべての基本フィールドをコピーし、メモリフィールドを初期化します
 	state := &StateDB{
 		db:                  s.db,
 		trie:                s.db.CopyTrie(s.trie),
@@ -660,24 +743,34 @@ func (s *StateDB) Copy() *StateDB {
 		hasher:              crypto.NewKeccakState(),
 	}
 	// Copy the dirty states, logs, and preimages
+	// ダーティステート、ログ、およびプレイメージをコピーします
 	for addr := range s.journal.dirties {
 		// As documented [here](https://github.com/ethereum/go-ethereum/pull/16485#issuecomment-380438527),
 		// and in the Finalise-method, there is a case where an object is in the journal but not
 		// in the stateObjects: OOG after touch on ripeMD prior to Byzantium. Thus, we need to check for
 		// nil
+		// [ここ]（https://github.com/ethereum/go-ethereum/pull/16485#issuecomment-380438527）に記載されているように、
+		// Finaliseメソッドでは、オブジェクトがジャーナルにあるが、 stateObjectsではありません：Byzantiumの前にripeMDにタッチした後のOOG。
+		//  したがって、nilをチェックする必要があります
 		if object, exist := s.stateObjects[addr]; exist {
 			// Even though the original object is dirty, we are not copying the journal,
 			// so we need to make sure that anyside effect the journal would have caused
 			// during a commit (or similar op) is already applied to the copy.
+			// 元のオブジェクトがダーティであっても、ジャーナルをコピーしていないため、
+			// コミット（または同様の操作）中にジャーナルが引き起こしたであろう副作用が
+			// すでにコピーに適用されていることを確認する必要があります。
 			state.stateObjects[addr] = object.deepCopy(state)
 
-			state.stateObjectsDirty[addr] = struct{}{}   // Mark the copy dirty to force internal (code/state) commits
-			state.stateObjectsPending[addr] = struct{}{} // Mark the copy pending to force external (account) commits
+			state.stateObjectsDirty[addr] = struct{}{}   // コピーをダーティとしてマークして、内部（コード/状態）コミットを強制します // Mark the copy dirty to force internal (code/state) commits
+			state.stateObjectsPending[addr] = struct{}{} // コピーを保留にマークして、外部（アカウント）コミットを強制します // Mark the copy pending to force external (account) commits
 		}
 	}
 	// Above, we don't copy the actual journal. This means that if the copy is copied, the
 	// loop above will be a no-op, since the copy's journal is empty.
 	// Thus, here we iterate over stateObjects, to enable copies of copies
+	// 上記では、実際のジャーナルはコピーしません。 これは、コピーがコピーされた場合、
+	// コピーのジャーナルが空であるため、上記のループはノーオペレーションになることを意味します。
+	// したがって、ここではstateObjectsを反復処理して、コピーのコピーを有効にします
 	for addr := range s.stateObjectsPending {
 		if _, exist := state.stateObjects[addr]; !exist {
 			state.stateObjects[addr] = s.stateObjects[addr].deepCopy(state)
@@ -706,11 +799,19 @@ func (s *StateDB) Copy() *StateDB {
 	// _between_ transactions/blocks, never in the middle of a transaction.
 	// However, it doesn't cost us much to copy an empty list, so we do it anyway
 	// to not blow up if we ever decide copy it in the middle of a transaction
+	// アクセスリストをコピーする必要がありますか？ 実際には：いいえ。
+	// トランザクションの開始時に、アクセスリストは空です。
+	// 実際には、トランザクションの途中ではなく、トランザクション/ブロック間で状態をコピーするだけです。
+	// ただし、空のリストをコピーするのにそれほど費用はかからないので、
+	// トランザクションの途中でコピーすることにした場合でも、とにかく爆発しないようにします
 	state.accessList = s.accessList.Copy()
 
 	// If there's a prefetcher running, make an inactive copy of it that can
 	// only access data but does not actively preload (since the user will not
 	// know that they need to explicitly terminate an active copy).
+	// プリフェッチャーが実行されている場合は、データにのみアクセスできるがアクティブに
+	// プリロードしないプリフェッチャーの非アクティブなコピーを作成します
+	// （ユーザーはアクティブなコピーを明示的に終了する必要があることを知らないため）。
 	if s.prefetcher != nil {
 		state.prefetcher = s.prefetcher.copy()
 	}
@@ -719,9 +820,13 @@ func (s *StateDB) Copy() *StateDB {
 		// to the snapshot tree, we need to copy that aswell.
 		// Otherwise, any block mined by ourselves will cause gaps in the tree,
 		// and force the miner to operate trie-backed only
+		// マイナーがスナップショットツリーを使用して追加できるようにするには、それもコピーする必要があります。
+		// それ以外の場合、自分でマイニングしたブロックはツリーにギャップを生じさせ、
+		// マイナーはトライバックのみで動作するように強制されます
 		state.snaps = s.snaps
 		state.snap = s.snap
 		// deep copy needed
+		// ディープコピーが必要
 		state.snapDestructs = make(map[common.Hash]struct{})
 		for k, v := range s.snapDestructs {
 			state.snapDestructs[k] = v
@@ -743,6 +848,7 @@ func (s *StateDB) Copy() *StateDB {
 }
 
 // Snapshot returns an identifier for the current revision of the state.
+// スナップショットは、状態の現在のリビジョンの識別子を返します。
 func (s *StateDB) Snapshot() int {
 	id := s.nextRevisionId
 	s.nextRevisionId++
@@ -751,8 +857,10 @@ func (s *StateDB) Snapshot() int {
 }
 
 // RevertToSnapshot reverts all state changes made since the given revision.
+// RevertToSnapshotは、指定されたリビジョン以降に行われたすべての状態変更を元に戻します。
 func (s *StateDB) RevertToSnapshot(revid int) {
 	// Find the snapshot in the stack of valid snapshots.
+	// 有効なスナップショットのスタックからスナップショットを検索します。
 	idx := sort.Search(len(s.validRevisions), func(i int) bool {
 		return s.validRevisions[i].id >= revid
 	})

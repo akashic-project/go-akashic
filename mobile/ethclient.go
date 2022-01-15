@@ -26,6 +26,7 @@ import (
 )
 
 // EthereumClient provides access to the Ethereum APIs.
+// EthereumClientは、EthereumAPIへのアクセスを提供します。
 type EthereumClient struct {
 	client *ethclient.Client
 }
@@ -311,6 +312,10 @@ func (ec *EthereumClient) EstimateGas(ctx *Context, msg *CallMsg) (gas int64, _ 
 //
 // If the transaction was a contract creation use the TransactionReceipt method to get the
 // contract address after the transaction has been mined.
+// SendTransactionは、実行のために保留中のプールに署名されたトランザクションを挿入します。
+//
+// トランザクションがコントラクトの作成であった場合、トランザクションがマイニングされた後、
+// TransactionReceiptメソッドを使用してコントラクトアドレスを取得します。
 func (ec *EthereumClient) SendTransaction(ctx *Context, tx *Transaction) error {
 	return ec.client.SendTransaction(ctx.context, tx.tx)
 }

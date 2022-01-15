@@ -68,23 +68,34 @@ type PendingContractCaller interface {
 // on a write only basis. Besides the transacting method, the remainder are helpers
 // used when the user does not provide some needed values, but rather leaves it up
 // to the transactor to decide.
+// ContractTransactorは、書き込みのみでコントラクトを操作できるようにするために必要なメソッドを定義します。
+// トランザクション方式に加えて、残りは、ユーザーが必要な値を提供しない場合に使用されるヘルパーですが、
+// 決定するのはトランザクション担当者に任されています。
 type ContractTransactor interface {
 	// HeaderByNumber returns a block header from the current canonical chain. If
 	// number is nil, the latest known header is returned.
+	// HeaderByNumberは、現在の正規チェーンからブロックヘッダーを返します。
+	// numberがnilの場合、最新の既知のヘッダーが返されます。
 	HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error)
 
 	// PendingCodeAt returns the code of the given account in the pending state.
+	// PendingCodeAtは保留状態の指定されたアカウントのコードを返します。
 	PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error)
 
 	// PendingNonceAt retrieves the current pending nonce associated with an account.
+	// PresidentingNonceAtは、アカウントに関連付けられている現在保留中のナンスを取得します。
 	PendingNonceAt(ctx context.Context, account common.Address) (uint64, error)
 
 	// SuggestGasPrice retrieves the currently suggested gas price to allow a timely
 	// execution of a transaction.
+	// SuggestGasPriceは、現在提案されているガス価格を取得して、
+	// トランザクションをタイムリーに実行できるようにします。
 	SuggestGasPrice(ctx context.Context) (*big.Int, error)
 
 	// SuggestGasTipCap retrieves the currently suggested 1559 priority fee to allow
 	// a timely execution of a transaction.
+	// SuggestGasTipCapは、トランザクションのタイムリーな実行を可能にするために、
+	// 現在提案されている1559優先料金を取得します。
 	SuggestGasTipCap(ctx context.Context) (*big.Int, error)
 
 	// EstimateGas tries to estimate the gas needed to execute a specific
@@ -92,9 +103,15 @@ type ContractTransactor interface {
 	// There is no guarantee that this is the true gas limit requirement as other
 	// transactions may be added or removed by miners, but it should provide a basis
 	// for setting a reasonable default.
+	// EstimateGasは、バックエンドブロックチェーンの現在の保留状態に基づいて、
+	// 特定のトランザクションを実行するために必要なガスを推定しようとします。
+	// 他のトランザクションが鉱夫によって追加または削除される可能性があるため、
+	// これが真のガス制限要件であるという保証はありませんが、
+	// 合理的なデフォルトを設定するための基礎を提供する必要があります。
 	EstimateGas(ctx context.Context, call ethereum.CallMsg) (gas uint64, err error)
 
 	// SendTransaction injects the transaction into the pending pool for execution.
+	// SendTransactionは、実行のためにトランザクションを保留中のプールに挿入します。
 	SendTransaction(ctx context.Context, tx *types.Transaction) error
 }
 

@@ -170,6 +170,8 @@ func (at *AccessTuple) StorageKeys(ctx context.Context) []common.Hash {
 
 // Transaction represents an Ethereum transaction.
 // backend and hash are mandatory; all others will be fetched when required.
+// トランザクションはイーサリアムトランザクションを表します。
+// バックエンドとハッシュは必須です。他のすべては、必要に応じてフェッチされます。
 type Transaction struct {
 	backend ethapi.Backend
 	hash    common.Hash

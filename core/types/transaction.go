@@ -48,9 +48,10 @@ const (
 )
 
 // Transaction is an Ethereum transaction.
+// トランザクションはイーサリアムトランザクションです。
 type Transaction struct {
-	inner TxData    // Consensus contents of a transaction
-	time  time.Time // Time first seen locally (spam avoidance)
+	inner TxData    // トランザクションのコンセンサスコンテンツ  // Consensus contents of a transaction
+	time  time.Time // ローカルで最初に見られた時間（スパム回避）// Time first seen locally (spam avoidance)
 
 	// caches
 	hash atomic.Value
@@ -68,8 +69,11 @@ func NewTx(inner TxData) *Transaction {
 // TxData is the underlying data of a transaction.
 //
 // This is implemented by DynamicFeeTx, LegacyTx and AccessListTx.
+// TxDataは、トランザクションの基礎となるデータです。
+//
+//これは、DynamicFeeTx、LegacyTx、およびAccessListTxによって実装されます。
 type TxData interface {
-	txType() byte // returns the type ID
+	txType() byte // タイプIDを返します // returns the type ID
 	copy() TxData // creates a deep copy and initializes all fields
 
 	chainID() *big.Int
@@ -111,6 +115,9 @@ func (tx *Transaction) encodeTyped(w *bytes.Buffer) error {
 // MarshalBinary returns the canonical encoding of the transaction.
 // For legacy transactions, it returns the RLP encoding. For EIP-2718 typed
 // transactions, it returns the type and payload.
+// MarshalBinaryは、トランザクションの正規エンコーディングを返します。
+// レガシートランザクションの場合、RLPエンコーディングを返します。
+// EIP-2718タイプのトランザクションの場合、タイプとペイロードを返します。
 func (tx *Transaction) MarshalBinary() ([]byte, error) {
 	if tx.Type() == LegacyTxType {
 		return rlp.EncodeToBytes(tx.inner)
@@ -121,6 +128,7 @@ func (tx *Transaction) MarshalBinary() ([]byte, error) {
 }
 
 // DecodeRLP implements rlp.Decoder
+// DecodeRLPはrlp.Decoderを実装します
 func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 	kind, size, err := s.Kind()
 	switch {
@@ -128,6 +136,7 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 		return err
 	case kind == rlp.List:
 		// It's a legacy transaction.
+		// これはレガシートランザクションです。
 		var inner LegacyTx
 		err := s.Decode(&inner)
 		if err == nil {
@@ -152,9 +161,12 @@ func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
 
 // UnmarshalBinary decodes the canonical encoding of transactions.
 // It supports legacy RLP transactions and EIP2718 typed transactions.
+// UnmarshalBinaryは、トランザクションの正規エンコーディングをデコードします。
+// レガシーRLPトランザクションとEIP2718タイプのトランザクションをサポートします。
 func (tx *Transaction) UnmarshalBinary(b []byte) error {
 	if len(b) > 0 && b[0] > 0x7f {
 		// It's a legacy transaction.
+		// これはレガシートランザクションです。
 		var data LegacyTx
 		err := rlp.DecodeBytes(b, &data)
 		if err != nil {
@@ -164,6 +176,7 @@ func (tx *Transaction) UnmarshalBinary(b []byte) error {
 		return nil
 	}
 	// It's an EIP2718 typed transaction envelope.
+	// これはEIP2718タイプのトランザクションエンベロープです。
 	inner, err := tx.decodeTyped(b)
 	if err != nil {
 		return err

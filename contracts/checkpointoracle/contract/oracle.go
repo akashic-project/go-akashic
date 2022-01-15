@@ -61,13 +61,15 @@ type CheckpointOracle struct {
 }
 
 // CheckpointOracleCaller is an auto generated read-only Go binding around an Ethereum contract.
+// CheckpointOracleCallerは、Ethereumコントラクトを回避する自動生成された読み取り専用のGoバインディングです。
 type CheckpointOracleCaller struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+	contract *bind.BoundContract //低レベルの呼び出し用の汎用コントラクトラッパー // Generic contract wrapper for the low level calls
 }
 
 // CheckpointOracleTransactor is an auto generated write-only Go binding around an Ethereum contract.
+// CheckpointOracleTransactorは、Ethereumコントラクトを回避する自動生成された書き込み専用のGoバインディングです。
 type CheckpointOracleTransactor struct {
-	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+	contract *bind.BoundContract //低レベルの呼び出し用の汎用コントラクトラッパー // Generic contract wrapper for the low level calls
 }
 
 // CheckpointOracleFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
@@ -180,6 +182,10 @@ func (_CheckpointOracle *CheckpointOracleRaw) Transact(opts *bind.TransactOpts, 
 // sets the output to result. The result type might be a single field for simple
 // returns, a slice of interfaces for anonymous returns and a struct for named
 // returns.
+// 呼び出しは、入力値としてparamsを使用して（定数）コントラクトメソッドを呼び出し、
+// 出力を結果に設定します。
+// 結果のタイプは、単純な戻り値の単一フィールド、匿名の戻り値のインターフェイスのスライス、
+// および名前付きの戻り値の構造体である可能性があります。
 func (_CheckpointOracle *CheckpointOracleCallerRaw) Call(opts *bind.CallOpts, result *[]interface{}, method string, params ...interface{}) error {
 	return _CheckpointOracle.Contract.contract.Call(opts, result, method, params...)
 }

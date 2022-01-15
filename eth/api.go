@@ -431,6 +431,7 @@ type storageEntry struct {
 }
 
 // StorageRangeAt returns the storage at the given block height and transaction index.
+// StorageRangeAtは、指定されたブロックの高さとトランザクションインデックスのストレージを返します。
 func (api *PrivateDebugAPI) StorageRangeAt(blockHash common.Hash, txIndex int, contractAddress common.Address, keyStart hexutil.Bytes, maxResult int) (StorageRangeResult, error) {
 	// Retrieve the block
 	block := api.eth.blockchain.GetBlockByHash(blockHash)

@@ -83,6 +83,7 @@ func encodeID(b []byte) ID {
 type notifierKey struct{}
 
 // NotifierFromContext returns the Notifier value stored in ctx, if any.
+// NotifierFromContextは、ctxに格納されているNotifier値を返します（存在する場合）。
 func NotifierFromContext(ctx context.Context) (*Notifier, bool) {
 	n, ok := ctx.Value(notifierKey{}).(*Notifier)
 	return n, ok
@@ -90,6 +91,8 @@ func NotifierFromContext(ctx context.Context) (*Notifier, bool) {
 
 // Notifier is tied to a RPC connection that supports subscriptions.
 // Server callbacks use the notifier to send notifications.
+// Notifierは、サブスクリプションをサポートするRPC接続に関連付けられています。
+// サーバーコールバックは通知機能を使用して通知を送信します。
 type Notifier struct {
 	h         *handler
 	namespace string
@@ -105,6 +108,10 @@ type Notifier struct {
 // RPC connection. By default subscriptions are inactive and notifications
 // are dropped until the subscription is marked as active. This is done
 // by the RPC server after the subscription ID is send to the client.
+// CreateSubscriptionは、RPC接続に結合された新しいサブスクリプションを返します。
+// デフォルトでは、サブスクリプションは非アクティブであり、
+// サブスクリプションがアクティブとしてマークされるまで通知はドロップされます。
+// これは、サブスクリプションIDがクライアントに送信された後にRPCサーバーによって実行されます。
 func (n *Notifier) CreateSubscription() *Subscription {
 	n.mu.Lock()
 	defer n.mu.Unlock()
@@ -120,6 +127,8 @@ func (n *Notifier) CreateSubscription() *Subscription {
 
 // Notify sends a notification to the client with the given data as payload.
 // If an error occurs the RPC connection is closed and the error is returned.
+// Notifyは、指定されたデータをペイロードとしてクライアントに通知を送信します。
+// エラーが発生した場合、RPC接続が閉じられ、エラーが返されます。
 func (n *Notifier) Notify(id ID, data interface{}) error {
 	enc, err := json.Marshal(data)
 	if err != nil {
@@ -143,6 +152,8 @@ func (n *Notifier) Notify(id ID, data interface{}) error {
 
 // Closed returns a channel that is closed when the RPC connection is closed.
 // Deprecated: use subscription error channel
+// Closedは、RPC接続が閉じられたときに閉じられたチャネルを返します。
+// 非推奨：サブスクリプションエラーチャネルを使用
 func (n *Notifier) Closed() <-chan interface{} {
 	return n.h.conn.closed()
 }

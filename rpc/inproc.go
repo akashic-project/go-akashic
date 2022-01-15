@@ -22,6 +22,7 @@ import (
 )
 
 // DialInProc attaches an in-process connection to the given RPC server.
+// DialInProcは、指定されたRPCサーバーにインプロセス接続を接続します。
 func DialInProc(handler *Server) *Client {
 	initctx := context.Background()
 	c, _ := newClient(initctx, func(context.Context) (ServerCodec, error) {
