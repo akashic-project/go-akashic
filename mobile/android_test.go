@@ -261,6 +261,6 @@ repositories {
 }
 dependencies {
     compile 'com.android.support:appcompat-v7:19.0.0'
-    compile(name: "geth", ext: "aar")
+    compile(name: "goshic", ext: "aar")
 }
 `

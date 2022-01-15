@@ -49,7 +49,7 @@ const (
 // これらの値は、登録されているすべてのサービスによってさらに拡張できます。
 type Config struct {
 	// Name sets the instance name of the node. It must not contain the / character and is
-	// used in the devp2p node identifier. The instance name of geth is "geth". If no
+	// used in the devp2p node identifier. The instance name of geth is "goshic". If no
 	// value is specified, the basename of the current executable is used.
 	// Nameは、ノードのインスタンス名を設定します。 /文字を含めることはできず、devp2pノード識別子で使用されます。
 	// gethのインスタンス名は「geth」です。
@@ -360,7 +360,7 @@ func (c *Config) NodeName() string {
 	name := c.name()
 	// Backwards compatibility: previous versions used title-cased "Geth", keep that.
 	// 下位互換性：以前のバージョンではタイトルケースの「Geth」が使用されていましたが、それを維持してください。
-	if name == "geth" || name == "geth-testnet" {
+	if name == "goshic" || name == "geth-testnet" {
 		name = "Geth"
 	}
 	if c.UserIdent != "" {
@@ -385,7 +385,7 @@ func (c *Config) name() string {
 	return c.Name
 }
 
-// These resources are resolved differently for "geth" instances.
+// These resources are resolved differently for "goshic" instances.
 // これらのリソースは、「geth」インスタンスに対して異なる方法で解決されます。
 var isOldGethResource = map[string]bool{
 	"chaindata":          true,
@@ -409,7 +409,7 @@ func (c *Config) ResolvePath(path string) string {
 	// 下位互換性：geth1.4によって作成されたデータディレクトリファイルが存在する場合はそれが使用されるようにします。
 	if warn, isOld := isOldGethResource[path]; isOld {
 		oldpath := ""
-		if c.name() == "geth" {
+		if c.name() == "goshic" {
 			oldpath = filepath.Join(c.DataDir, path)
 		}
 		if oldpath != "" && common.FileExist(oldpath) {

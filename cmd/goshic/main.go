@@ -50,7 +50,7 @@ import (
 )
 
 const (
-	clientIdentifier = "geth" // Client identifier to advertise over the network ネットワーク経由でアドバタイズするクライアント識別子
+	clientIdentifier = "goshic" // Client identifier to advertise over the network ネットワーク経由でアドバタイズするクライアント識別子
 )
 
 var (
