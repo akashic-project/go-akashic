@@ -156,7 +156,7 @@ be gzipped.`,
 		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 The import-preimages command imports hash preimages from an RLP encoded stream.
-It's deprecated, please use "geth db import" instead.
+It's deprecated, please use "goshic db import" instead.
 `,
 		// import-preimagesコマンドは、RLPでエンコードされたストリームからハッシュプレイメージをインポートします。
 		// 非推奨です。代わりに「gethdbimport」を使用してください。
@@ -174,7 +174,7 @@ It's deprecated, please use "geth db import" instead.
 		Category: "BLOCKCHAIN COMMANDS",
 		Description: `
 The export-preimages command exports hash preimages to an RLP encoded stream.
-It's deprecated, please use "geth db export" instead.
+It's deprecated, please use "goshic db export" instead.
 `,
 		// export-preimagesコマンドは、ハッシュプレイメージをRLPエンコードされたストリームにエクスポートします。
 		// 非推奨です。代わりに「gethdbexport」を使用してください

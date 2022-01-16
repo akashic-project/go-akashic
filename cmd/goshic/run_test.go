@@ -30,7 +30,7 @@ import (
 )
 
 func tmpdir(t *testing.T) string {
-	dir, err := ioutil.TempDir("", "geth-test")
+	dir, err := ioutil.TempDir("", "goshic-test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,9 +47,9 @@ type testgeth struct {
 }
 
 func init() {
-	// Run the app if we've been exec'd as "geth-test" in runGeth.
+	// Run the app if we've been exec'd as "goshic-test" in runGeth.
 	// runGethで「geth-test」として実行された場合は、アプリを実行します。
-	reexec.Register("geth-test", func() {
+	reexec.Register("goshic-test", func() {
 		if err := app.Run(os.Args); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -103,7 +103,7 @@ func runGeth(t *testing.T, args ...string) *testgeth {
 	// function will prevent any tests from running.
 	//「geth」を起動します。これは実際にはテストバイナリを実行しますが、
 	// TestMain関数はテストの実行を防ぎます。
-	tt.Run("geth-test", args...)
+	tt.Run("goshic-test", args...)
 
 	return tt
 }

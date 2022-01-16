@@ -33,7 +33,7 @@ import (
 // AppHelpFlagGroupsは、機能ごとにグループ化されたアプリケーションフラグです。
 var AppHelpFlagGroups = []flags.FlagGroup{
 	{
-		Name: "ETHEREUM",
+		Name: "AKASHIC",
 		Flags: []cli.Flag{
 			configFileFlag,
 			utils.DataDirFlag,

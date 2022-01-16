@@ -64,19 +64,19 @@ func DefaultDataDir() string {
 	if home != "" {
 		switch runtime.GOOS {
 		case "darwin":
-			return filepath.Join(home, "Library", "Ethereum")
+			return filepath.Join(home, "Library", "Akashic")
 		case "windows":
 			// We used to put everything in %HOME%\AppData\Roaming, but this caused
 			// problems with non-typical setups. If this fallback location exists and
 			// is non-empty, use it, otherwise DTRT and check %LOCALAPPDATA%.
 			// 以前はすべてを％HOME％\ AppData \ Roamingに配置していましたが、これにより、一般的でない設定で問題が発生しました。
 			// このフォールバックロケーションが存在し、空でない場合はそれを使用し、そうでない場合はDTRTを使用して％LOCALAPPDATA％を確認します。
-			fallback := filepath.Join(home, "AppData", "Roaming", "Ethereum")
+			fallback := filepath.Join(home, "AppData", "Roaming", "Akashic")
 			appdata := windowsAppData()
 			if appdata == "" || isNonEmptyDir(fallback) {
 				return fallback
 			}
-			return filepath.Join(appdata, "Ethereum")
+			return filepath.Join(appdata, "Akashic")
 		default:
 			return filepath.Join(home, ".ethereum")
 		}

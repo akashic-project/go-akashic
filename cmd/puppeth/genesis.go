@@ -278,7 +278,7 @@ type parityChainSpec struct {
 			Ethereum struct {
 				Nonce   types.BlockNonce `json:"nonce"`
 				MixHash hexutil.Bytes    `json:"mixHash"`
-			} `json:"ethereum"`
+			} `json:"akashic"`
 		} `json:"seal"`
 
 		Difficulty *hexutil.Big   `json:"difficulty"`

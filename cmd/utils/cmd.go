@@ -377,7 +377,7 @@ type exportHeader struct {
 	UnixTime uint64
 }
 
-const exportMagic = "gethdbdump"
+const exportMagic = "goshicdbdump"
 const (
 	OpBatchAdd = 0
 	OpBatchDel = 1

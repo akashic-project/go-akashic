@@ -358,10 +358,10 @@ func (c *Config) ExtRPCEnabled() bool {
 // NodeNameはdevp2pノード識別子を返します。
 func (c *Config) NodeName() string {
 	name := c.name()
-	// Backwards compatibility: previous versions used title-cased "Geth", keep that.
+	// Backwards compatibility: previous versions used title-cased "Goshic", keep that.
 	// 下位互換性：以前のバージョンではタイトルケースの「Geth」が使用されていましたが、それを維持してください。
-	if name == "goshic" || name == "geth-testnet" {
-		name = "Geth"
+	if name == "goshic" || name == "goshic-testnet" {
+		name = "Goshic"
 	}
 	if c.UserIdent != "" {
 		name += "/" + c.UserIdent
