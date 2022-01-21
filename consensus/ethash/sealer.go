@@ -219,7 +219,7 @@ type remoteSealer struct {
 	currentWork  [4]string
 	notifyCtx    context.Context
 	cancelNotify context.CancelFunc // すべての通知リクエストをキャンセルします // cancels all notification requests
-	reqWG        sync.WaitGroup     //通知リクエストのgoroutinesを追跡します   // tracks notification request goroutines
+	reqWG        sync.WaitGroup     // 通知リクエストのgoroutinesを追跡します  // tracks notification request goroutines
 
 	ethash       *Ethash
 	noverify     bool

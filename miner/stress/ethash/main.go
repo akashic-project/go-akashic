@@ -136,6 +136,7 @@ func main() {
 
 // makeGenesis creates a custom Ethash genesis block based on some pre-defined
 // faucet accounts.
+// makeGenesisは、いくつかの事前定義された蛇口アカウントに基づいてカスタムEthashジェネシスブロックを作成します。
 func makeGenesis(faucets []*ecdsa.PrivateKey) *core.Genesis {
 	genesis := core.DefaultRopstenGenesisBlock()
 	genesis.Difficulty = params.MinimumDifficulty

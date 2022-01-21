@@ -203,10 +203,16 @@ type extblock struct {
 // The values of TxHash, UncleHash, ReceiptHash and Bloom in header
 // are ignored and set to values derived from the given txs, uncles
 // and receipts.
+// NewBlockは新しいブロックを作成します。入力データがコピーされ、
+// ヘッダーとフィールドの値が変更されてもブロックには影響しません。
+//
+// ヘッダーのTxHash、UncleHash、ReceiptHash、Bloomの値は無視され、
+// 指定されたtxs、uncles、およびreceiptsから派生した値に設定されます。
 func NewBlock(header *Header, txs []*Transaction, uncles []*Header, receipts []*Receipt, hasher TrieHasher) *Block {
 	b := &Block{header: CopyHeader(header), td: new(big.Int)}
 
 	// TODO: panic if len(txs) != len(receipts)
+	// TODO：len（txs）！= len（receipts）の場合はパニック
 	if len(txs) == 0 {
 		b.header.TxHash = EmptyRootHash
 	} else {
@@ -244,6 +250,7 @@ func NewBlockWithHeader(header *Header) *Block {
 
 // CopyHeader creates a deep copy of a block header to prevent side effects from
 // modifying a header variable.
+// CopyHeaderは、副作用によるヘッダー変数の変更を防ぐために、ブロックヘッダーのディープコピーを作成します。
 func CopyHeader(h *Header) *Header {
 	cpy := *h
 	if cpy.Difficulty = new(big.Int); h.Difficulty != nil {

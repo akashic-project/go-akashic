@@ -56,6 +56,7 @@ type Config struct {
 }
 
 // Miner creates blocks and searches for proof-of-work values.
+// マイナーはブロックを作成し、プルーフオブワーク値を検索します。
 type Miner struct {
 	mux      *event.TypeMux
 	worker   *worker

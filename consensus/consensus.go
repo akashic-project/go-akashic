@@ -52,7 +52,7 @@ type ChainHeaderReader interface {
 	GetHeaderByHash(hash common.Hash) *types.Header
 
 	// GetTd retrieves the total difficulty from the database by hash and number.
-    // GetTdは、ハッシュと数値によってデータベースから合計難易度を取得します。
+	// GetTdは、ハッシュと数値によってデータベースから合計難易度を取得します。
 	GetTd(hash common.Hash, number uint64) *big.Int
 }
 
@@ -155,9 +155,11 @@ type Engine interface {
 }
 
 // PoW is a consensus engine based on proof-of-work.
+// PoWは、プルーフオブワークに基づくコンセンサスエンジンです。
 type PoW interface {
 	Engine
 
 	// Hashrate returns the current mining hashrate of a PoW consensus engine.
+	// Hashrateは、PoWコンセンサスエンジンの現在のマイニングハッシュレートを返します。
 	Hashrate() float64
 }

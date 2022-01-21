@@ -69,6 +69,9 @@ type TrieHasher interface {
 // DerivableList is the input to DeriveSha.
 // It is implemented by the 'Transactions' and 'Receipts' types.
 // This is internal, do not use these methods.
+// DerivableListはDeriveShaへの入力です。
+//「Transactions」および「Receipts」タイプによって実装されます。
+// これは内部的なものであり、これらのメソッドは使用しないでください。
 type DerivableList interface {
 	Len() int
 	EncodeIndex(int, *bytes.Buffer)
@@ -80,10 +83,14 @@ func encodeForDerive(list DerivableList, i int, buf *bytes.Buffer) []byte {
 	// It's really unfortunate that we need to do perform this copy.
 	// StackTrie holds onto the values until Hash is called, so the values
 	// written to it must not alias.
+	// このコピーを実行する必要があるのは本当に残念です。
+	// StackTrieは、ハッシュが呼び出されるまで値を保持するため、
+	// それに書き込まれる値はエイリアスであってはなりません。
 	return common.CopyBytes(buf.Bytes())
 }
 
 // DeriveSha creates the tree hashes of transactions and receipts in a block header.
+// DeriveShaは、トランザクションとレシートのツリーハッシュをブロックヘッダーに作成します。
 func DeriveSha(list DerivableList, hasher TrieHasher) common.Hash {
 	hasher.Reset()
 
@@ -93,6 +100,10 @@ func DeriveSha(list DerivableList, hasher TrieHasher) common.Hash {
 	// StackTrie requires values to be inserted in increasing hash order, which is not the
 	// order that `list` provides hashes in. This insertion sequence ensures that the
 	// order is correct.
+
+	// StackTrieでは、ハッシュの昇順で値を挿入する必要があります。
+	// これは、 `list`がハッシュを提供する順序ではありません。
+	// この挿入シーケンスにより、順序が正しいことが保証されます。
 	var indexBuf []byte
 	for i := 1; i < list.Len() && i <= 0x7f; i++ {
 		indexBuf = rlp.AppendUint64(indexBuf[:0], uint64(i))

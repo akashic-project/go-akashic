@@ -262,6 +262,8 @@ func (bc *BlockChain) GetTransactionLookup(hash common.Hash) *rawdb.LegacyTxLook
 
 // GetTd retrieves a block's total difficulty in the canonical chain from the
 // database by hash and number, caching it if found.
+// GetTdは、データベースから正規チェーン内のブロックの全体的な難易度を
+// ハッシュと数値で取得し、見つかった場合はキャッシュします。
 func (bc *BlockChain) GetTd(hash common.Hash, number uint64) *big.Int {
 	return bc.hc.GetTd(hash, number)
 }

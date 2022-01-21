@@ -439,8 +439,11 @@ func (hc *HeaderChain) GetAncestor(hash common.Hash, number, ancestor uint64, ma
 
 // GetTd retrieves a block's total difficulty in the canonical chain from the
 // database by hash and number, caching it if found.
+// GetTdは、データベースから正規チェーン内のブロックの全体的な難易度をハッシュと数値で取得し、
+// 見つかった場合はキャッシュします。
 func (hc *HeaderChain) GetTd(hash common.Hash, number uint64) *big.Int {
 	// Short circuit if the td's already in the cache, retrieve otherwise
+	// tdがすでにキャッシュにある場合は短絡し、そうでない場合は取得します
 	if cached, ok := hc.tdCache.Get(hash); ok {
 		return cached.(*big.Int)
 	}
@@ -449,6 +452,7 @@ func (hc *HeaderChain) GetTd(hash common.Hash, number uint64) *big.Int {
 		return nil
 	}
 	// Cache the found body for next time and return
+	// 見つかった本文を次回のためにキャッシュし、
 	hc.tdCache.Add(hash, td)
 	return td
 }

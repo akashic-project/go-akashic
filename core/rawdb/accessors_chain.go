@@ -520,6 +520,7 @@ func ReadTdRLP(db ethdb.Reader, hash common.Hash, number uint64) rlp.RawValue {
 }
 
 // ReadTd retrieves a block's total difficulty corresponding to the hash.
+// ReadTdは、ハッシュに対応するブロックの合計難易度を取得します。
 func ReadTd(db ethdb.Reader, hash common.Hash, number uint64) *big.Int {
 	data := ReadTdRLP(db, hash, number)
 	if len(data) == 0 {
@@ -527,7 +528,7 @@ func ReadTd(db ethdb.Reader, hash common.Hash, number uint64) *big.Int {
 	}
 	td := new(big.Int)
 	if err := rlp.Decode(bytes.NewReader(data), td); err != nil {
-		log.Error("Invalid block total difficulty RLP", "hash", hash, "err", err)
+		log.Error("Invalid block total difficulty RLP", "hash", hash, "err", err) // 無効なブロック合計難易度RLP
 		return nil
 	}
 	return td
