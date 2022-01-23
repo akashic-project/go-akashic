@@ -888,7 +888,8 @@ func (s *Service) reportStats(conn *connWrapper) error {
 		syncing = s.backend.CurrentHeader().Number.Uint64() >= sync.HighestBlock
 	}
 	// Assemble the node stats and send it to the server
-	log.Trace("Sending node details to ethstats")
+	// ノード統計をアセンブルし、サーバーに送信します
+	log.Trace("Sending node details to ethstats") // ノードの詳細をethstatsに送信する
 
 	stats := map[string]interface{}{
 		"id": s.node,

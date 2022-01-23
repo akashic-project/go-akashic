@@ -19,44 +19,44 @@ package params
 import "math/big"
 
 const (
-	GasLimitBoundDivisor uint64 = 1024               // The bound divisor of the gas limit, used in update calculations.
-	MinGasLimit          uint64 = 5000               // Minimum the gas limit may ever be.
-	MaxGasLimit          uint64 = 0x7fffffffffffffff // Maximum the gas limit (2^63-1).
-	GenesisGasLimit      uint64 = 4712388            // Gas limit of the Genesis block.
+	GasLimitBoundDivisor uint64 = 1024               // 更新計算で使用される、ガス制限の限界除数。       // The bound divisor of the gas limit, used in update calculations.
+	MinGasLimit          uint64 = 5000               // ガス制限の最小値はこれまでにある可能性があります。// Minimum the gas limit may ever be.
+	MaxGasLimit          uint64 = 0x7fffffffffffffff // ガス制限の最大値（2 ^ 63-1）。// Maximum the gas limit (2^63-1).
+	GenesisGasLimit      uint64 = 4712388            // Genesisブロックのガス制限。   // Gas limit of the Genesis block.
 
-	MaximumExtraDataSize  uint64 = 32    // Maximum size extra data may be after Genesis.
-	ExpByteGas            uint64 = 10    // Times ceil(log256(exponent)) for the EXP instruction.
-	SloadGas              uint64 = 50    // Multiplied by the number of 32-byte words that are copied (round up) for any *COPY operation and added.
-	CallValueTransferGas  uint64 = 9000  // Paid for CALL when the value transfer is non-zero.
-	CallNewAccountGas     uint64 = 25000 // Paid for CALL when the destination address didn't exist prior.
-	TxGas                 uint64 = 21000 // Per transaction not creating a contract. NOTE: Not payable on data of calls between transactions.
-	TxGasContractCreation uint64 = 53000 // Per transaction that creates a contract. NOTE: Not payable on data of calls between transactions.
-	TxDataZeroGas         uint64 = 4     // Per byte of data attached to a transaction that equals zero. NOTE: Not payable on data of calls between transactions.
-	QuadCoeffDiv          uint64 = 512   // Divisor for the quadratic particle of the memory cost equation.
-	LogDataGas            uint64 = 8     // Per byte in a LOG* operation's data.
-	CallStipend           uint64 = 2300  // Free gas given at beginning of call.
+	MaximumExtraDataSize  uint64 = 32    // 最大サイズの追加データはGenesisの後にある可能性があります。// Maximum size extra data may be after Genesis.
+	ExpByteGas            uint64 = 10    // EXP命令の時間ceil（log256（exponent））。               // Times ceil(log256(exponent)) for the EXP instruction.
+	SloadGas              uint64 = 50    // * COPY操作でコピー（切り上げ）されて追加される32バイトワードの数を掛けます。// Multiplied by the number of 32-byte words that are copied (round up) for any *COPY operation and added.
+	CallValueTransferGas  uint64 = 9000  // 値の転送がゼロ以外の場合、CALLに対して支払われます。      // Paid for CALL when the value transfer is non-zero.
+	CallNewAccountGas     uint64 = 25000 // 宛先アドレスが以前に存在しなかった場合にCALLに対して支払われます。// Paid for CALL when the destination address didn't exist prior.
+	TxGas                 uint64 = 21000 // トランザクションごとにコントラクトを作成しません。注：トランザクション間の通話のデータについては支払われません。 // Per transaction not creating a contract. NOTE: Not payable on data of calls between transactions.
+	TxGasContractCreation uint64 = 53000 // コントラクトを作成するトランザクションごと。注：トランザクション間の通話のデータについては支払われません。      // Per transaction that creates a contract. NOTE: Not payable on data of calls between transactions.
+	TxDataZeroGas         uint64 = 4     // ゼロに等しいトランザクションに添付されたデータのバイトごと。注：トランザクション間の通話のデータについては支払われません。 // Per byte of data attached to a transaction that equals zero. NOTE: Not payable on data of calls between transactions.
+	QuadCoeffDiv          uint64 = 512   // メモリコスト方程式の2次粒子の除数。 // Divisor for the quadratic particle of the memory cost equation.
+	LogDataGas            uint64 = 8     // LOG *操作のデータのバイトごと。    // Per byte in a LOG* operation's data.
+	CallStipend           uint64 = 2300  // 通話開始時にガスを放出します。     // Free gas given at beginning of call.
 
-	Keccak256Gas     uint64 = 30 // Once per KECCAK256 operation.
-	Keccak256WordGas uint64 = 6  // Once per word of the KECCAK256 operation's data.
+	Keccak256Gas     uint64 = 30 // KECCAK256操作ごとに1回。// Once per KECCAK256 operation.
+	Keccak256WordGas uint64 = 6  // KECCAK256操作のデータのワードごとに1回。 // Once per word of the KECCAK256 operation's data.
 
-	SstoreSetGas    uint64 = 20000 // Once per SSTORE operation.
-	SstoreResetGas  uint64 = 5000  // Once per SSTORE operation if the zeroness changes from zero.
-	SstoreClearGas  uint64 = 5000  // Once per SSTORE operation if the zeroness doesn't change.
-	SstoreRefundGas uint64 = 15000 // Once per SSTORE operation if the zeroness changes to zero.
+	SstoreSetGas    uint64 = 20000 // SSTORE操作ごとに1回。// Once per SSTORE operation.
+	SstoreResetGas  uint64 = 5000  // ゼロネスがゼロから変化した場合、SSTORE操作ごとに1回。// Once per SSTORE operation if the zeroness changes from zero.
+	SstoreClearGas  uint64 = 5000  // ゼロ度が変わらない場合は、SSTORE操作ごとに1回。      // Once per SSTORE operation if the zeroness doesn't change.
+	SstoreRefundGas uint64 = 15000 // ゼロネスがゼロに変更された場合、SSTORE操作ごとに1回。// Once per SSTORE operation if the zeroness changes to zero.
 
-	NetSstoreNoopGas  uint64 = 200   // Once per SSTORE operation if the value doesn't change.
-	NetSstoreInitGas  uint64 = 20000 // Once per SSTORE operation from clean zero.
-	NetSstoreCleanGas uint64 = 5000  // Once per SSTORE operation from clean non-zero.
-	NetSstoreDirtyGas uint64 = 200   // Once per SSTORE operation from dirty.
+	NetSstoreNoopGas  uint64 = 200   // 値が変更されない場合は、SSTORE操作ごとに1回。    // Once per SSTORE operation if the value doesn't change.
+	NetSstoreInitGas  uint64 = 20000 // クリーンゼロからのSSTORE操作ごとに1回。    // Once per SSTORE operation from clean zero.
+	NetSstoreCleanGas uint64 = 5000  // ゼロ以外のクリーンからSSTORE操作ごとに1回。// Once per SSTORE operation from clean non-zero.
+	NetSstoreDirtyGas uint64 = 200   // ダーティからのSSTORE操作ごとに1回。       // Once per SSTORE operation from dirty.
 
-	NetSstoreClearRefund      uint64 = 15000 // Once per SSTORE operation for clearing an originally existing storage slot
-	NetSstoreResetRefund      uint64 = 4800  // Once per SSTORE operation for resetting to the original non-zero value
-	NetSstoreResetClearRefund uint64 = 19800 // Once per SSTORE operation for resetting to the original zero value
+	NetSstoreClearRefund      uint64 = 15000 // 元々存在していたストレージスロットをクリアするためのSSTORE操作ごとに1回 // Once per SSTORE operation for clearing an originally existing storage slot
+	NetSstoreResetRefund      uint64 = 4800  // 元のゼロ以外の値にリセットするためのSSTORE操作ごとに1回 // Once per SSTORE operation for resetting to the original non-zero value
+	NetSstoreResetClearRefund uint64 = 19800 // 元のゼロ値にリセットするためのSSTORE操作ごとに1回      // Once per SSTORE operation for resetting to the original zero value
 
-	SstoreSentryGasEIP2200            uint64 = 2300  // Minimum gas required to be present for an SSTORE call, not consumed
-	SstoreSetGasEIP2200               uint64 = 20000 // Once per SSTORE operation from clean zero to non-zero
-	SstoreResetGasEIP2200             uint64 = 5000  // Once per SSTORE operation from clean non-zero to something else
-	SstoreClearsScheduleRefundEIP2200 uint64 = 15000 // Once per SSTORE operation for clearing an originally existing storage slot
+	SstoreSentryGasEIP2200            uint64 = 2300  // SSTORE呼び出しに存在する必要がある最小ガスであり、消費されない // Minimum gas required to be present for an SSTORE call, not consumed
+	SstoreSetGasEIP2200               uint64 = 20000 // クリーンゼロから非ゼロまでのSSTORE操作ごとに1回              // Once per SSTORE operation from clean zero to non-zero
+	SstoreResetGasEIP2200             uint64 = 5000  // ゼロ以外のクリーンから他の何かへのSSTORE操作ごとに1回        // Once per SSTORE operation from clean non-zero to something else
+	SstoreClearsScheduleRefundEIP2200 uint64 = 15000 // 元々存在していたストレージスロットをクリアするためのSSTORE操作ごとに1回 // Once per SSTORE operation for clearing an originally existing storage slot
 
 	ColdAccountAccessCostEIP2929 = uint64(2600) // COLD_ACCOUNT_ACCESS_COST
 	ColdSloadCostEIP2929         = uint64(2100) // COLD_SLOAD_COST
@@ -68,8 +68,8 @@ const (
 	// Which becomes: 5000 - 2100 + 1900 = 4800
 	SstoreClearsScheduleRefundEIP3529 uint64 = SstoreResetGasEIP2200 - ColdSloadCostEIP2929 + TxAccessListStorageKeyGas
 
-	JumpdestGas   uint64 = 1     // Once per JUMPDEST operation.
-	EpochDuration uint64 = 30000 // Duration between proof-of-work epochs.
+	JumpdestGas   uint64 = 1     // JUMPDEST操作ごとに1回。           // Once per JUMPDEST operation.
+	EpochDuration uint64 = 30000 //プルーフオブワークエポック間の期間。 // Duration between proof-of-work epochs.
 
 	CreateDataGas         uint64 = 200   //
 	CallCreateDepth       uint64 = 1024  // Maximum depth of call/create stack.

@@ -21,6 +21,11 @@ package params
 //
 //    new(big.Int).Mul(value, big.NewInt(params.GWei))
 //
+// これらはエーテル単位の乗数です。
+// 例： 'gwei'の金額のwei値を取得するには、次を使用します
+//
+//  new（big.Int）.Mul（value、big.NewInt（params.GWei））
+//
 const (
 	Wei   = 1
 	GWei  = 1e9
