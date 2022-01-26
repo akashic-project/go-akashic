@@ -28,7 +28,7 @@ import (
 // Genesis hashes to enforce below configs on.
 // Genesisは、以下の構成を強制するためにハッシュします。
 var (
-	MainnetGenesisHash = common.HexToHash("0x72069c03dd74f47bdd63812575d39e3154704a58c57fac4350a94af5317d29ce") // akashic-project Genesis
+	MainnetGenesisHash = common.HexToHash("0x688f516501b0715227304a735bfb03ed9c81e95ffa01074a35dec5d038ccbef4") // akashic-project Genesis
 	RopstenGenesisHash = common.HexToHash("0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d")
 	SepoliaGenesisHash = common.HexToHash("0x25a5cc106eea7138acab33231d7160d69cb777ee0c2c553fcddf5138993e6dd9")
 	RinkebyGenesisHash = common.HexToHash("0x6341fd3daf94b748c72ced5a5b26028f2474f5f00d824504e4fa37a75767e177")
