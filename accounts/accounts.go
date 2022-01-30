@@ -34,7 +34,7 @@ import (
 // アカウントは、オプションのURLフィールドで定義された特定の場所にあるイーサリアムアカウントを表します。
 type Account struct {
 	Address common.Address `json:"address"` // キーから派生したイーサリアムアカウントアドレス // Ethereum account address derived from the key
-	URL     URL            `json:"url"`     // バックエンド内のオプションのリソースロケーター// Optional resource locator within a backend
+	URL     URL            `json:"url"`     // バックエンド内のオプションのリソースロケーター // Optional resource locator within a backend
 }
 
 const (
@@ -144,12 +144,25 @@ type Wallet interface {
 	// about which fields or actions are needed. The user may retry by providing
 	// the needed details via SignDataWithPassphrase, or by other means (e.g. unlock
 	// the account in a keystore).
+	// SignDataは、指定されたデータのハッシュに署名するようウォレットに要求します。
+	// SignDataは、内部に含まれるアドレスのみを介して、
+	// またはオプションで埋め込みURLフィールドの場所メタデータを使用して指定されたアカウントを検索します。
+	//
+	// ウォレットがリクエストに署名するために追加の認証を必要とする場合
+	// （たとえば、アカウントを復号化するためのパスワード、またはトランザクションを確認するためのPINコード）、
+	// AuthNeededErrorインスタンスが返され、必要なフィールドまたはアクションに関するユーザーの情報が含まれます。
+	// ユーザーは、SignDataWithPassphraseを介して、または他の手段（たとえば、キーストアでアカウントのロックを解除する）
+	// によって、必要な詳細を提供することによって再試行できます。
 	SignData(account Account, mimeType string, data []byte) ([]byte, error)
 
 	// SignDataWithPassphrase is identical to SignData, but also takes a password
 	// NOTE: there's a chance that an erroneous call might mistake the two strings, and
 	// supply password in the mimetype field, or vice versa. Thus, an implementation
 	// should never echo the mimetype or return the mimetype in the error-response
+	// SignDataWithPassphraseはSignDataと同じですが、パスワードも取ります
+	// 注：誤った呼び出しが2つの文字列を間違え、mimetypeフィールドにパスワードを入力する可能性があります。
+	// その逆も同様です。
+	// したがって、実装はmimetypeをエコーし​​たり、エラー応答でmimetypeを返したりしないでください。
 	SignDataWithPassphrase(account Account, passphrase, mimeType string, data []byte) ([]byte, error)
 
 	// SignText requests the wallet to sign the hash of a given piece of data, prefixed
@@ -165,9 +178,21 @@ type Wallet interface {
 	// the account in a keystore).
 	//
 	// This method should return the signature in 'canonical' format, with v 0 or 1
+	// SignTextは、Ethereumプレフィックススキームでプレフィックスが付けられた、
+	// 特定のデータのハッシュに署名するようウォレットに要求します。SignTextは、含まれているアドレスのみを介して、
+	// またはオプションで埋め込みURLのロケーションメタデータを使用して、指定されたアカウントを検索します。分野。
+	//
+	// ウォレットがリクエストに署名するために追加の認証を必要とする場合
+	// （たとえば、アカウントを復号化するためのパスワード、またはトランザクションを確認するためのPINコード）、
+	// AuthNeededErrorインスタンスが返され、必要なフィールドまたはアクションに関するユーザーの情報が含まれます。
+	// ユーザーは、SignTextWithPassphraseを介して、または他の手段（たとえば、キーストアでアカウントのロックを解除する）
+	// によって、必要な詳細を提供することによって再試行できます。
+	//
+	// このメソッドは、v0または1の 'canonical'形式で署名を返す必要があります
 	SignText(account Account, text []byte) ([]byte, error)
 
 	// SignTextWithPassphrase is identical to Signtext, but also takes a password
+	// SignTextWithPassphraseはSigntextと同じですが、パスワードも取ります
 	SignTextWithPassphrase(account Account, passphrase string, hash []byte) ([]byte, error)
 
 	// SignTx requests the wallet to sign the given transaction.
@@ -181,14 +206,27 @@ type Wallet interface {
 	// about which fields or actions are needed. The user may retry by providing
 	// the needed details via SignTxWithPassphrase, or by other means (e.g. unlock
 	// the account in a keystore).
+	// SignTxは、指定されたトランザクションに署名するようウォレットに要求します。
+	//
+	// 内に含まれるアドレスのみを介して、またはオプションで埋め込みURLフィールドの場所
+	// メタデータを使用して指定されたアカウントを検索します。
+	//
+	// ウォレットがリクエストに署名するために追加の認証を必要とする場合
+	// （たとえば、アカウントを復号化するためのパスワード、またはトランザクションを検証するためのPINコード）、
+	// AuthNeededErrorインスタンスが返され、必要なフィールドまたはアクションに関するユーザーの情報が含まれます。
+	// ユーザーは、SignTxWithPassphraseを介して、または他の手段（たとえば、キーストアでアカウントのロックを解除する）
+	// によって、必要な詳細を提供することによって再試行できます。
 	SignTx(account Account, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error)
 
 	// SignTxWithPassphrase is identical to SignTx, but also takes a password
+	// SignTxWithPassphraseはSignTxと同じですが、パスワードも使用します
 	SignTxWithPassphrase(account Account, passphrase string, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error)
 }
 
 // Backend is a "wallet provider" that may contain a batch of accounts they can
 // sign transactions with and upon request, do so.
+// バックエンドは「ウォレットプロバイダー」であり、トランザクションに署名できるアカウントの
+// バッチが含まれている場合があり、要求に応じて署名できます。
 type Backend interface {
 	// Wallets retrieves the list of wallets the backend is currently aware of.
 	//
@@ -200,10 +238,20 @@ type Backend interface {
 	// URL assigned by the backend. Since wallets (especially hardware) may come and
 	// go, the same wallet might appear at a different positions in the list during
 	// subsequent retrievals.
+	// Walletsは、バックエンドが現在認識しているウォレットのリストを取得します。
+	//
+	// 返されたウォレットはデフォルトでは開かれません。ソフトウェアHDウォレットの場合、
+	// これはベースシードが復号化されないことを意味し、ハードウェアウォレットの場合、実際の接続は確立されません。
+	//
+	// 結果のウォレットリストは、バックエンドによって割り当てられた内部URLに基​​づいてアルファベット順にソートされます。
+	// ウォレット（特にハードウェア）が出入りする可能性があるため、その後の取得時に同じウォレットが
+	// リストの異なる位置に表示される可能性があります。
 	Wallets() []Wallet
 
 	// Subscribe creates an async subscription to receive notifications when the
 	// backend detects the arrival or departure of a wallet.
+	// サブスクライブは、バックエンドがウォレットの到着または出発を検出したときに
+	// 通知を受信する非同期サブスクリプションを作成します。
 	Subscribe(sink chan<- WalletEvent) event.Subscription
 }
 
@@ -214,6 +262,11 @@ type Backend interface {
 //   keccak256("\x19Ethereum Signed Message:\n"${message length}${message}).
 //
 // This gives context to the signed message and prevents signing of transactions.
+// TextHashは、署名の計算に安全に使用できる特定のメッセージのハッシュを計算するヘルパー関数です。
+//
+// ハッシュはkeccak256（ "\ x19Ethereum Signed Message：\ n" $ {message length} $ {message}）として計算されます。
+//
+// これにより、署名されたメッセージにコンテキストが与えられ、トランザクションの署名が防止されます。
 func TextHash(data []byte) []byte {
 	hash, _ := TextAndHash(data)
 	return hash
@@ -226,6 +279,12 @@ func TextHash(data []byte) []byte {
 //   keccak256("\x19Ethereum Signed Message:\n"${message length}${message}).
 //
 // This gives context to the signed message and prevents signing of transactions.
+// TextAndHashは、署名の計算に安全に使用できる特定のメッセージのハッシュを計算するヘルパー関数です。
+//
+// ハッシュは次のように計算されます
+// keccak256（ "\ x19Ethereum Signed Message：\ n" $ {message length} $ {message}）。
+//
+// これにより、署名されたメッセージにコンテキストが与えられ、トランザクションの署名が防止されます。
 func TextAndHash(data []byte) ([]byte, string) {
 	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(data), string(data))
 	hasher := sha3.NewLegacyKeccak256()
@@ -235,6 +294,7 @@ func TextAndHash(data []byte) ([]byte, string) {
 
 // WalletEventType represents the different event types that can be fired by
 // the wallet subscription subsystem.
+// WalletEventTypeは、ウォレットサブスクリプションサブシステムによって発生できるさまざまなイベントタイプを表します。
 type WalletEventType int
 
 const (

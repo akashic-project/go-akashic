@@ -34,15 +34,21 @@ import (
 )
 
 // ErrNoChainID is returned whenever the user failed to specify a chain id.
+// ユーザーがチェーンIDを指定できなかった場合は常に、ErrNoChainIDが返されます。
 var ErrNoChainID = errors.New("no chain id specified")
 
 // ErrNotAuthorized is returned when an account is not properly unlocked.
+// アカウントが適切にロック解除されていない場合、ErrNotAuthorizedが返されます。
 var ErrNotAuthorized = errors.New("not authorized to sign this account")
 
 // NewTransactor is a utility method to easily create a transaction signer from
 // an encrypted json key stream and the associated passphrase.
 //
 // Deprecated: Use NewTransactorWithChainID instead.
+// NewTransactorは、暗号化されたjsonキーストリームと関連するパスフレーズから
+// トランザクション署名者を簡単に作成するためのユーティリティメソッドです。
+//
+// 非推奨：代わりにNewTransactorWithChainIDを使用してください。
 func NewTransactor(keyin io.Reader, passphrase string) (*TransactOpts, error) {
 	log.Warn("WARNING: NewTransactor has been deprecated in favour of NewTransactorWithChainID")
 	json, err := ioutil.ReadAll(keyin)
@@ -60,6 +66,10 @@ func NewTransactor(keyin io.Reader, passphrase string) (*TransactOpts, error) {
 // an decrypted key from a keystore.
 //
 // Deprecated: Use NewKeyStoreTransactorWithChainID instead.
+// NewKeyStoreTransactorは、キーストアの復号化されたキーからトランザクション署名者を
+// 簡単に作成するためのユーティリティメソッドです。
+//
+// 非推奨：代わりにNewKeyStoreTransactorWithChainIDを使用してください。
 func NewKeyStoreTransactor(keystore *keystore.KeyStore, account accounts.Account) (*TransactOpts, error) {
 	log.Warn("WARNING: NewKeyStoreTransactor has been deprecated in favour of NewTransactorWithChainID")
 	signer := types.HomesteadSigner{}
@@ -83,6 +93,9 @@ func NewKeyStoreTransactor(keystore *keystore.KeyStore, account accounts.Account
 // from a single private key.
 //
 // Deprecated: Use NewKeyedTransactorWithChainID instead.
+// NewKeyedTransactorは、単一の秘密鍵からトランザクション署名者を簡単に作成するためのユーティリティメソッドです。
+//
+// 非推奨：代わりにNewKeyedTransactorWithChainIDを使用してください。
 func NewKeyedTransactor(key *ecdsa.PrivateKey) *TransactOpts {
 	log.Warn("WARNING: NewKeyedTransactor has been deprecated in favour of NewKeyedTransactorWithChainID")
 	keyAddr := crypto.PubkeyToAddress(key.PublicKey)
@@ -105,6 +118,8 @@ func NewKeyedTransactor(key *ecdsa.PrivateKey) *TransactOpts {
 
 // NewTransactorWithChainID is a utility method to easily create a transaction signer from
 // an encrypted json key stream and the associated passphrase.
+// NewTransactorWithChainIDは、暗号化されたjsonキーストリームと関連するパスフレーズから
+// トランザクション署名者を簡単に作成するためのユーティリティメソッドです。
 func NewTransactorWithChainID(keyin io.Reader, passphrase string, chainID *big.Int) (*TransactOpts, error) {
 	json, err := ioutil.ReadAll(keyin)
 	if err != nil {
@@ -119,6 +134,8 @@ func NewTransactorWithChainID(keyin io.Reader, passphrase string, chainID *big.I
 
 // NewKeyStoreTransactorWithChainID is a utility method to easily create a transaction signer from
 // an decrypted key from a keystore.
+// NewKeyStoreTransactorWithChainIDは、キーストアの復号化されたキーから
+// トランザクション署名者を簡単に作成するためのユーティリティメソッドです。
 func NewKeyStoreTransactorWithChainID(keystore *keystore.KeyStore, account accounts.Account, chainID *big.Int) (*TransactOpts, error) {
 	if chainID == nil {
 		return nil, ErrNoChainID
@@ -142,6 +159,7 @@ func NewKeyStoreTransactorWithChainID(keystore *keystore.KeyStore, account accou
 
 // NewKeyedTransactorWithChainID is a utility method to easily create a transaction signer
 // from a single private key.
+// NewKeyedTransactorWithChainIDは、単一の秘密鍵からトランザクション署名者を簡単に作成するためのユーティリティメソッドです。
 func NewKeyedTransactorWithChainID(key *ecdsa.PrivateKey, chainID *big.Int) (*TransactOpts, error) {
 	keyAddr := crypto.PubkeyToAddress(key.PublicKey)
 	if chainID == nil {
@@ -166,6 +184,7 @@ func NewKeyedTransactorWithChainID(key *ecdsa.PrivateKey, chainID *big.Int) (*Tr
 
 // NewClefTransactor is a utility method to easily create a transaction signer
 // with a clef backend.
+// NewClefTransactorは、音部記号バックエンドを使用してトランザクション署名者を簡単に作成するためのユーティリティメソッドです。
 func NewClefTransactor(clef *external.ExternalSigner, account accounts.Account) *TransactOpts {
 	return &TransactOpts{
 		From: account.Address,
@@ -173,7 +192,7 @@ func NewClefTransactor(clef *external.ExternalSigner, account accounts.Account) 
 			if address != account.Address {
 				return nil, ErrNotAuthorized
 			}
-			return clef.SignTx(account, transaction, nil) // Clef enforces its own chain id
+			return clef.SignTx(account, transaction, nil) //クレフは独自のチェーンIDを適用します // Clef enforces its own chain id
 		},
 		Context: context.Background(),
 	}

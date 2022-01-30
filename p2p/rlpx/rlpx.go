@@ -92,6 +92,8 @@ func newHashMAC(cipher cipher.Block, h hash.Hash) hashMAC {
 
 // NewConn wraps the given network connection. If dialDest is non-nil, the connection
 // behaves as the initiator during the handshake.
+// NewConnは、指定されたネットワーク接続をラップします。
+// DialDestがnil以外の場合、接続はハンドシェイク中にイニシエーターとして動作します。
 func NewConn(conn net.Conn, dialDest *ecdsa.PublicKey) *Conn {
 	return &Conn{
 		dialDest: dialDest,

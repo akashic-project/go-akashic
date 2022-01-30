@@ -272,9 +272,9 @@ type conn struct {
 	transport
 	node  *enode.Node
 	flags connFlag
-	cont  chan error // The run loop uses cont to signal errors to SetupConn. 実行ループはcontを使用して、SetupConnにエラーを通知します。
-	caps  []Cap      // valid after the protocol handshake プロトコルハンドシェイク後に有効
-	name  string     // valid after the protocol handshake プロトコルハンドシェイク後に有効
+	cont  chan error // 実行ループはcontを使用して、SetupConnにエラーを通知します。 // The run loop uses cont to signal errors to SetupConn. 
+	caps  []Cap      // プロトコルハンドシェイク後に有効                           // valid after the protocol handshake 
+	name  string     // プロトコルハンドシェイク後に有効                           // valid after the protocol handshake 
 }
 
 type transport interface {

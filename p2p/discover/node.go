@@ -31,10 +31,12 @@ import (
 
 // node represents a host on the network.
 // The fields of Node may not be modified.
+// ノードはネットワーク上のホストを表します。
+// ノードのフィールドは変更できません。
 type node struct {
 	enode.Node
-	addedAt        time.Time // time when the node was added to the table
-	livenessChecks uint      // how often liveness was checked
+	addedAt        time.Time // ノードがテーブルに追加された時刻 // time when the node was added to the table
+	livenessChecks uint      // 活気がチェックされた頻度 // how often liveness was checked
 }
 
 type encPubkey [64]byte

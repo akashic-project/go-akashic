@@ -52,18 +52,21 @@ const (
 	expiration     = 20 * time.Second
 	bondExpiration = 24 * time.Hour
 
-	maxFindnodeFailures = 5                // nodes exceeding this limit are dropped
-	ntpFailureThreshold = 32               // Continuous timeouts after which to check NTP
-	ntpWarningCooldown  = 10 * time.Minute // Minimum amount of time to pass before repeating NTP warning
-	driftThreshold      = 10 * time.Second // Allowed clock drift before warning user
+	maxFindnodeFailures = 5                // この制限を超えるノードは削除されます // nodes exceeding this limit are dropped
+	ntpFailureThreshold = 32               // NTPをチェックするための継続的なタイムアウト // Continuous timeouts after which to check NTP
+	ntpWarningCooldown  = 10 * time.Minute // NTP警告を繰り返す前に経過する最小時間 // Minimum amount of time to pass before repeating NTP warning
+	driftThreshold      = 10 * time.Second // ユーザーに警告する前にクロックドリフトを許可 // Allowed clock drift before warning user
 
 	// Discovery packets are defined to be no larger than 1280 bytes.
 	// Packets larger than this size will be cut at the end and treated
 	// as invalid because their hash won't match.
+	// 検出パケットは1280バイト以下であると定義されています。
+	// このサイズより大きいパケットは最後にカットされ、ハッシュが一致しないため無効として扱われます。
 	maxPacketSize = 1280
 )
 
 // UDPv4 implements the v4 wire protocol.
+// UDPv4はv4ワイヤープロトコルを実装します。
 type UDPv4 struct {
 	conn        UDPConn
 	log         log.Logger
@@ -90,23 +93,37 @@ type UDPv4 struct {
 // Our implementation handles this by storing a callback function for
 // each pending reply. Incoming packets from a node are dispatched
 // to all callback functions for that node.
+// replyMatcherは、保留中の応答を表します。
+//
+// プロトコルの一部の実装では、複数の応答パケットをfindnodeに送信したいと考えています。
+// 一般に、ネイバーパケットを特定のfindnodeパケットと一致させることはできません。
+//
+// 実装は、保留中の応答ごとにコールバック関数を格納することでこれを処理します。
+// ノードからの着信パケットは、そのノードのすべてのコールバック関数にディスパッチされます。
 type replyMatcher struct {
 	// these fields must match in the reply.
+	// これらのフィールドは応答で一致する必要があります。
 	from  enode.ID
 	ip    net.IP
 	ptype byte
 
 	// time when the request must complete
+	// リクエストを完了する必要がある時間
 	deadline time.Time
 
 	// callback is called when a matching reply arrives. If it returns matched == true, the
 	// reply was acceptable. The second return value indicates whether the callback should
 	// be removed from the pending reply queue. If it returns false, the reply is considered
 	// incomplete and the callback will be invoked again for the next matching reply.
+	// 一致する応答が到着すると、コールバックが呼び出されます。 match == trueが返された場合、応答は受け入れ可能でした。
+	// 2番目の戻り値は、コールバックを保留中の応答キューから削除する必要があるかどうかを示します。
+	//  falseが返された場合、応答は不完全であると見なされ、次の一致する応答に対してコールバックが再度呼び出されます。
 	callback replyMatchFunc
 
 	// errc receives nil when the callback indicates completion or an
 	// error if no further reply is received within the timeout.
+	// errcは、コールバックが完了を示したときにnilを受け取り、
+	// タイムアウト内にそれ以上応答が受信されなかった場合はエラーを受け取ります。
 	errc chan error
 
 	// reply contains the most recent reply. This field is safe for reading after errc has

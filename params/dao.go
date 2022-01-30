@@ -25,17 +25,23 @@ import (
 // DAOForkBlockExtra is the block header extra-data field to set for the DAO fork
 // point and a number of consecutive blocks to allow fast/light syncers to correctly
 // pick the side they want  ("dao-hard-fork").
+// DAOForkBlockExtraは、DAOフォークポイントに設定するブロックヘッダーの追加データフィールドであり、
+// 高速/ライトシンカーが必要な側を正しく選択できるようにするための連続するブロックの数です（「dao-hard-fork」）。
 var DAOForkBlockExtra = common.FromHex("0x64616f2d686172642d666f726b")
 
 // DAOForkExtraRange is the number of consecutive blocks from the DAO fork point
 // to override the extra-data in to prevent no-fork attacks.
+// DAOForkExtraRangeは、DAOフォークポイントからの連続ブロックの数であり、
+// フォークなしの攻撃を防ぐために追加データをオーバーライドします。
 var DAOForkExtraRange = big.NewInt(10)
 
 // DAORefundContract is the address of the refund contract to send DAO balances to.
+// DAORefundContractは、DAO残高を送信する払い戻し契約のアドレスです。
 var DAORefundContract = common.HexToAddress("0xbf4ed7b27f1d666546e30d74d50d173d20bca754")
 
 // DAODrainList is the list of accounts whose full balances will be moved into a
 // refund contract at the beginning of the dao-fork block.
+// DAODrainListは、dao-forkブロックの開始時に全残高が返金契約に移動されるアカウントのリストです。
 func DAODrainList() []common.Address {
 	return []common.Address{
 		common.HexToAddress("0xd4fe7bc31cedb7bfb8a345f31e668033056b2728"),
