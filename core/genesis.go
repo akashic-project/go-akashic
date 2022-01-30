@@ -357,14 +357,15 @@ func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big
 	return g.MustCommit(db)
 }
 
-// DefaultGenesisBlock returns the Ethereum main net genesis block.
+// DefaultGenesisBlock returns the akashic main net genesis block.
+// DefaultGenesisBlockは、akashicメインネットジェネシスブロックを返します。
 func DefaultGenesisBlock() *Genesis {
 	return &Genesis{
 		Config:     params.MainnetChainConfig,
-		Nonce:      66,
-		ExtraData:  hexutil.MustDecode("0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa"),
-		GasLimit:   5000,
-		Difficulty: big.NewInt(17179869184),
+		Nonce:      256,
+		ExtraData:  hexutil.MustDecode("0x"),
+		GasLimit:   134217728,
+		Difficulty: big.NewInt(7640),
 		Alloc:      decodePrealloc(mainnetAllocData),
 	}
 }
