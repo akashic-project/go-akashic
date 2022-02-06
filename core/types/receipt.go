@@ -379,6 +379,7 @@ func decodeV3StoredReceiptRLP(r *ReceiptForStorage, blob []byte) error {
 }
 
 // Receipts implements DerivableList for receipts.
+// Receiptsは、レシートのDerivableListを実装します
 type Receipts []*Receipt
 
 // Len returns the number of receipts in this list.

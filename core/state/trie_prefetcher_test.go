@@ -29,16 +29,17 @@ func filledStateDB() *StateDB {
 	state, _ := New(common.Hash{}, NewDatabase(rawdb.NewMemoryDatabase()), nil)
 
 	// Create an account and check if the retrieved balance is correct
+	// アカウントを作成し、取得した残高が正しいかどうかを確認します
 	addr := common.HexToAddress("0xaffeaffeaffeaffeaffeaffeaffeaffeaffeaffe")
 	skey := common.HexToHash("aaa")
 	sval := common.HexToHash("bbb")
 
-	state.SetBalance(addr, big.NewInt(42)) // Change the account trie
-	state.SetCode(addr, []byte("hello"))   // Change an external metadata
-	state.SetState(addr, skey, sval)       // Change the storage trie
+	state.SetBalance(addr, big.NewInt(42)) // アカウントトライを変更します // Change the account trie
+	state.SetCode(addr, []byte("hello"))   // 外部メタデータを変更します   // Change an external metadata
+	state.SetState(addr, skey, sval)       // ストレージトライを変更します // Change the storage trie
 	for i := 0; i < 100; i++ {
 		sk := common.BigToHash(big.NewInt(int64(i)))
-		state.SetState(addr, sk, sk) // Change the storage trie
+		state.SetState(addr, sk, sk) // ストレージトライを変更します // Change the storage trie
 	}
 	return state
 }

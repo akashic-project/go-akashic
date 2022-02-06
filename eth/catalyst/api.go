@@ -288,6 +288,8 @@ func (api *ConsensusAPI) ExecutePayloadV1(params ExecutableDataV1) (ExecutePaylo
 
 // AssembleBlock creates a new block, inserts it into the chain, and returns the "execution
 // data" required for eth2 clients to process the new block.
+// AssembleBlockは新しいブロックを作成し、それをチェーンに挿入し、
+// eth2クライアントが新しいブロックを処理するために必要な「実行データ」を返します。
 func (api *ConsensusAPI) assembleBlock(parentHash common.Hash, params *PayloadAttributesV1) (*ExecutableDataV1, error) {
 	if api.light {
 		return nil, errors.New("not supported")

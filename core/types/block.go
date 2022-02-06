@@ -96,6 +96,11 @@ type Header struct {
 		// Random was added during the merge and contains the BeaconState randomness
 		Random common.Hash `json:"random" rlp:"optional"`
 	*/
+	/*
+		TODO（MariusVanDerWijden）必要に応じてこのフィールドを追加
+		// ランダムはマージ中に追加され、BeaconStateのランダム性を含みますランダム
+		common.Hash `json：" random "rlp：" optional "`
+	*/
 }
 
 // field type overrides for gencodec
@@ -368,6 +373,7 @@ func CalcUncleHash(uncles []*Header) common.Hash {
 
 // WithSeal returns a new block with the data from b but the header replaced with
 // the sealed one.
+// WithSealは、bからのデータを含む新しいブロックを返しますが、ヘッダーは封印されたものに置き換えられます。
 func (b *Block) WithSeal(header *Header) *Block {
 	cpy := *header
 

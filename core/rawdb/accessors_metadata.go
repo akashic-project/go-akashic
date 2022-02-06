@@ -28,6 +28,7 @@ import (
 )
 
 // ReadDatabaseVersion retrieves the version number of the database.
+// ReadDatabaseVersionは、データベースのバージョン番号を取得します。
 func ReadDatabaseVersion(db ethdb.KeyValueReader) *uint64 {
 	var version uint64
 
@@ -43,6 +44,7 @@ func ReadDatabaseVersion(db ethdb.KeyValueReader) *uint64 {
 }
 
 // WriteDatabaseVersion stores the version number of the database
+// WriteDatabaseVersionは、データベースのバージョン番号を格納します
 func WriteDatabaseVersion(db ethdb.KeyValueWriter, version uint64) {
 	enc, err := rlp.EncodeToBytes(version)
 	if err != nil {
@@ -54,6 +56,7 @@ func WriteDatabaseVersion(db ethdb.KeyValueWriter, version uint64) {
 }
 
 // ReadChainConfig retrieves the consensus settings based on the given genesis hash.
+// ReadChainConfigは、指定されたジェネシスハッシュに基づいてコンセンサス設定を取得します。
 func ReadChainConfig(db ethdb.KeyValueReader, hash common.Hash) *params.ChainConfig {
 	data, _ := db.Get(configKey(hash))
 	if len(data) == 0 {
@@ -68,6 +71,7 @@ func ReadChainConfig(db ethdb.KeyValueReader, hash common.Hash) *params.ChainCon
 }
 
 // WriteChainConfig writes the chain config settings to the database.
+// WriteChainConfigは、チェーン構成設定をデータベースに書き込みます。
 func WriteChainConfig(db ethdb.KeyValueWriter, hash common.Hash, cfg *params.ChainConfig) {
 	if cfg == nil {
 		return
@@ -83,9 +87,10 @@ func WriteChainConfig(db ethdb.KeyValueWriter, hash common.Hash, cfg *params.Cha
 
 // crashList is a list of unclean-shutdown-markers, for rlp-encoding to the
 // database
+// crackListは、データベースへのrlp-encoding用のunclean-shutdown-markersのリストです
 type crashList struct {
-	Discarded uint64   // how many ucs have we deleted
-	Recent    []uint64 // unix timestamps of 10 latest unclean shutdowns
+	Discarded uint64   // 削除したUCの数 // how many ucs have we deleted
+	Recent    []uint64 // 最新の汚れたシャットダウン10件のUNIXタイムスタンプ // unix timestamps of 10 latest unclean shutdowns
 }
 
 const crashesToKeep = 10
@@ -94,9 +99,14 @@ const crashesToKeep = 10
 // the previous data
 // - a list of timestamps
 // - a count of how many old unclean-shutdowns have been discarded
+
+// PushUncleanShutdownMarkerは、新しい汚れたシャットダウンマーカーを追加し、以前のデータを返します
+// -タイムスタンプのリスト
+// -破棄された古いunclean-shutdownの数
 func PushUncleanShutdownMarker(db ethdb.KeyValueStore) ([]uint64, uint64, error) {
 	var uncleanShutdowns crashList
 	// Read old data
+	// 古いデータを読み取ります
 	if data, err := db.Get(uncleanShutdownKey); err != nil {
 		log.Warn("Error reading unclean shutdown markers", "error", err)
 	} else if err := rlp.DecodeBytes(data, &uncleanShutdowns); err != nil {
@@ -106,6 +116,7 @@ func PushUncleanShutdownMarker(db ethdb.KeyValueStore) ([]uint64, uint64, error)
 	var previous = make([]uint64, len(uncleanShutdowns.Recent))
 	copy(previous, uncleanShutdowns.Recent)
 	// Add a new (but cap it)
+	// 新しいものを追加します（ただし、上限を設定します）
 	uncleanShutdowns.Recent = append(uncleanShutdowns.Recent, uint64(time.Now().Unix()))
 	if count := len(uncleanShutdowns.Recent); count > crashesToKeep+1 {
 		numDel := count - (crashesToKeep + 1)
@@ -113,6 +124,7 @@ func PushUncleanShutdownMarker(db ethdb.KeyValueStore) ([]uint64, uint64, error)
 		uncleanShutdowns.Discarded += uint64(numDel)
 	}
 	// And save it again
+	// そしてもう一度保存します
 	data, _ := rlp.EncodeToBytes(uncleanShutdowns)
 	if err := db.Put(uncleanShutdownKey, data); err != nil {
 		log.Warn("Failed to write unclean-shutdown marker", "err", err)
@@ -122,13 +134,14 @@ func PushUncleanShutdownMarker(db ethdb.KeyValueStore) ([]uint64, uint64, error)
 }
 
 // PopUncleanShutdownMarker removes the last unclean shutdown marker
+// PopUncleanShutdownMarkerは、最後の汚れたシャットダウンマーカーを削除します
 func PopUncleanShutdownMarker(db ethdb.KeyValueStore) {
 	var uncleanShutdowns crashList
 	// Read old data
 	if data, err := db.Get(uncleanShutdownKey); err != nil {
 		log.Warn("Error reading unclean shutdown markers", "error", err)
 	} else if err := rlp.DecodeBytes(data, &uncleanShutdowns); err != nil {
-		log.Error("Error decoding unclean shutdown markers", "error", err) // Should mos def _not_ happen
+		log.Error("Error decoding unclean shutdown markers", "error", err) // mos def_not_が発生する必要があります // Should mos def _not_ happen
 	}
 	if l := len(uncleanShutdowns.Recent); l > 0 {
 		uncleanShutdowns.Recent = uncleanShutdowns.Recent[:l-1]
@@ -140,15 +153,18 @@ func PopUncleanShutdownMarker(db ethdb.KeyValueStore) {
 }
 
 // UpdateUncleanShutdownMarker updates the last marker's timestamp to now.
+// UpdateUncleanShutdownMarkerは、最後のマーカーのタイムスタンプを現在に更新します。
 func UpdateUncleanShutdownMarker(db ethdb.KeyValueStore) {
 	var uncleanShutdowns crashList
 	// Read old data
+	// 古いデータを読み取ります
 	if data, err := db.Get(uncleanShutdownKey); err != nil {
 		log.Warn("Error reading unclean shutdown markers", "error", err)
 	} else if err := rlp.DecodeBytes(data, &uncleanShutdowns); err != nil {
 		log.Warn("Error decoding unclean shutdown markers", "error", err)
 	}
 	// This shouldn't happen because we push a marker on Backend instantiation
+	// バックエンドのインスタンス化でマーカーをプッシュするため、これは発生しないはずです
 	count := len(uncleanShutdowns.Recent)
 	if count == 0 {
 		log.Warn("No unclean shutdown marker to update")
@@ -162,12 +178,14 @@ func UpdateUncleanShutdownMarker(db ethdb.KeyValueStore) {
 }
 
 // ReadTransitionStatus retrieves the eth2 transition status from the database
+// ReadTransitionStatusは、データベースからeth2遷移ステータスを取得します
 func ReadTransitionStatus(db ethdb.KeyValueReader) []byte {
 	data, _ := db.Get(transitionStatusKey)
 	return data
 }
 
 // WriteTransitionStatus stores the eth2 transition status to the database
+// WriteTransitionStatusは、eth2遷移ステータスをデータベースに保存します
 func WriteTransitionStatus(db ethdb.KeyValueWriter, data []byte) {
 	if err := db.Put(transitionStatusKey, data); err != nil {
 		log.Crit("Failed to store the eth2 transition status", "err", err)

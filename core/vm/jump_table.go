@@ -108,6 +108,7 @@ func newIstanbulInstructionSet() JumpTable {
 
 // newConstantinopleInstructionSet returns the frontier, homestead,
 // byzantium and contantinople instructions.
+// newConstantinopleInstructionSetは、フロンティア、ホームステッド、ビザンチウム、およびコンスタンティノープルの命令を返します。
 func newConstantinopleInstructionSet() JumpTable {
 	instructionSet := newByzantiumInstructionSet()
 	instructionSet[SHL] = &operation{

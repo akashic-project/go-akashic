@@ -98,6 +98,7 @@ func DeleteTxLookupEntry(db ethdb.KeyValueWriter, hash common.Hash) {
 }
 
 // DeleteTxLookupEntries removes all transaction lookups for a given block.
+// DeleteTxLookupEntriesは、特定のブロックのすべてのトランザクションルックアップを削除します。
 func DeleteTxLookupEntries(db ethdb.KeyValueWriter, hashes []common.Hash) {
 	for _, hash := range hashes {
 		DeleteTxLookupEntry(db, hash)
@@ -106,6 +107,7 @@ func DeleteTxLookupEntries(db ethdb.KeyValueWriter, hashes []common.Hash) {
 
 // ReadTransaction retrieves a specific transaction from the database, along with
 // its added positional metadata.
+// ReadTransactionは、追加された位置メタデータとともに、データベースから特定のトランザクションを取得します。
 func ReadTransaction(db ethdb.Reader, hash common.Hash) (*types.Transaction, common.Hash, uint64, uint64) {
 	blockNumber := ReadTxLookupEntry(db, hash)
 	if blockNumber == nil {
@@ -131,8 +133,10 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash) (*types.Transaction, com
 
 // ReadReceipt retrieves a specific transaction receipt from the database, along with
 // its added positional metadata.
+// ReadReceiptは、追加された位置メタデータとともに、データベースから特定のトランザクションレシートを取得します。
 func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig) (*types.Receipt, common.Hash, uint64, uint64) {
 	// Retrieve the context of the receipt based on the transaction hash
+	// トランザクションハッシュに基づいてレシートのコンテキストを取得します
 	blockNumber := ReadTxLookupEntry(db, hash)
 	if blockNumber == nil {
 		return nil, common.Hash{}, 0, 0
@@ -142,6 +146,7 @@ func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig) 
 		return nil, common.Hash{}, 0, 0
 	}
 	// Read all the receipts from the block and return the one with the matching hash
+	// ブロックからすべての領収書を読み取り、一致するハッシュを持つ領収書を返します
 	receipts := ReadReceipts(db, blockHash, *blockNumber, config)
 	for receiptIndex, receipt := range receipts {
 		if receipt.TxHash == hash {
@@ -154,12 +159,14 @@ func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig) 
 
 // ReadBloomBits retrieves the compressed bloom bit vector belonging to the given
 // section and bit index from the.
+// ReadBloomBitsは、指定されたセクションとビットインデックスに属する圧縮されたブルームビットベクトルをから取得します。
 func ReadBloomBits(db ethdb.KeyValueReader, bit uint, section uint64, head common.Hash) ([]byte, error) {
 	return db.Get(bloomBitsKey(bit, section, head))
 }
 
 // WriteBloomBits stores the compressed bloom bits vector belonging to the given
 // section and bit index.
+// WriteBloomBitsは、指定されたセクションとビットインデックスに属する圧縮されたブルームビットベクトルを格納します。
 func WriteBloomBits(db ethdb.KeyValueWriter, bit uint, section uint64, head common.Hash, bits []byte) {
 	if err := db.Put(bloomBitsKey(bit, section, head), bits); err != nil {
 		log.Crit("Failed to store bloom bits", "err", err)
@@ -168,6 +175,7 @@ func WriteBloomBits(db ethdb.KeyValueWriter, bit uint, section uint64, head comm
 
 // DeleteBloombits removes all compressed bloom bits vector belonging to the
 // given section range and bit index.
+// DeleteBloombitsは、指定されたセクション範囲とビットインデックスに属するすべての圧縮されたブルームビットベクトルを削除します。
 func DeleteBloombits(db ethdb.Database, bit uint, from uint64, to uint64) {
 	start, end := bloomBitsKey(bit, from, common.Hash{}), bloomBitsKey(bit, to, common.Hash{})
 	it := db.NewIterator(nil, start)

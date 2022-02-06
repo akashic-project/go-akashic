@@ -272,6 +272,9 @@ func (s *PublicAccountAPI) Accounts() []common.Address {
 // PrivateAccountAPI provides an API to access accounts managed by this node.
 // It offers methods to create, (un)lock en list accounts. Some methods accept
 // passwords and are therefore considered private by default.
+// PrivateAccountAPIは、このノードによって管理されるアカウントにアクセスするためのAPIを提供します。
+// リストアカウントを作成（ロック解除）するためのメソッドを提供します。
+// 一部のメソッドはパスワードを受け入れるため、デフォルトではプライベートと見なされます。
 type PrivateAccountAPI struct {
 	am        *accounts.Manager
 	nonceLock *AddrLocker
@@ -627,6 +630,7 @@ func (api *PublicBlockChainAPI) ChainId() (*hexutil.Big, error) {
 }
 
 // BlockNumber returns the block number of the chain head.
+// BlockNumberは、チェーンヘッドのブロック番号を返します。
 func (s *PublicBlockChainAPI) BlockNumber() hexutil.Uint64 {
 	header, _ := s.b.HeaderByNumber(context.Background(), rpc.LatestBlockNumber) // latest header should always be available
 	return hexutil.Uint64(header.Number.Uint64())
@@ -635,6 +639,8 @@ func (s *PublicBlockChainAPI) BlockNumber() hexutil.Uint64 {
 // GetBalance returns the amount of wei for the given address in the state of the
 // given block number. The rpc.LatestBlockNumber and rpc.PendingBlockNumber meta
 // block numbers are also allowed.
+// GetBalanceは、指定されたブロック番号の状態で指定されたアドレスのweiの量を返します。
+// rpc.LatestBlockNumberおよびrpc.PendingBlockNumberメタブロック番号も許可されます。
 func (s *PublicBlockChainAPI) GetBalance(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (*hexutil.Big, error) {
 	state, _, err := s.b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	if state == nil || err != nil {
@@ -857,6 +863,7 @@ type OverrideAccount struct {
 type StateOverride map[common.Address]OverrideAccount
 
 // Apply overrides the fields of specified accounts into the given state.
+// 適用は、指定されたアカウントのフィールドを指定された状態にオーバーライドします。
 func (diff *StateOverride) Apply(state *state.StateDB) error {
 	if diff == nil {
 		return nil
@@ -871,6 +878,7 @@ func (diff *StateOverride) Apply(state *state.StateDB) error {
 			state.SetCode(addr, *account.Code)
 		}
 		// Override account balance.
+		// アカウントの残高を上書きします。
 		if account.Balance != nil {
 			state.SetBalance(addr, (*big.Int)(*account.Balance))
 		}
@@ -1506,6 +1514,7 @@ func (s *PublicTransactionPoolAPI) GetBlockTransactionCountByNumber(ctx context.
 }
 
 // GetBlockTransactionCountByHash returns the number of transactions in the block with the given hash.
+// GetBlockTransactionCountByHashは、指定されたハッシュを持つブロック内のトランザクションの数を返します。
 func (s *PublicTransactionPoolAPI) GetBlockTransactionCountByHash(ctx context.Context, blockHash common.Hash) *hexutil.Uint {
 	if block, _ := s.b.BlockByHash(ctx, blockHash); block != nil {
 		n := hexutil.Uint(len(block.Transactions()))
@@ -1515,6 +1524,7 @@ func (s *PublicTransactionPoolAPI) GetBlockTransactionCountByHash(ctx context.Co
 }
 
 // GetTransactionByBlockNumberAndIndex returns the transaction for the given block number and index.
+// GetTransactionByBlockNumberAndIndexは、指定されたブロック番号とインデックスのトランザクションを返します。
 func (s *PublicTransactionPoolAPI) GetTransactionByBlockNumberAndIndex(ctx context.Context, blockNr rpc.BlockNumber, index hexutil.Uint) *RPCTransaction {
 	if block, _ := s.b.BlockByNumber(ctx, blockNr); block != nil {
 		return newRPCTransactionFromBlockIndex(block, uint64(index), s.b.ChainConfig())
@@ -1523,6 +1533,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionByBlockNumberAndIndex(ctx conte
 }
 
 // GetTransactionByBlockHashAndIndex returns the transaction for the given block hash and index.
+// GetTransactionByBlockHashAndIndexは、指定されたブロックハッシュとインデックスのトランザクションを返します。
 func (s *PublicTransactionPoolAPI) GetTransactionByBlockHashAndIndex(ctx context.Context, blockHash common.Hash, index hexutil.Uint) *RPCTransaction {
 	if block, _ := s.b.BlockByHash(ctx, blockHash); block != nil {
 		return newRPCTransactionFromBlockIndex(block, uint64(index), s.b.ChainConfig())
@@ -1531,6 +1542,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionByBlockHashAndIndex(ctx context
 }
 
 // GetRawTransactionByBlockNumberAndIndex returns the bytes of the transaction for the given block number and index.
+// GetRawTransactionByBlockNumberAndIndexは、指定されたブロック番号とインデックスのトランザクションのバイトを返します。
 func (s *PublicTransactionPoolAPI) GetRawTransactionByBlockNumberAndIndex(ctx context.Context, blockNr rpc.BlockNumber, index hexutil.Uint) hexutil.Bytes {
 	if block, _ := s.b.BlockByNumber(ctx, blockNr); block != nil {
 		return newRPCRawTransactionFromBlockIndex(block, uint64(index))
@@ -1539,6 +1551,7 @@ func (s *PublicTransactionPoolAPI) GetRawTransactionByBlockNumberAndIndex(ctx co
 }
 
 // GetRawTransactionByBlockHashAndIndex returns the bytes of the transaction for the given block hash and index.
+// GetRawTransactionByBlockHashAndIndexは、指定されたブロックハッシュとインデックスのトランザクションのバイトを返します。
 func (s *PublicTransactionPoolAPI) GetRawTransactionByBlockHashAndIndex(ctx context.Context, blockHash common.Hash, index hexutil.Uint) hexutil.Bytes {
 	if block, _ := s.b.BlockByHash(ctx, blockHash); block != nil {
 		return newRPCRawTransactionFromBlockIndex(block, uint64(index))
@@ -1547,8 +1560,10 @@ func (s *PublicTransactionPoolAPI) GetRawTransactionByBlockHashAndIndex(ctx cont
 }
 
 // GetTransactionCount returns the number of transactions the given address has sent for the given block number
+// GetTransactionCountは、指定されたアドレスが指定されたブロック番号に対して送信したトランザクションの数を返します
 func (s *PublicTransactionPoolAPI) GetTransactionCount(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (*hexutil.Uint64, error) {
 	// Ask transaction pool for the nonce which includes pending transactions
+	// 保留中のトランザクションを含むナンスをトランザクションプールに要求します
 	if blockNr, ok := blockNrOrHash.Number(); ok && blockNr == rpc.PendingBlockNumber {
 		nonce, err := s.b.GetPoolNonce(ctx, address)
 		if err != nil {
@@ -1557,6 +1572,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionCount(ctx context.Context, addr
 		return (*hexutil.Uint64)(&nonce), nil
 	}
 	// Resolve block number and use its state to ask for the nonce
+	// ブロック番号を解決し、その状態を使用してナンスを要求します
 	state, _, err := s.b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
 	if state == nil || err != nil {
 		return nil, err
@@ -1566,8 +1582,10 @@ func (s *PublicTransactionPoolAPI) GetTransactionCount(ctx context.Context, addr
 }
 
 // GetTransactionByHash returns the transaction for the given hash
+// GetTransactionByHashは、指定されたハッシュのトランザクションを返します
 func (s *PublicTransactionPoolAPI) GetTransactionByHash(ctx context.Context, hash common.Hash) (*RPCTransaction, error) {
 	// Try to return an already finalized transaction
+	// すでに完了したトランザクションを返そうとします
 	tx, blockHash, blockNumber, index, err := s.b.GetTransaction(ctx, hash)
 	if err != nil {
 		return nil, err
@@ -1580,17 +1598,21 @@ func (s *PublicTransactionPoolAPI) GetTransactionByHash(ctx context.Context, has
 		return newRPCTransaction(tx, blockHash, blockNumber, index, header.BaseFee, s.b.ChainConfig()), nil
 	}
 	// No finalized transaction, try to retrieve it from the pool
+	// ファイナライズされたトランザクションはありません、プールから取得してみてください
 	if tx := s.b.GetPoolTransaction(hash); tx != nil {
 		return newRPCPendingTransaction(tx, s.b.CurrentHeader(), s.b.ChainConfig()), nil
 	}
 
 	// Transaction unknown, return as such
+	// トランザクションは不明です、そのまま返します
 	return nil, nil
 }
 
 // GetRawTransactionByHash returns the bytes of the transaction for the given hash.
+// GetRawTransactionByHashは、指定されたハッシュのトランザクションのバイトを返します。
 func (s *PublicTransactionPoolAPI) GetRawTransactionByHash(ctx context.Context, hash common.Hash) (hexutil.Bytes, error) {
 	// Retrieve a finalized transaction, or a pooled otherwise
+	// ファイナライズされたトランザクション、またはプールされたトランザクションを取得します
 	tx, _, _, _, err := s.b.GetTransaction(ctx, hash)
 	if err != nil {
 		return nil, err
@@ -1598,14 +1620,17 @@ func (s *PublicTransactionPoolAPI) GetRawTransactionByHash(ctx context.Context, 
 	if tx == nil {
 		if tx = s.b.GetPoolTransaction(hash); tx == nil {
 			// Transaction not found anywhere, abort
+			// トランザクションがどこにも見つかりません、中止します
 			return nil, nil
 		}
 	}
 	// Serialize to RLP and return
+	// RLPにシリアル化して、
 	return tx.MarshalBinary()
 }
 
 // GetTransactionReceipt returns the transaction receipt for the given transaction hash.
+// GetTransactionReceiptは、指定されたトランザクションハッシュのトランザクションレシートを返します。
 func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, hash common.Hash) (map[string]interface{}, error) {
 	tx, blockHash, blockNumber, index, err := s.b.GetTransaction(ctx, hash)
 	if err != nil {
@@ -1621,6 +1646,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, ha
 	receipt := receipts[index]
 
 	// Derive the sender.
+	// 送信者を導き出します。
 	bigblock := new(big.Int).SetUint64(blockNumber)
 	signer := types.MakeSigner(s.b.ChainConfig(), bigblock)
 	from, _ := types.Sender(signer, tx)
@@ -1640,6 +1666,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, ha
 		"type":              hexutil.Uint(tx.Type()),
 	}
 	// Assign the effective gas price paid
+	// 支払った実効ガス価格を割り当てます
 	if !s.b.ChainConfig().IsLondon(bigblock) {
 		fields["effectiveGasPrice"] = hexutil.Uint64(tx.GasPrice().Uint64())
 	} else {
@@ -1651,6 +1678,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, ha
 		fields["effectiveGasPrice"] = hexutil.Uint64(gasPrice.Uint64())
 	}
 	// Assign receipt status or post state.
+	// 入金ステータスまたは転記状態を割り当てます。
 	if len(receipt.PostState) > 0 {
 		fields["root"] = hexutil.Bytes(receipt.PostState)
 	} else {
@@ -1660,6 +1688,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, ha
 		fields["logs"] = [][]*types.Log{}
 	}
 	// If the ContractAddress is 20 0x0 bytes, assume it is not a contract creation
+	// ContractAddressが200x0バイトの場合、それがコントラクトの作成ではないと想定します
 	if receipt.ContractAddress != (common.Address{}) {
 		fields["contractAddress"] = receipt.ContractAddress
 	}
@@ -1667,8 +1696,10 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, ha
 }
 
 // sign is a helper function that signs a transaction with the private key of the given address.
+// signは、指定されたアドレスの秘密鍵を使用してトランザクションに署名するヘルパー関数です。
 func (s *PublicTransactionPoolAPI) sign(addr common.Address, tx *types.Transaction) (*types.Transaction, error) {
 	// Look up the wallet containing the requested signer
+	// 要求された署名者を含むウォレットを検索します
 	account := accounts.Account{Address: addr}
 
 	wallet, err := s.b.AccountManager().Find(account)
@@ -1676,24 +1707,30 @@ func (s *PublicTransactionPoolAPI) sign(addr common.Address, tx *types.Transacti
 		return nil, err
 	}
 	// Request the wallet to sign the transaction
+	// ウォレットにトランザクションへの署名をリクエストします
 	return wallet.SignTx(account, tx, s.b.ChainConfig().ChainID)
 }
 
 // SubmitTransaction is a helper function that submits tx to txPool and logs a message.
+// SubmitTransactionは、txをtxPoolに送信し、メッセージをログに記録するヘルパー関数です
 func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (common.Hash, error) {
 	// If the transaction fee cap is already specified, ensure the
 	// fee of the given transaction is _reasonable_.
+	// 取引手数料の上限がすでに指定されている場合は、
+	// 指定された取引の手数料が_合理的_であることを確認してください。
 	if err := checkTxFee(tx.GasPrice(), tx.Gas(), b.RPCTxFeeCap()); err != nil {
 		return common.Hash{}, err
 	}
 	if !b.UnprotectedAllowed() && !tx.Protected() {
 		// Ensure only eip155 signed transactions are submitted if EIP155Required is set.
+		// EIP155Requiredが設定されている場合は、eip155署名付きトランザクションのみが送信されるようにします。
 		return common.Hash{}, errors.New("only replay-protected (EIP-155) transactions allowed over RPC")
 	}
 	if err := b.SendTx(ctx, tx); err != nil {
 		return common.Hash{}, err
 	}
 	// Print a log with full tx details for manual investigations and interventions
+	// 手動の調査と介入のために完全なtxの詳細を含むログを印刷します
 	signer := types.MakeSigner(b.ChainConfig(), b.CurrentBlock().Number())
 	from, err := types.Sender(signer, tx)
 	if err != nil {
@@ -1711,8 +1748,10 @@ func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (c
 
 // SendTransaction creates a transaction for the given argument, sign it and submit it to the
 // transaction pool.
+// SendTransactionは、指定された引数のトランザクションを作成し、それに署名して、トランザクションプールに送信します。
 func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args TransactionArgs) (common.Hash, error) {
 	// Look up the wallet containing the requested signer
+	// 要求された署名者を含むウォレットを検索します
 	account := accounts.Account{Address: args.from()}
 
 	wallet, err := s.b.AccountManager().Find(account)
@@ -1723,15 +1762,18 @@ func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args Tra
 	if args.Nonce == nil {
 		// Hold the addresse's mutex around signing to prevent concurrent assignment of
 		// the same nonce to multiple accounts.
+		// 複数のアカウントに同じナンスが同時に割り当てられないように、署名の前後にアドレスのミューテックスを保持します。
 		s.nonceLock.LockAddr(args.from())
 		defer s.nonceLock.UnlockAddr(args.from())
 	}
 
 	// Set some sanity defaults and terminate on failure
+	// いくつかの健全性のデフォルトを設定し、失敗すると終了します
 	if err := args.setDefaults(ctx, s.b); err != nil {
 		return common.Hash{}, err
 	}
 	// Assemble the transaction and sign with the wallet
+	// トランザクションをアセンブルし、ウォレットで署名します
 	tx := args.toTransaction()
 
 	signed, err := wallet.SignTx(account, tx, s.b.ChainConfig().ChainID)
@@ -1744,12 +1786,18 @@ func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args Tra
 // FillTransaction fills the defaults (nonce, gas, gasPrice or 1559 fields)
 // on a given unsigned transaction, and returns it to the caller for further
 // processing (signing + broadcast).
+
+// FillTransactionは、指定された署名されていないトランザクションのデフォルト
+// （nonce、gas、gasPrice、または1559フィールド）を埋め、
+// それを呼び出し元に返してさらに処理（署名+ブロードキャスト）します。
 func (s *PublicTransactionPoolAPI) FillTransaction(ctx context.Context, args TransactionArgs) (*SignTransactionResult, error) {
 	// Set some sanity defaults and terminate on failure
+	// いくつかの健全性のデフォルトを設定し、失敗すると終了します
 	if err := args.setDefaults(ctx, s.b); err != nil {
 		return nil, err
 	}
 	// Assemble the transaction and obtain rlp
+	// トランザクションをアセンブルし、rlpを取得します
 	tx := args.toTransaction()
 	data, err := tx.MarshalBinary()
 	if err != nil {
@@ -1760,6 +1808,8 @@ func (s *PublicTransactionPoolAPI) FillTransaction(ctx context.Context, args Tra
 
 // SendRawTransaction will add the signed transaction to the transaction pool.
 // The sender is responsible for signing the transaction and using the correct nonce.
+// SendRawTransactionは、署名されたトランザクションをトランザクションプールに追加します。
+// 送信者は、トランザクションに署名し、正しいナンスを使用する責任があります。
 func (s *PublicTransactionPoolAPI) SendRawTransaction(ctx context.Context, input hexutil.Bytes) (common.Hash, error) {
 	tx := new(types.Transaction)
 	if err := tx.UnmarshalBinary(input); err != nil {
@@ -1777,8 +1827,17 @@ func (s *PublicTransactionPoolAPI) SendRawTransaction(ctx context.Context, input
 // The account associated with addr must be unlocked.
 //
 // https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_sign
+// Signは、次のECDSA署名を計算します。
+// keccack256（ "\ x19Ethereum Signed Message：\ n" + len（message）+ message）。
+//
+// 生成された署名は、secp256k1曲線のR、S、およびV値に準拠していることに注意してください。ここで、V値は従来の理由で27または28になります。
+//
+// addrに関連付けられているアカウントのロックを解除する必要があります。
+//
+// https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_sign
 func (s *PublicTransactionPoolAPI) Sign(addr common.Address, data hexutil.Bytes) (hexutil.Bytes, error) {
 	// Look up the wallet containing the requested signer
+	// 要求された署名者を含むウォレットを検索します
 	account := accounts.Account{Address: addr}
 
 	wallet, err := s.b.AccountManager().Find(account)
@@ -1786,9 +1845,10 @@ func (s *PublicTransactionPoolAPI) Sign(addr common.Address, data hexutil.Bytes)
 		return nil, err
 	}
 	// Sign the requested hash with the wallet
+	// 要求されたハッシュにウォレットで署名します
 	signature, err := wallet.SignText(account, data)
 	if err == nil {
-		signature[64] += 27 // Transform V from 0/1 to 27/28 according to the yellow paper
+		signature[64] += 27 // 黄色い紙に従ってVを0/1から27/28に変換します // Transform V from 0/1 to 27/28 according to the yellow paper
 	}
 	return signature, err
 }
@@ -1918,17 +1978,20 @@ func (s *PublicTransactionPoolAPI) Resend(ctx context.Context, sendArgs Transact
 
 // PublicDebugAPI is the collection of Ethereum APIs exposed over the public
 // debugging endpoint.
+// PublicDebugAPIは、パブリックデバッグエンドポイントで公開されるEthereumAPIのコレクションです。
 type PublicDebugAPI struct {
 	b Backend
 }
 
 // NewPublicDebugAPI creates a new API definition for the public debug methods
 // of the Ethereum service.
+// NewPublicDebugAPIは、Ethereumサービスのパブリックデバッグメソッドの新しいAPI定義を作成します。
 func NewPublicDebugAPI(b Backend) *PublicDebugAPI {
 	return &PublicDebugAPI{b: b}
 }
 
 // GetHeaderRlp retrieves the RLP encoded for of a single header.
+// GetHeaderRlpは、単一のヘッダーのエンコードされたRLPを取得します。
 func (api *PublicDebugAPI) GetHeaderRlp(ctx context.Context, number uint64) (hexutil.Bytes, error) {
 	header, _ := api.b.HeaderByNumber(ctx, rpc.BlockNumber(number))
 	if header == nil {
@@ -1938,6 +2001,7 @@ func (api *PublicDebugAPI) GetHeaderRlp(ctx context.Context, number uint64) (hex
 }
 
 // GetBlockRlp retrieves the RLP encoded for of a single block.
+// GetBlockRlpは、単一ブロックのエンコードされたRLPを取得します。
 func (api *PublicDebugAPI) GetBlockRlp(ctx context.Context, number uint64) (hexutil.Bytes, error) {
 	block, _ := api.b.BlockByNumber(ctx, rpc.BlockNumber(number))
 	if block == nil {
@@ -1951,6 +2015,11 @@ func (api *PublicDebugAPI) GetBlockRlp(ctx context.Context, number uint64) (hexu
 //
 // This is a temporary method to debug the externalsigner integration,
 // TODO: Remove this method when the integration is mature
+// TestSignCliqueBlockは指定されたブロック番号をフェッチし、
+// 指定されたアドレスでクリークヘッダーとして署名を試み、復元された署名のアドレスを返します
+//
+// これは、externalsigner統合をデバッグするための一時的なメソッドです。
+// TODO：統合が成熟したら、このメソッドを削除してください
 func (api *PublicDebugAPI) TestSignCliqueBlock(ctx context.Context, address common.Address, number uint64) (common.Address, error) {
 	block, _ := api.b.BlockByNumber(ctx, rpc.BlockNumber(number))
 	if block == nil {
@@ -1961,6 +2030,7 @@ func (api *PublicDebugAPI) TestSignCliqueBlock(ctx context.Context, address comm
 	encoded := clique.CliqueRLP(header)
 
 	// Look up the wallet containing the requested signer
+	// 要求された署名者を含むウォレットを検索します
 	account := accounts.Account{Address: address}
 	wallet, err := api.b.AccountManager().Find(account)
 	if err != nil {
@@ -1986,6 +2056,7 @@ func (api *PublicDebugAPI) TestSignCliqueBlock(ctx context.Context, address comm
 }
 
 // PrintBlock retrieves a block and returns its pretty printed form.
+// PrintBlockはブロックを取得し、きれいに印刷されたフォームを返します。
 func (api *PublicDebugAPI) PrintBlock(ctx context.Context, number uint64) (string, error) {
 	block, _ := api.b.BlockByNumber(ctx, rpc.BlockNumber(number))
 	if block == nil {
@@ -1995,6 +2066,7 @@ func (api *PublicDebugAPI) PrintBlock(ctx context.Context, number uint64) (strin
 }
 
 // SeedHash retrieves the seed hash of a block.
+// SeedHashはブロックのシードハッシュを取得します。
 func (api *PublicDebugAPI) SeedHash(ctx context.Context, number uint64) (string, error) {
 	block, _ := api.b.BlockByNumber(ctx, rpc.BlockNumber(number))
 	if block == nil {
@@ -2005,17 +2077,20 @@ func (api *PublicDebugAPI) SeedHash(ctx context.Context, number uint64) (string,
 
 // PrivateDebugAPI is the collection of Ethereum APIs exposed over the private
 // debugging endpoint.
+// PrivateDebugAPIは、プライベートデバッグエンドポイントで公開されるEthereumAPIのコレクションです。
 type PrivateDebugAPI struct {
 	b Backend
 }
 
 // NewPrivateDebugAPI creates a new API definition for the private debug methods
 // of the Ethereum service.
+// NewPrivateDebugAPIは、Ethereumサービスのプライベートデバッグメソッドの新しいAPI定義を作成します。
 func NewPrivateDebugAPI(b Backend) *PrivateDebugAPI {
 	return &PrivateDebugAPI{b: b}
 }
 
 // ChaindbProperty returns leveldb properties of the key-value database.
+// ChaindbPropertyは、Key-Valueデータベースのleveldbプロパティを返します。
 func (api *PrivateDebugAPI) ChaindbProperty(property string) (string, error) {
 	if property == "" {
 		property = "leveldb.stats"
@@ -2027,6 +2102,7 @@ func (api *PrivateDebugAPI) ChaindbProperty(property string) (string, error) {
 
 // ChaindbCompact flattens the entire key-value database into a single level,
 // removing all unused slots and merging all keys.
+// ChaindbCompactは、Key-Valueデータベース全体を単一レベルにフラット化し、未使用のスロットをすべて削除し、すべてのキーをマージします。
 func (api *PrivateDebugAPI) ChaindbCompact() error {
 	for b := byte(0); b < 255; b++ {
 		log.Info("Compacting chain database", "range", fmt.Sprintf("0x%0.2X-0x%0.2X", b, b+1))
@@ -2039,17 +2115,20 @@ func (api *PrivateDebugAPI) ChaindbCompact() error {
 }
 
 // SetHead rewinds the head of the blockchain to a previous block.
+// SetHeadは、ブロックチェーンの先頭を前のブロックに巻き戻します。
 func (api *PrivateDebugAPI) SetHead(number hexutil.Uint64) {
 	api.b.SetHead(uint64(number))
 }
 
 // PublicNetAPI offers network related RPC methods
+// PublicNetAPIは、ネットワーク関連のRPCメソッドを提供します
 type PublicNetAPI struct {
 	net            *p2p.Server
 	networkVersion uint64
 }
 
 // NewPublicNetAPI creates a new net API instance.
+// NewPublicNetAPIは新しいネットAPIインスタンスを作成します。
 func NewPublicNetAPI(net *p2p.Server, networkVersion uint64) *PublicNetAPI {
 	return &PublicNetAPI{net, networkVersion}
 }

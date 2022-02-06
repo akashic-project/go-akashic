@@ -32,6 +32,8 @@ import (
 
 // BlockGen creates blocks for testing.
 // See GenerateChain for a detailed explanation.
+// BlockGenはテスト用のブロックを作成します。
+// 詳細な説明については、GenerateChainを参照してください。
 type BlockGen struct {
 	i       int
 	parent  *types.Block
@@ -50,6 +52,8 @@ type BlockGen struct {
 
 // SetCoinbase sets the coinbase of the generated block.
 // It can be called at most once.
+// SetCoinbaseは、生成されたブロックのコインベースを設定します。
+// 最大1回呼び出すことができます。
 func (b *BlockGen) SetCoinbase(addr common.Address) {
 	if b.gasPool != nil {
 		if len(b.txs) > 0 {
@@ -62,11 +66,13 @@ func (b *BlockGen) SetCoinbase(addr common.Address) {
 }
 
 // SetExtra sets the extra data field of the generated block.
+// SetExtraは、生成されたブロックの追加のデータフィールドを設定します。
 func (b *BlockGen) SetExtra(data []byte) {
 	b.header.Extra = data
 }
 
 // SetNonce sets the nonce field of the generated block.
+// SetNonceは、生成されたブロックのナンスフィールドを設定します。
 func (b *BlockGen) SetNonce(nonce types.BlockNonce) {
 	b.header.Nonce = nonce
 }
@@ -74,6 +80,9 @@ func (b *BlockGen) SetNonce(nonce types.BlockNonce) {
 // SetDifficulty sets the difficulty field of the generated block. This method is
 // useful for Clique tests where the difficulty does not depend on time. For the
 // ethash tests, please use OffsetTime, which implicitly recalculates the diff.
+// SetDifficultyは、生成されたブロックの難易度フィールドを設定します。
+// この方法は、難易度が時間に依存しないクリークテストに役立ちます。
+// ethashテストには、差分を暗黙的に再計算するOffsetTimeを使用してください。
 func (b *BlockGen) SetDifficulty(diff *big.Int) {
 	b.header.Difficulty = diff
 }
@@ -86,6 +95,13 @@ func (b *BlockGen) SetDifficulty(diff *big.Int) {
 // further limitations on the content of transactions that can be
 // added. Notably, contract code relying on the BLOCKHASH instruction
 // will panic during execution.
+// AddTxは、生成されたブロックにトランザクションを追加します。コインベースがない場合
+// 設定されると、ブロックのコインベースはゼロアドレスに設定されます。
+//
+// トランザクションを実行できない場合、AddTxはパニックになります。
+// プロトコルによって課せられる制限（ガス制限など）に加えて、
+// 追加できるトランザクションの内容にはさらにいくつかの制限があります。
+// 特に、BLOCKHASH命令に依存するコントラクトコードは、実行中にパニックになります。
 func (b *BlockGen) AddTx(tx *types.Transaction) {
 	b.AddTxWithChain(nil, tx)
 }
@@ -98,6 +114,12 @@ func (b *BlockGen) AddTx(tx *types.Transaction) {
 // further limitations on the content of transactions that can be
 // added. If contract code relies on the BLOCKHASH instruction,
 // the block in chain will be returned.
+// AddTxWithChainは、生成されたブロックにトランザクションを追加します。
+// コインベースが設定されていない場合、ブロックのコインベースはゼロアドレスに設定されます。
+//
+// トランザクションを実行できない場合、AddTxWithChainはパニックになります。
+// プロトコルによって課せられる制限（ガス制限など）に加えて、追加できるトランザクションの内容にはさらにいくつかの制限があります。
+// コントラクトコードがBLOCKHASH命令に依存している場合、チェーン内のブロックが返されます。
 func (b *BlockGen) AddTxWithChain(bc *BlockChain, tx *types.Transaction) {
 	if b.gasPool == nil {
 		b.SetCoinbase(common.Address{})
@@ -112,6 +134,7 @@ func (b *BlockGen) AddTxWithChain(bc *BlockChain, tx *types.Transaction) {
 }
 
 // GetBalance returns the balance of the given address at the generated block.
+// GetBalanceは、生成されたブロックで指定されたアドレスの残高を返します。
 func (b *BlockGen) GetBalance(addr common.Address) *big.Int {
 	return b.statedb.GetBalance(addr)
 }
@@ -121,16 +144,22 @@ func (b *BlockGen) GetBalance(addr common.Address) *big.Int {
 //
 // AddUncheckedTx will cause consensus failures when used during real
 // chain processing. This is best used in conjunction with raw block insertion.
+// AddUncheckedTxは、検証なしでトランザクションをブロックに強制的に追加します。
+//
+// AddUncheckedTxは、実際のチェーン処理中に使用されるとコンセンサスエラーを引き起こします。
+// これは、生のブロック挿入と組み合わせて使用​​するのが最適です。
 func (b *BlockGen) AddUncheckedTx(tx *types.Transaction) {
 	b.txs = append(b.txs, tx)
 }
 
 // Number returns the block number of the block being generated.
+// Numberは、生成されているブロックのブロック番号を返します。
 func (b *BlockGen) Number() *big.Int {
 	return new(big.Int).Set(b.header.Number)
 }
 
 // BaseFee returns the EIP-1559 base fee of the block being generated.
+// BaseFeeは、生成されているブロックのEIP-1559基本料金を返します。
 func (b *BlockGen) BaseFee() *big.Int {
 	return new(big.Int).Set(b.header.BaseFee)
 }
@@ -140,12 +169,18 @@ func (b *BlockGen) BaseFee() *big.Int {
 //
 // AddUncheckedReceipt will cause consensus failures when used during real
 // chain processing. This is best used in conjunction with raw block insertion.
+// AddUncheckedReceiptは、バッキングトランザクションなしでレシートをブロックに強制的に追加します。
+//
+// AddUncheckedReceiptは、実際のチェーン処理中に使用されるとコンセンサスエラーを引き起こします。
+// これは、生のブロック挿入と組み合わせて使用​​するのが最適です。
 func (b *BlockGen) AddUncheckedReceipt(receipt *types.Receipt) {
 	b.receipts = append(b.receipts, receipt)
 }
 
 // TxNonce returns the next valid transaction nonce for the
 // account at addr. It panics if the account does not exist.
+// TxNonceは、addrにあるアカウントの次の有効なトランザクションナンスを返します。
+// アカウントが存在しない場合はパニックになります。
 func (b *BlockGen) TxNonce(addr common.Address) uint64 {
 	if !b.statedb.Exist(addr) {
 		panic("account does not exist")
@@ -154,8 +189,10 @@ func (b *BlockGen) TxNonce(addr common.Address) uint64 {
 }
 
 // AddUncle adds an uncle header to the generated block.
+// AddUncleは、生成されたブロックに叔父ヘッダーを追加します。
 func (b *BlockGen) AddUncle(h *types.Header) {
 	// The uncle will have the same timestamp and auto-generated difficulty
+	// 叔父は同じタイムスタンプと自動生成された難易度を持ちます
 	h.Time = b.header.Time
 
 	var parent *types.Header
@@ -169,6 +206,7 @@ func (b *BlockGen) AddUncle(h *types.Header) {
 	h.Difficulty = b.engine.CalcDifficulty(chainreader, b.header.Time, parent)
 
 	// The gas limit and price should be derived from the parent
+	// ガスの制限と価格は、親から導出する必要があります
 	h.GasLimit = parent.GasLimit
 	if b.config.IsLondon(h.Number) {
 		h.BaseFee = misc.CalcBaseFee(b.config, parent)
@@ -183,6 +221,8 @@ func (b *BlockGen) AddUncle(h *types.Header) {
 // PrevBlock returns a previously generated block by number. It panics if
 // num is greater or equal to the number of the block being generated.
 // For index -1, PrevBlock returns the parent block given to GenerateChain.
+// PrevBlockは、以前に生成されたブロックを番号で返します。 numが生成されているブロックの数以上になると、パニックになります。
+// インデックス-1の場合、PrevBlockはGenerateChainに指定された親ブロックを返します。
 func (b *BlockGen) PrevBlock(index int) *types.Block {
 	if index >= b.i {
 		panic(fmt.Errorf("block index %d out of range (%d,%d)", index, -1, b.i))
@@ -196,6 +236,8 @@ func (b *BlockGen) PrevBlock(index int) *types.Block {
 // OffsetTime modifies the time instance of a block, implicitly changing its
 // associated difficulty. It's useful to test scenarios where forking is not
 // tied to chain length directly.
+// OffsetTimeは、ブロックの時間インスタンスを変更し、関連する難易度を暗黙的に変更します。
+// フォークがチェーンの長さに直接結び付けられていないシナリオをテストすると便利です。
 func (b *BlockGen) OffsetTime(seconds int64) {
 	b.header.Time += uint64(seconds)
 	if b.header.Time <= b.parent.Header().Time {
@@ -217,6 +259,15 @@ func (b *BlockGen) OffsetTime(seconds int64) {
 // Blocks created by GenerateChain do not contain valid proof of work
 // values. Inserting them into BlockChain requires use of FakePow or
 // a similar non-validating proof of work implementation.
+
+// GenerateChainは、n個のブロックのチェーンを作成します。最初のブロックの親は、提供された親になります。
+// dbは中間状態を格納するために使用され、親の状態トライを含む必要があります。
+//
+// ジェネレーター関数は、ブロックごとに新しいブロックジェネレーターで呼び出されます。
+// ジェネレーターに追加されたトランザクションと叔父は、ブロックの一部になります。 genがnilの場合、ブロックは空になり、コインベースはゼロアドレスになります。
+//
+// GenerateChainによって作成されたブロックには、有効なプルーフオブワーク値が含まれていません。
+// それらをBlockChainに挿入するには、FakePowまたは同様の検証されていないプルーフオブワークの実装を使用する必要があります。
 func GenerateChain(config *params.ChainConfig, parent *types.Block, engine consensus.Engine, db ethdb.Database, n int, gen func(int, *BlockGen)) ([]*types.Block, []types.Receipts) {
 	if config == nil {
 		config = params.TestChainConfig
@@ -230,16 +281,22 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 		// Set the difficulty for clique block. The chain maker doesn't have access
 		// to a chain, so the difficulty will be left unset (nil). Set it here to the
 		// correct value.
+		// クリークブロックの難易度を設定します。チェーンメーカーはチェーンにアクセスできないため、
+		// 難易度は未設定のままになります（ゼロ）。
+		// ここで正しい値に設定してください。
 		if b.header.Difficulty == nil {
 			if config.TerminalTotalDifficulty == nil {
 				// Clique chain
+				// クリークチェーン
 				b.header.Difficulty = big.NewInt(2)
 			} else {
 				// Post-merge chain
+				// マージ後のチェーン
 				b.header.Difficulty = big.NewInt(0)
 			}
 		}
 		// Mutate the state and block according to any hard-fork specs
+		// ハードフォークの仕様に従って状態とブロックを変更します
 		if daoBlock := config.DAOForkBlock; daoBlock != nil {
 			limit := new(big.Int).Add(daoBlock, params.DAOForkExtraRange)
 			if b.header.Number.Cmp(daoBlock) >= 0 && b.header.Number.Cmp(limit) < 0 {
@@ -252,14 +309,17 @@ func GenerateChain(config *params.ChainConfig, parent *types.Block, engine conse
 			misc.ApplyDAOHardFork(statedb)
 		}
 		// Execute any user modifications to the block
+		// ブロックに対するユーザーの変更を実行します
 		if gen != nil {
 			gen(i, b)
 		}
 		if b.engine != nil {
 			// Finalize and seal the block
+			// ブロックを完成させて封印します
 			block, _ := b.engine.FinalizeAndAssemble(chainreader, b.header, statedb, b.txs, b.uncles, b.receipts)
 
 			// Write state changes to db
+			// 状態の変化をdbに書き込みます
 			root, err := statedb.Commit(config.IsEIP158(b.header.Number))
 			if err != nil {
 				panic(fmt.Sprintf("state write error: %v", err))
@@ -289,7 +349,7 @@ func makeHeader(chain consensus.ChainReader, parent *types.Block, state *state.S
 	if parent.Time() == 0 {
 		time = 10
 	} else {
-		time = parent.Time() + 10 // block time is fixed at 10 seconds
+		time = parent.Time() + 10 //ブロック時間は10秒に固定されています // block time is fixed at 10 seconds
 	}
 	header := &types.Header{
 		Root:       state.IntermediateRoot(chain.Config().IsEIP158(parent.Number())),
@@ -316,6 +376,7 @@ func makeHeader(chain consensus.ChainReader, parent *types.Block, state *state.S
 }
 
 // makeHeaderChain creates a deterministic chain of headers rooted at parent.
+// makeHeaderChainは、親をルートとするヘッダーの決定論的チェーンを作成します。
 func makeHeaderChain(parent *types.Header, n int, engine consensus.Engine, db ethdb.Database, seed int) []*types.Header {
 	blocks := makeBlockChain(types.NewBlockWithHeader(parent), n, engine, db, seed)
 	headers := make([]*types.Header, len(blocks))
@@ -326,6 +387,7 @@ func makeHeaderChain(parent *types.Header, n int, engine consensus.Engine, db et
 }
 
 // makeBlockChain creates a deterministic chain of blocks rooted at parent.
+// makeBlockChainは、親をルートとするブロックの決定論的チェーンを作成します。
 func makeBlockChain(parent *types.Block, n int, engine consensus.Engine, db ethdb.Database, seed int) []*types.Block {
 	blocks, _ := GenerateChain(params.TestChainConfig, parent, engine, db, n, func(i int, b *BlockGen) {
 		b.SetCoinbase(common.Address{0: byte(seed), 19: byte(i)})
@@ -338,6 +400,7 @@ type fakeChainReader struct {
 }
 
 // Config returns the chain configuration.
+// Configはチェーン構成を返します。
 func (cr *fakeChainReader) Config() *params.ChainConfig {
 	return cr.config
 }

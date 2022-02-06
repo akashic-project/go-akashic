@@ -30,13 +30,17 @@ import (
 // processed state.
 //
 // BlockValidator implements Validator.
+// BlockValidatorは、ブロックヘッダー、叔父、および処理された状態の検証を担当します。
+//
+// BlockValidatorはValidatorを実装します。
 type BlockValidator struct {
-	config *params.ChainConfig // Chain configuration options
-	bc     *BlockChain         // Canonical block chain
-	engine consensus.Engine    // Consensus engine used for validating
+	config *params.ChainConfig // チェーン構成オプション // Chain configuration options
+	bc     *BlockChain         // 正規のブロックチェーン // Canonical block chain
+	engine consensus.Engine    // 検証に使用されるコンセンサスエンジン // Consensus engine used for validating
 }
 
 // NewBlockValidator returns a new block validator which is safe for re-use
+// NewBlockValidatorは、再利用しても安全な新しいブロックバリデーターを返します
 func NewBlockValidator(config *params.ChainConfig, blockchain *BlockChain, engine consensus.Engine) *BlockValidator {
 	validator := &BlockValidator{
 		config: config,
@@ -49,12 +53,17 @@ func NewBlockValidator(config *params.ChainConfig, blockchain *BlockChain, engin
 // ValidateBody validates the given block's uncles and verifies the block
 // header's transaction and uncle roots. The headers are assumed to be already
 // validated at this point.
+
+// ValidateBodyは、指定されたブロックの叔父を検証し、ブロックヘッダーのトランザクションと叔父のルートを検証します。
+// ヘッダーは、この時点ですでに検証されていると見なされます。
 func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	// Check whether the block's known, and if not, that it's linkable
+	// ブロックが既知であるかどうかを確認し、認識されていない場合はリンク可能かどうかを確認します
 	if v.bc.HasBlockAndState(block.Hash(), block.NumberU64()) {
 		return ErrKnownBlock
 	}
 	// Header validity is known at this point, check the uncles and transactions
+	// ヘッダーの有効性はこの時点でわかっています、叔父とトランザクションを確認してください
 	header := block.Header()
 	if err := v.engine.VerifyUncles(v.bc, block); err != nil {
 		return err
@@ -78,6 +87,8 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 // transition, such as amount of used gas, the receipt roots and the state root
 // itself. ValidateState returns a database batch if the validation was a success
 // otherwise nil and an error is returned.
+// ValidateStateは、使用済みガスの量、レシートルート、状態ルート自体など、状態遷移後に発生するさまざまな変更を検証します。
+// ValidateStateは、検証が成功した場合はデータベースバッチを返し、それ以外の場合はnilを返し、エラーが返されます。
 func (v *BlockValidator) ValidateState(block *types.Block, statedb *state.StateDB, receipts types.Receipts, usedGas uint64) error {
 	header := block.Header()
 	if block.GasUsed() != usedGas {
@@ -85,17 +96,21 @@ func (v *BlockValidator) ValidateState(block *types.Block, statedb *state.StateD
 	}
 	// Validate the received block's bloom with the one derived from the generated receipts.
 	// For valid blocks this should always validate to true.
+	// 受信したブロックのブルームを、生成されたレシートから派生したブルームで検証します。
+	// 有効なブロックの場合、これは常にtrueに検証される必要があります。
 	rbloom := types.CreateBloom(receipts)
 	if rbloom != header.Bloom {
 		return fmt.Errorf("invalid bloom (remote: %x  local: %x)", header.Bloom, rbloom)
 	}
 	// Tre receipt Trie's root (R = (Tr [[H1, R1], ... [Hn, Rn]]))
+	// TreレシートTrieのルート（R =（Tr [[H1、R1]、... [Hn、Rn]]））
 	receiptSha := types.DeriveSha(receipts, trie.NewStackTrie(nil))
 	if receiptSha != header.ReceiptHash {
 		return fmt.Errorf("invalid receipt root hash (remote: %x local: %x)", header.ReceiptHash, receiptSha)
 	}
 	// Validate the state root against the received state root and throw
 	// an error if they don't match.
+	// 受信した状態ルートに対して状態ルートを検証し、一致しない場合はエラーをスローします。
 	if root := statedb.IntermediateRoot(v.config.IsEIP158(header.Number)); header.Root != root {
 		return fmt.Errorf("invalid merkle root (remote: %x local: %x)", header.Root, root)
 	}
@@ -105,6 +120,8 @@ func (v *BlockValidator) ValidateState(block *types.Block, statedb *state.StateD
 // CalcGasLimit computes the gas limit of the next block after parent. It aims
 // to keep the baseline gas close to the provided target, and increase it towards
 // the target if the baseline gas is lower.
+// CalcGasLimitは、親の次のブロックのガス制限を計算します。これは、ベースラインガスを提供されたターゲットに近づけ、
+// ベースラインガスが低い場合はターゲットに向かって増加させることを目的としています。
 func CalcGasLimit(parentGasLimit, desiredLimit uint64) uint64 {
 	delta := parentGasLimit/params.GasLimitBoundDivisor - 1
 	limit := parentGasLimit
@@ -112,6 +129,7 @@ func CalcGasLimit(parentGasLimit, desiredLimit uint64) uint64 {
 		desiredLimit = params.MinGasLimit
 	}
 	// If we're outside our allowed gas range, we try to hone towards them
+	// 許可されたガス範囲外にいる場合は、それらに向かって磨きをかけようとします
 	if limit < desiredLimit {
 		limit = parentGasLimit + delta
 		if limit > desiredLimit {

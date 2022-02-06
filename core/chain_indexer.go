@@ -35,28 +35,39 @@ import (
 // ChainIndexerBackend defines the methods needed to process chain segments in
 // the background and write the segment results into the database. These can be
 // used to create filter blooms or CHTs.
+// ChainIndexerBackendは、バックグラウンドでチェーンセグメントを処理し、
+// セグメントの結果をデータベースに書き込むために必要なメソッドを定義します。
+// これらは、フィルターブルームまたはCHTを作成するために使用できます。
+
 type ChainIndexerBackend interface {
 	// Reset initiates the processing of a new chain segment, potentially terminating
 	// any partially completed operations (in case of a reorg).
+	// リセットは、新しいチェーンセグメントの処理を開始し、部分的に完了した操作を終了する可能性があります（再編成の場合）。
 	Reset(ctx context.Context, section uint64, prevHead common.Hash) error
 
 	// Process crunches through the next header in the chain segment. The caller
 	// will ensure a sequential order of headers.
+	// チェーンセグメントの次のヘッダーを処理します。呼び出し元は、ヘッダーの順番を確認します。
 	Process(ctx context.Context, header *types.Header) error
 
 	// Commit finalizes the section metadata and stores it into the database.
+	// Commitはセクションのメタデータを完成させ、データベースに保存します。
 	Commit() error
 
 	// Prune deletes the chain index older than the given threshold.
+	// Pruneは、指定されたしきい値より古いチェーンインデックスを削除します。
 	Prune(threshold uint64) error
 }
 
 // ChainIndexerChain interface is used for connecting the indexer to a blockchain
+// ChainIndexerChainインターフェースは、インデクサーをブロックチェーンに接続するために使用されます
 type ChainIndexerChain interface {
 	// CurrentHeader retrieves the latest locally known header.
+	// CurrentHeaderは、ローカルで既知の最新のヘッダーを取得します。
 	CurrentHeader() *types.Header
 
 	// SubscribeChainHeadEvent subscribes to new head header notifications.
+	// SubscribeChainHeadEventは、新しいヘッドヘッダー通知をサブスクライブします。
 	SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription
 }
 
@@ -69,29 +80,37 @@ type ChainIndexerChain interface {
 // section indexer. These child indexers receive new head notifications only
 // after an entire section has been finished or in case of rollbacks that might
 // affect already finished sections.
+// ChainIndexerは、正規チェーンの同じサイズのセクション（BlooomBitsやCHT構造など）に対して後処理ジョブを実行します。
+//  ChainIndexerは、イベントシステムを介してブロックチェーンに接続されます。
+// ゴルーチンのChainHeadEventLoop。
+//
+// 親セクションインデクサーの出力を使用する子ChainIndexerをさらに追加できます。
+// これらの子インデクサーは、セクション全体が終了した後、またはロールバックが発生した場合にのみ、
+// 新しいヘッド通知を受け取ります。
+// すでに終了したセクションに影響します。
 type ChainIndexer struct {
-	chainDb  ethdb.Database      // Chain database to index the data from
-	indexDb  ethdb.Database      // Prefixed table-view of the db to write index metadata into
-	backend  ChainIndexerBackend // Background processor generating the index data content
-	children []*ChainIndexer     // Child indexers to cascade chain updates to
+	chainDb  ethdb.Database      // データベースをチェーンしてデータのインデックスを作成します // Chain database to index the data from
+	indexDb  ethdb.Database      // インデックスメタデータを書き込むデータベースのプレフィックス付きテーブルビュー // Prefixed table-view of the db to write index metadata into
+	backend  ChainIndexerBackend // インデックスデータコンテンツを生成するバックグラウンドプロセッサ // Background processor generating the index data content
+	children []*ChainIndexer     // チェーンの更新をカスケードする子インデクサー // Child indexers to cascade chain updates to
 
-	active    uint32          // Flag whether the event loop was started
-	update    chan struct{}   // Notification channel that headers should be processed
-	quit      chan chan error // Quit channel to tear down running goroutines
+	active    uint32          // イベントループが開始されたかどうかにフラグを立てます // Flag whether the event loop was started
+	update    chan struct{}   // ヘッダーを処理する必要があるという通知チャネル      // Notification channel that headers should be processed
+	quit      chan chan error // チャネルを終了して、実行中のgoroutineを破棄します   // Quit channel to tear down running goroutines
 	ctx       context.Context
 	ctxCancel func()
 
-	sectionSize uint64 // Number of blocks in a single chain segment to process
-	confirmsReq uint64 // Number of confirmations before processing a completed segment
+	sectionSize uint64 // 処理する単一チェーンセグメント内のブロック数 // Number of blocks in a single chain segment to process
+	confirmsReq uint64 // 完了したセグメントを処理する前の確認の数     // Number of confirmations before processing a completed segment
 
-	storedSections uint64 // Number of sections successfully indexed into the database
-	knownSections  uint64 // Number of sections known to be complete (block wise)
-	cascadedHead   uint64 // Block number of the last completed section cascaded to subindexers
+	storedSections uint64 // データベースに正常にインデックス付けされたセクションの数 // Number of sections successfully indexed into the database
+	knownSections  uint64 // 完了していることがわかっているセクションの数（ブロック単位） // Number of sections known to be complete (block wise)
+	cascadedHead   uint64 // サブインデクサーにカスケードされた最後に完了したセクションのブロック番号 // Block number of the last completed section cascaded to subindexers
 
-	checkpointSections uint64      // Number of sections covered by the checkpoint
-	checkpointHead     common.Hash // Section head belonging to the checkpoint
+	checkpointSections uint64      // チェックポイントの対象となるセクションの数 // Number of sections covered by the checkpoint
+	checkpointHead     common.Hash //チェックポイントに属する課長 // Section head belonging to the checkpoint
 
-	throttling time.Duration // Disk throttling to prevent a heavy upgrade from hogging resources
+	throttling time.Duration //大量のアップグレードがリソースを占有するのを防ぐためのディスクスロットリング // Disk throttling to prevent a heavy upgrade from hogging resources
 
 	log  log.Logger
 	lock sync.Mutex
@@ -100,6 +119,9 @@ type ChainIndexer struct {
 // NewChainIndexer creates a new chain indexer to do background processing on
 // chain segments of a given size after certain number of confirmations passed.
 // The throttling parameter might be used to prevent database thrashing.
+// NewChainIndexerは、特定の数の確認が渡された後、指定されたサイズのチェーンセグメントで
+// バックグラウンド処理を実行するための新しいチェーンインデクサーを作成します。
+// スロットリングパラメータは、データベースのスラッシングを防ぐために使用される場合があります。
 func NewChainIndexer(chainDb ethdb.Database, indexDb ethdb.Database, backend ChainIndexerBackend, section, confirm uint64, throttling time.Duration, kind string) *ChainIndexer {
 	c := &ChainIndexer{
 		chainDb:     chainDb,
@@ -113,6 +135,7 @@ func NewChainIndexer(chainDb ethdb.Database, indexDb ethdb.Database, backend Cha
 		log:         log.New("type", kind),
 	}
 	// Initialize database dependent fields and start the updater
+	// データベースに依存するフィールドを初期化し、アップデータを開始します
 	c.loadValidSections()
 	c.ctx, c.ctxCancel = context.WithCancel(context.Background())
 
@@ -127,11 +150,17 @@ func NewChainIndexer(chainDb ethdb.Database, indexDb ethdb.Database, backend Cha
 //
 // Note: knownSections == 0 and storedSections == checkpointSections until
 // syncing reaches the checkpoint
+// AddCheckpointはチェックポイントを追加します。セクションが処理されることはなく、
+// この時点より前にチェーンが使用可能になることは期待されていません。
+// インデクサーは、バックエンドに後続のセクションを処理するために利用できる十分な情報があることを前提としています。
+//
+// 注：同期がチェックポイントに到達するまで、knownSections == 0およびstoredSections == checkpointSections
 func (c *ChainIndexer) AddCheckpoint(section uint64, shead common.Hash) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
 	// Short circuit if the given checkpoint is below than local's.
+	// 指定されたチェックポイントがローカルのチェックポイントよりも低い場合は短絡します。
 	if c.checkpointSections >= section+1 || section < c.storedSections {
 		return
 	}
@@ -145,6 +174,9 @@ func (c *ChainIndexer) AddCheckpoint(section uint64, shead common.Hash) {
 // Start creates a goroutine to feed chain head events into the indexer for
 // cascading background processing. Children do not need to be started, they
 // are notified about new events by their parents.
+// Startは、チェーンヘッドイベントをカスケードバックグラウンド処理のためにインデクサーに
+// フィードするためのゴルーチンを作成します。
+// 子供は始める必要はありません、彼らは彼らの両親から新しいイベントについて通知されます。
 func (c *ChainIndexer) Start(chain ChainIndexerChain) {
 	events := make(chan ChainHeadEvent, 10)
 	sub := chain.SubscribeChainHeadEvent(events)

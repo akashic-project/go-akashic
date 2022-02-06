@@ -71,13 +71,17 @@ func VerifyDAOHeaderExtraData(config *params.ChainConfig, header *types.Header) 
 // ApplyDAOHardFork modifies the state database according to the DAO hard-fork
 // rules, transferring all balances of a set of DAO accounts to a single refund
 // contract.
+// ApplyDAOHardForkは、DAOハードフォークルールに従って状態データベースを変更し、
+// 一連のDAOアカウントのすべての残高を単一の払い戻し契約に転送します。
 func ApplyDAOHardFork(statedb *state.StateDB) {
 	// Retrieve the contract to refund balances into
+	// 残高を返金する契約を取得します
 	if !statedb.Exist(params.DAORefundContract) {
 		statedb.CreateAccount(params.DAORefundContract)
 	}
 
 	// Move every DAO account and extra-balance account funds into the refund contract
+	// すべてのDAOアカウントとエクストラバランスアカウントの資金を払い戻し契約に移動します
 	for _, addr := range params.DAODrainList() {
 		statedb.AddBalance(params.DAORefundContract, statedb.GetBalance(addr))
 		statedb.SetBalance(addr, new(big.Int))

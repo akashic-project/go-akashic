@@ -282,8 +282,11 @@ func handleGetReceipts66(backend Backend, msg Decoder, peer *Peer) error {
 
 // ServiceGetReceiptsQuery assembles the response to a receipt query. It is
 // exposed to allow external packages to test protocol behavior.
+// ServiceGetReceiptsQueryは、レシートクエリへの応答をアセンブルします。
+// これは、外部パッケージがプロトコルの動作をテストできるようにするために公開されています。
 func ServiceGetReceiptsQuery(chain *core.BlockChain, query GetReceiptsPacket) []rlp.RawValue {
 	// Gather state data until the fetch or network limits is reached
+	// フェッチまたはネットワークの制限に達するまで状態データを収集します
 	var (
 		bytes    int
 		receipts []rlp.RawValue
@@ -294,6 +297,7 @@ func ServiceGetReceiptsQuery(chain *core.BlockChain, query GetReceiptsPacket) []
 			break
 		}
 		// Retrieve the requested block's receipts
+		// 要求されたブロックの領収書を取得します
 		results := chain.GetReceiptsByHash(hash)
 		if results == nil {
 			if header := chain.GetHeaderByHash(hash); header == nil || header.ReceiptHash != types.EmptyRootHash {
@@ -301,6 +305,7 @@ func ServiceGetReceiptsQuery(chain *core.BlockChain, query GetReceiptsPacket) []
 			}
 		}
 		// If known, encode and queue for response packet
+		// わかっている場合は、応答パケットをエンコードしてキューに入れます
 		if encoded, err := rlp.EncodeToBytes(results); err != nil {
 			log.Error("Failed to encode receipt", "err", err)
 		} else {

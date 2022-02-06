@@ -76,6 +76,8 @@ type typedQueue interface {
 // concurrentFetch iteratively downloads scheduled block parts, taking available
 // peers, reserving a chunk of fetch requests for each and waiting for delivery
 // or timeouts.
+// コンカレントフェッチは、スケジュールされたブロックパーツを繰り返しダウンロードし、使用可能なピアを取得し、
+// それぞれのフェッチリクエストのチャンクを予約し、配信またはタイムアウトを待機します。
 func (d *Downloader) concurrentFetch(queue typedQueue) error {
 	// Create a delivery channel to accept responses from all peers
 	responses := make(chan *eth.Response)

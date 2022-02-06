@@ -260,6 +260,7 @@ func (g *Genesis) configOrDefault(ghash common.Hash) *params.ChainConfig {
 
 // ToBlock creates the genesis block and writes state of a genesis specification
 // to the given database (or discards it if nil).
+// ToBlockはジェネシスブロックを作成し、ジェネシス仕様の状態を指定されたデータベースに書き込みます（または、nilの場合は破棄します）。
 func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	if db == nil {
 		db = rawdb.NewMemoryDatabase()

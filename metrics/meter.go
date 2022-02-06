@@ -8,6 +8,7 @@ import (
 
 // Meters count events to produce exponentially-weighted moving average rates
 // at one-, five-, and fifteen-minutes and a mean rate.
+// メーターはイベントをカウントして、1分、5分、および15分の指数加重移動平均レートと平均レートを生成します。
 type Meter interface {
 	Count() int64
 	Mark(int64)

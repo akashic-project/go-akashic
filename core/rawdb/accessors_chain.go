@@ -49,6 +49,7 @@ func ReadCanonicalHash(db ethdb.Reader, number uint64) common.Hash {
 }
 
 // WriteCanonicalHash stores the hash assigned to a canonical block number.
+// WriteCanonicalHashは、正規のブロック番号に割り当てられたハッシュを格納します。
 func WriteCanonicalHash(db ethdb.KeyValueWriter, hash common.Hash, number uint64) {
 	if err := db.Put(headerHashKey(number), hash.Bytes()); err != nil {
 		log.Crit("Failed to store number to hash mapping", "err", err)
@@ -56,6 +57,7 @@ func WriteCanonicalHash(db ethdb.KeyValueWriter, hash common.Hash, number uint64
 }
 
 // DeleteCanonicalHash removes the number to hash canonical mapping.
+// DeleteCanonicalHashは、正規マッピングをハッシュするための番号を削除します。
 func DeleteCanonicalHash(db ethdb.KeyValueWriter, number uint64) {
 	if err := db.Delete(headerHashKey(number)); err != nil {
 		log.Crit("Failed to delete number to hash mapping", "err", err)
@@ -64,6 +66,8 @@ func DeleteCanonicalHash(db ethdb.KeyValueWriter, number uint64) {
 
 // ReadAllHashes retrieves all the hashes assigned to blocks at a certain heights,
 // both canonical and reorged forks included.
+// ReadAllHashesは、特定の高さのブロックに割り当てられたすべてのハッシュを取得します。
+// これには、正規のフォークと再編成されたフォークの両方が含まれます。
 func ReadAllHashes(db ethdb.Iteratee, number uint64) []common.Hash {
 	prefix := headerKeyPrefix(number)
 
@@ -87,6 +91,9 @@ type NumberHash struct {
 // ReadAllHashes retrieves all the hashes assigned to blocks at a certain heights,
 // both canonical and reorged forks included.
 // This method considers both limits to be _inclusive_.
+// ReadAllHashesは、特定の高さのブロックに割り当てられたすべてのハッシュを取得します。
+// これには、正規のフォークと再編成されたフォークの両方が含まれます。
+// このメソッドは、両方の制限を_包括的_と見なします。
 func ReadAllHashesInRange(db ethdb.Iteratee, first, last uint64) []*NumberHash {
 	var (
 		start     = encodeBlockNumber(first)
@@ -113,8 +120,11 @@ func ReadAllHashesInRange(db ethdb.Iteratee, first, last uint64) []*NumberHash {
 // ReadAllCanonicalHashes retrieves all canonical number and hash mappings at the
 // certain chain range. If the accumulated entries reaches the given threshold,
 // abort the iteration and return the semi-finish result.
+// ReadAllCanonicalHashesは、特定のチェーン範囲ですべての正規の数値とハッシュマッピングを取得します。
+// 累積されたエントリが指定されたしきい値に達した場合は、反復を中止して、半終了の結果を返します。
 func ReadAllCanonicalHashes(db ethdb.Iteratee, from uint64, to uint64, limit int) ([]uint64, []common.Hash) {
 	// Short circuit if the limit is 0.
+	// 制限が0の場合は短絡します。
 	if limit == 0 {
 		return nil, nil
 	}
@@ -123,6 +133,7 @@ func ReadAllCanonicalHashes(db ethdb.Iteratee, from uint64, to uint64, limit int
 		hashes  []common.Hash
 	)
 	// Construct the key prefix of start point.
+	// 開始点のキープレフィックスを作成します
 	start, end := headerHashKey(from), headerHashKey(to)
 	it := db.NewIterator(nil, start)
 	defer it.Release()
@@ -135,6 +146,7 @@ func ReadAllCanonicalHashes(db ethdb.Iteratee, from uint64, to uint64, limit int
 			numbers = append(numbers, binary.BigEndian.Uint64(key[len(headerPrefix):len(headerPrefix)+8]))
 			hashes = append(hashes, common.BytesToHash(it.Value()))
 			// If the accumulated entries reaches the limit threshold, return.
+			// 累積エントリが制限しきい値に達した場合は、戻ります。
 			if len(numbers) >= limit {
 				break
 			}
@@ -144,6 +156,7 @@ func ReadAllCanonicalHashes(db ethdb.Iteratee, from uint64, to uint64, limit int
 }
 
 // ReadHeaderNumber returns the header number assigned to a hash.
+// ReadHeaderNumberは、ハッシュに割り当てられたヘッダー番号を返します。
 func ReadHeaderNumber(db ethdb.KeyValueReader, hash common.Hash) *uint64 {
 	data, _ := db.Get(headerNumberKey(hash))
 	if len(data) != 8 {
@@ -154,6 +167,7 @@ func ReadHeaderNumber(db ethdb.KeyValueReader, hash common.Hash) *uint64 {
 }
 
 // WriteHeaderNumber stores the hash->number mapping.
+// WriteHeaderNumberは、ハッシュ->数値マッピングを格納します。
 func WriteHeaderNumber(db ethdb.KeyValueWriter, hash common.Hash, number uint64) {
 	key := headerNumberKey(hash)
 	enc := encodeBlockNumber(number)
@@ -163,6 +177,7 @@ func WriteHeaderNumber(db ethdb.KeyValueWriter, hash common.Hash, number uint64)
 }
 
 // DeleteHeaderNumber removes hash->number mapping.
+// DeleteHeaderNumberは、ハッシュ->数値マッピングを削除します。
 func DeleteHeaderNumber(db ethdb.KeyValueWriter, hash common.Hash) {
 	if err := db.Delete(headerNumberKey(hash)); err != nil {
 		log.Crit("Failed to delete hash to number mapping", "err", err)
@@ -170,6 +185,7 @@ func DeleteHeaderNumber(db ethdb.KeyValueWriter, hash common.Hash) {
 }
 
 // ReadHeadHeaderHash retrieves the hash of the current canonical head header.
+// ReadHeadHeaderHashは、現在の正規のヘッドヘッダーのハッシュを取得します。
 func ReadHeadHeaderHash(db ethdb.KeyValueReader) common.Hash {
 	data, _ := db.Get(headHeaderKey)
 	if len(data) == 0 {
@@ -179,6 +195,7 @@ func ReadHeadHeaderHash(db ethdb.KeyValueReader) common.Hash {
 }
 
 // WriteHeadHeaderHash stores the hash of the current canonical head header.
+// WriteHeadHeaderHashは、現在の正規のヘッドヘッダーのハッシュを格納します。
 func WriteHeadHeaderHash(db ethdb.KeyValueWriter, hash common.Hash) {
 	if err := db.Put(headHeaderKey, hash.Bytes()); err != nil {
 		log.Crit("Failed to store last header's hash", "err", err)
@@ -186,6 +203,7 @@ func WriteHeadHeaderHash(db ethdb.KeyValueWriter, hash common.Hash) {
 }
 
 // ReadHeadBlockHash retrieves the hash of the current canonical head block.
+// ReadHeadBlockHashは、現在の正規のヘッドブロックのハッシュを取得します。
 func ReadHeadBlockHash(db ethdb.KeyValueReader) common.Hash {
 	data, _ := db.Get(headBlockKey)
 	if len(data) == 0 {
@@ -195,6 +213,7 @@ func ReadHeadBlockHash(db ethdb.KeyValueReader) common.Hash {
 }
 
 // WriteHeadBlockHash stores the head block's hash.
+// WriteHeadBlockHashは、ヘッドブロックのハッシュを格納します。
 func WriteHeadBlockHash(db ethdb.KeyValueWriter, hash common.Hash) {
 	if err := db.Put(headBlockKey, hash.Bytes()); err != nil {
 		log.Crit("Failed to store last block's hash", "err", err)
@@ -202,6 +221,7 @@ func WriteHeadBlockHash(db ethdb.KeyValueWriter, hash common.Hash) {
 }
 
 // ReadHeadFastBlockHash retrieves the hash of the current fast-sync head block.
+// ReadHeadFastBlockHashは、現在の高速同期ヘッドブロックのハッシュを取得します。
 func ReadHeadFastBlockHash(db ethdb.KeyValueReader) common.Hash {
 	data, _ := db.Get(headFastBlockKey)
 	if len(data) == 0 {
@@ -211,6 +231,7 @@ func ReadHeadFastBlockHash(db ethdb.KeyValueReader) common.Hash {
 }
 
 // WriteHeadFastBlockHash stores the hash of the current fast-sync head block.
+// WriteHeadFastBlockHashは、現在の高速同期ヘッドブロックのハッシュを格納します。
 func WriteHeadFastBlockHash(db ethdb.KeyValueWriter, hash common.Hash) {
 	if err := db.Put(headFastBlockKey, hash.Bytes()); err != nil {
 		log.Crit("Failed to store last fast block's hash", "err", err)
@@ -219,6 +240,8 @@ func WriteHeadFastBlockHash(db ethdb.KeyValueWriter, hash common.Hash) {
 
 // ReadLastPivotNumber retrieves the number of the last pivot block. If the node
 // full synced, the last pivot will always be nil.
+// ReadLastPivotNumberは、最後のピボットブロックの番号を取得します。
+// ノードが完全に同期されている場合、最後のピボットは常にnilになります。
 func ReadLastPivotNumber(db ethdb.KeyValueReader) *uint64 {
 	data, _ := db.Get(lastPivotKey)
 	if len(data) == 0 {
@@ -233,6 +256,7 @@ func ReadLastPivotNumber(db ethdb.KeyValueReader) *uint64 {
 }
 
 // WriteLastPivotNumber stores the number of the last pivot block.
+// WriteLastPivotNumberは、最後のピボットブロックの番号を格納します。
 func WriteLastPivotNumber(db ethdb.KeyValueWriter, pivot uint64) {
 	enc, err := rlp.EncodeToBytes(pivot)
 	if err != nil {
@@ -246,6 +270,9 @@ func WriteLastPivotNumber(db ethdb.KeyValueWriter, pivot uint64) {
 // ReadTxIndexTail retrieves the number of oldest indexed block
 // whose transaction indices has been indexed. If the corresponding entry
 // is non-existent in database it means the indexing has been finished.
+
+// ReadTxIndexTailは、トランザクションインデックスがインデックス付けされている最も古いインデックス付きブロックの数を取得します。
+// 対応するエントリがデータベースに存在しない場合は、インデックス作成が終了したことを意味します。
 func ReadTxIndexTail(db ethdb.KeyValueReader) *uint64 {
 	data, _ := db.Get(txIndexTailKey)
 	if len(data) != 8 {
@@ -257,6 +284,7 @@ func ReadTxIndexTail(db ethdb.KeyValueReader) *uint64 {
 
 // WriteTxIndexTail stores the number of oldest indexed block
 // into database.
+// WriteTxIndexTailは、最も古いインデックス付きブロックの数をデータベースに格納します。
 func WriteTxIndexTail(db ethdb.KeyValueWriter, number uint64) {
 	if err := db.Put(txIndexTailKey, encodeBlockNumber(number)); err != nil {
 		log.Crit("Failed to store the transaction index tail", "err", err)
@@ -264,6 +292,7 @@ func WriteTxIndexTail(db ethdb.KeyValueWriter, number uint64) {
 }
 
 // ReadFastTxLookupLimit retrieves the tx lookup limit used in fast sync.
+// ReadFastTxLookupLimitは、高速同期で使用されるtxルックアップ制限を取得します。
 func ReadFastTxLookupLimit(db ethdb.KeyValueReader) *uint64 {
 	data, _ := db.Get(fastTxLookupLimitKey)
 	if len(data) != 8 {
@@ -274,6 +303,7 @@ func ReadFastTxLookupLimit(db ethdb.KeyValueReader) *uint64 {
 }
 
 // WriteFastTxLookupLimit stores the txlookup limit used in fast sync into database.
+// WriteFastTxLookupLimitは、高速同期で使用されるtxlookup制限をデータベースに格納します。
 func WriteFastTxLookupLimit(db ethdb.KeyValueWriter, number uint64) {
 	if err := db.Put(fastTxLookupLimitKey, encodeBlockNumber(number)); err != nil {
 		log.Crit("Failed to store transaction lookup limit for fast sync", "err", err)
