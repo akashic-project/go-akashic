@@ -95,12 +95,14 @@ type rejectedTx struct {
 }
 
 // Apply applies a set of transactions to a pre-state
+// Applyは、一連のトランザクションをpre-stateに適用します
 func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 	txs types.Transactions, miningReward int64,
 	getTracerFn func(txIndex int, txHash common.Hash) (tracer vm.EVMLogger, err error)) (*state.StateDB, *ExecutionResult, error) {
 
 	// Capture errors for BLOCKHASH operation, if we haven't been supplied the
 	// required blockhashes
+	// 必要なブロックハッシュが提供されていない場合は、BLOCKHASH操作のエラーをキャプチャします
 	var hashError error
 	getHash := func(num uint64) common.Hash {
 		if pre.Env.BlockHashes == nil {
@@ -136,11 +138,14 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 		GetHash:     getHash,
 	}
 	// If currentBaseFee is defined, add it to the vmContext.
+	// currentBaseFeeが定義されている場合は、それをvmContextに追加します。
 	if pre.Env.BaseFee != nil {
 		vmContext.BaseFee = new(big.Int).Set(pre.Env.BaseFee)
 	}
 	// If DAO is supported/enabled, we need to handle it here. In geth 'proper', it's
 	// done in StateProcessor.Process(block, ...), right before transactions are applied.
+	// DAOがサポート/有効になっている場合は、ここで処理する必要があります。
+	// geth'proper 'では、トランザクションが適用される直前に、StateProcessor.Process（block、...）で実行されます。
 	if chainConfig.DAOForkSupport &&
 		chainConfig.DAOForkBlock != nil &&
 		chainConfig.DAOForkBlock.Cmp(new(big.Int).SetUint64(pre.Env.Number)) == 0 {
@@ -180,6 +185,7 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 		gasUsed += msgResult.UsedGas
 
 		// Receipt:
+		// レシート：
 		{
 			var root []byte
 			if chainConfig.IsByzantium(vmContext.BlockNumber) {
@@ -190,6 +196,7 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 
 			// Create a new receipt for the transaction, storing the intermediate root and
 			// gas used by the tx.
+			// トランザクションの新しいレシートを作成し、txが使用する中間ルートとガスを保存します。
 			receipt := &types.Receipt{Type: tx.Type(), PostState: root, CumulativeGasUsed: gasUsed}
 			if msgResult.Failed() {
 				receipt.Status = types.ReceiptStatusFailed
@@ -200,14 +207,17 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 			receipt.GasUsed = msgResult.UsedGas
 
 			// If the transaction created a contract, store the creation address in the receipt.
+			// トランザクションで契約が作成された場合は、作成アドレスを領収書に保存します。
 			if msg.To() == nil {
 				receipt.ContractAddress = crypto.CreateAddress(evm.TxContext.Origin, tx.Nonce())
 			}
 
 			// Set the receipt logs and create the bloom filter.
+			// レシートログを設定し、ブルームフィルターを作成します。
 			receipt.Logs = statedb.GetLogs(tx.Hash(), blockHash)
 			receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
 			// These three are non-consensus fields:
+			// これら3つは非コンセンサスフィールドです：
 			//receipt.BlockHash
 			//receipt.BlockNumber
 			receipt.TransactionIndex = uint(txIndex)
@@ -218,12 +228,17 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 	}
 	statedb.IntermediateRoot(chainConfig.IsEIP158(vmContext.BlockNumber))
 	// Add mining reward?
+	// マイニング報酬を追加しますか？
 	if miningReward > 0 {
 		// Add mining reward. The mining reward may be `0`, which only makes a difference in the cases
 		// where
 		// - the coinbase suicided, or
 		// - there are only 'bad' transactions, which aren't executed. In those cases,
 		//   the coinbase gets no txfee, so isn't created, and thus needs to be touched
+		// マイニング報酬を追加します。マイニング報酬は `0`である可能性があり、これは次の場合にのみ違いがあります
+		//  - コインベースが自殺した、または
+		//  - 実行されない「不良」トランザクションのみがあります。そのような場合、
+		//  コインベースはtxfeeを取得しないため、作成されないため、タッチする必要があります
 		var (
 			blockReward = big.NewInt(miningReward)
 			minerReward = new(big.Int).Set(blockReward)
@@ -231,6 +246,7 @@ func (pre *Prestate) Apply(vmConfig vm.Config, chainConfig *params.ChainConfig,
 		)
 		for _, ommer := range pre.Env.Ommers {
 			// Add 1/32th for each ommer included
+			// 含まれる各ommerに1/32を追加します
 			minerReward.Add(minerReward, perOmmer)
 			// Add (8-delta)/8
 			reward := big.NewInt(8)
@@ -268,11 +284,13 @@ func MakePreState(db ethdb.Database, accounts core.GenesisAlloc) *state.StateDB 
 		statedb.SetCode(addr, a.Code)
 		statedb.SetNonce(addr, a.Nonce)
 		statedb.SetBalance(addr, a.Balance)
+		statedb.SetLastBlockNumber(addr, big.NewInt(0)) // GenesisBlockでマイニング実施
 		for k, v := range a.Storage {
 			statedb.SetState(addr, k, v)
 		}
 	}
 	// Commit and re-open to start with a clean state.
+	// コミットして再度開き、クリーンな状態で開始します。
 	root, _ := statedb.Commit(false)
 	statedb, _ = state.New(root, sdb, nil)
 	return statedb

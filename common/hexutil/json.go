@@ -149,6 +149,11 @@ func UnmarshalFixedUnprefixedText(typname string, input, out []byte) error {
 // Negative integers are not supported at this time. Attempting to marshal them will
 // return an error. Values larger than 256bits are rejected by Unmarshal but will be
 // marshaled without error.
+// プレフィックスが0xのJSON文字列としてのビッグマーシャル/アンマーシャル。
+// ゼロ値は「0x0」としてマーシャルします。
+//
+//　現在、負の整数はサポートされていません。それらをマーシャリングしようとすると、エラーが返されます。
+// 256ビットより大きい値はUnmarshalによって拒否されますが、エラーなしでマーシャリングされます。
 type Big big.Int
 
 // MarshalText implements encoding.TextMarshaler

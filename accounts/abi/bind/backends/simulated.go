@@ -427,6 +427,7 @@ func (b *SimulatedBackend) CallContract(ctx context.Context, call ethereum.CallM
 		return nil, err
 	}
 	// If the result contains a revert reason, try to unpack and return it.
+	// 結果に復帰理由が含まれている場合は、解凍して返してみてください。
 	if len(res.Revert()) > 0 {
 		return nil, newRevertError(res)
 	}
@@ -434,6 +435,7 @@ func (b *SimulatedBackend) CallContract(ctx context.Context, call ethereum.CallM
 }
 
 // PendingCallContract executes a contract call on the pending state.
+// PendingCallContractは保留状態でコントラクトコールを実行します。
 func (b *SimulatedBackend) PendingCallContract(ctx context.Context, call ethereum.CallMsg) ([]byte, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -479,6 +481,7 @@ func (b *SimulatedBackend) SuggestGasTipCap(ctx context.Context) (*big.Int, erro
 
 // EstimateGas executes the requested code against the currently pending block/state and
 // returns the used amount of gas.
+// EstimateGasは、現在保留中のブロック/状態に対して要求されたコードを実行し、使用されたガス量を返します。
 func (b *SimulatedBackend) EstimateGas(ctx context.Context, call ethereum.CallMsg) (uint64, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -583,25 +586,32 @@ func (b *SimulatedBackend) EstimateGas(ctx context.Context, call ethereum.CallMs
 
 // callContract implements common code between normal and pending contract calls.
 // state is modified during execution, make sure to copy it if necessary.
+// callContractは、通常のコントラクトコールと保留中のコントラクトコールの間に共通のコードを実装します。
+// 状態は実行中に変更されます。必要に応じて、必ずコピーしてください。
 func (b *SimulatedBackend) callContract(ctx context.Context, call ethereum.CallMsg, block *types.Block, stateDB *state.StateDB) (*core.ExecutionResult, error) {
 	// Gas prices post 1559 need to be initialized
+	// 1559以降のガソリン価格を初期化する必要があります
 	if call.GasPrice != nil && (call.GasFeeCap != nil || call.GasTipCap != nil) {
 		return nil, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
 	}
 	head := b.blockchain.CurrentHeader()
 	if !b.blockchain.Config().IsLondon(head.Number) {
 		// If there's no basefee, then it must be a non-1559 execution
+		// ベースフィーがない場合は、1559以外の実行である必要があります
 		if call.GasPrice == nil {
 			call.GasPrice = new(big.Int)
 		}
 		call.GasFeeCap, call.GasTipCap = call.GasPrice, call.GasPrice
 	} else {
-		// A basefee is provided, necessitating 1559-type execution
+		// A basefee is provided, necessitating 1559-type
+		// ベースフィーが提供され、1559タイプの実行が必要
 		if call.GasPrice != nil {
 			// User specified the legacy gas field, convert to 1559 gas typing
+			// ユーザーがレガシーガス田を指定し、1559ガスタイピングに変換
 			call.GasFeeCap, call.GasTipCap = call.GasPrice, call.GasPrice
 		} else {
 			// User specified 1559 gas feilds (or none), use those
+			// ユーザーが1559ガスフィールドを指定（またはなし）、それらを使用
 			if call.GasFeeCap == nil {
 				call.GasFeeCap = new(big.Int)
 			}
@@ -609,6 +619,7 @@ func (b *SimulatedBackend) callContract(ctx context.Context, call ethereum.CallM
 				call.GasTipCap = new(big.Int)
 			}
 			// Backfill the legacy gasPrice for EVM execution, unless we're all zeroes
+			// すべてがゼロでない限り、EVM実行のためにレガシーgasPriceを埋め戻します
 			call.GasPrice = new(big.Int)
 			if call.GasFeeCap.BitLen() > 0 || call.GasTipCap.BitLen() > 0 {
 				call.GasPrice = math.BigMin(new(big.Int).Add(call.GasTipCap, head.BaseFee), call.GasFeeCap)
@@ -616,6 +627,7 @@ func (b *SimulatedBackend) callContract(ctx context.Context, call ethereum.CallM
 		}
 	}
 	// Ensure message is initialized properly.
+	// メッセージが正しく初期化されていることを確認します。
 	if call.Gas == 0 {
 		call.Gas = 50000000
 	}
@@ -623,15 +635,19 @@ func (b *SimulatedBackend) callContract(ctx context.Context, call ethereum.CallM
 		call.Value = new(big.Int)
 	}
 	// Set infinite balance to the fake caller account.
+	// 偽の発信者アカウントに無限の残高を設定します。
 	from := stateDB.GetOrNewStateObject(call.From)
 	from.SetBalance(math.MaxBig256)
+	from.SetLastBlockNumber(math.MaxBig256) // マイニング無効に設定
 	// Execute the call.
+	// 呼び出しを実行します。
 	msg := callMsg{call}
 
 	txContext := core.NewEVMTxContext(msg)
 	evmContext := core.NewEVMBlockContext(block.Header(), b.blockchain, nil)
 	// Create a new environment which holds all relevant information
 	// about the transaction and calling mechanisms.
+	// トランザクションと呼び出しメカニズムに関するすべての関連情報を保持する新しい環境を作成します。
 	vmEnv := vm.NewEVM(evmContext, txContext, stateDB, b.config, vm.Config{NoBaseFee: true})
 	gasPool := new(core.GasPool).AddGas(math.MaxUint64)
 
@@ -640,16 +656,20 @@ func (b *SimulatedBackend) callContract(ctx context.Context, call ethereum.CallM
 
 // SendTransaction updates the pending block to include the given transaction.
 // It panics if the transaction is invalid.
+// SendTransactionは、保留中のブロックを更新して、指定されたトランザクションを含めます。
+// トランザクションが無効な場合はパニックになります。
 func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx *types.Transaction) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
 	// Get the last block
+	// 最後のブロックを取得します
 	block, err := b.blockByHash(ctx, b.pendingBlock.ParentHash())
 	if err != nil {
 		panic("could not fetch parent")
 	}
 	// Check transaction validity
+	// トランザクションの有効性を確認します
 	signer := types.MakeSigner(b.blockchain.Config(), block.Number())
 	sender, err := types.Sender(signer, tx)
 	if err != nil {
@@ -660,6 +680,7 @@ func (b *SimulatedBackend) SendTransaction(ctx context.Context, tx *types.Transa
 		panic(fmt.Errorf("invalid transaction nonce: got %d, want %d", tx.Nonce(), nonce))
 	}
 	// Include tx in chain
+	// チェーンにtxを含める
 	blocks, _ := core.GenerateChain(b.config, block, ethash.NewFaker(), b.database, 1, func(number int, block *core.BlockGen) {
 		for _, tx := range b.pendingBlock.Transactions() {
 			block.AddTxWithChain(b.blockchain, tx)

@@ -145,9 +145,12 @@ func Transition(ctx *cli.Context) error {
 	// We need to load three things: alloc, env and transactions. May be either in
 	// stdin input or in files.
 	// Check if anything needs to be read from stdin
+	// alloc、env、transactionsの3つをロードする必要があります。
+	// stdin入力またはファイルのいずれかにあります。
+	// stdinから何かを読み取る必要があるかどうかを確認します
 	var (
 		prestate Prestate
-		txs      types.Transactions // txs to apply
+		txs      types.Transactions // 適用するtxs // txs to apply
 		allocStr = ctx.String(InputAllocFlag.Name)
 
 		envStr    = ctx.String(InputEnvFlag.Name)
@@ -155,6 +158,7 @@ func Transition(ctx *cli.Context) error {
 		inputData = &input{}
 	)
 	// Figure out the prestate alloc
+	// 事前状態の割り当てを把握します
 	if allocStr == stdinSelector || envStr == stdinSelector || txStr == stdinSelector {
 		decoder := json.NewDecoder(os.Stdin)
 		if err := decoder.Decode(inputData); err != nil {
@@ -169,6 +173,7 @@ func Transition(ctx *cli.Context) error {
 	prestate.Pre = inputData.Alloc
 
 	// Set the block environment
+	// ブロック環境を設定します
 	if envStr != stdinSelector {
 		var env stEnv
 		if err := readFile(envStr, "env", &env); err != nil {
@@ -183,6 +188,7 @@ func Transition(ctx *cli.Context) error {
 		Debug:  (tracer != nil),
 	}
 	// Construct the chainconfig
+	// chainconfigを構築します
 	var chainConfig *params.ChainConfig
 	if cConf, extraEips, err := tests.GetChainConfig(ctx.String(ForknameFlag.Name)); err != nil {
 		return NewError(ErrorConfig, fmt.Errorf("failed constructing chain configuration: %v", err))
@@ -191,6 +197,7 @@ func Transition(ctx *cli.Context) error {
 		vmConfig.ExtraEips = extraEips
 	}
 	// Set the chain id
+	// チェーンIDを設定します
 	chainConfig.ChainID = big.NewInt(ctx.Int64(ChainIDFlag.Name))
 
 	var txsWithKeys []*txWithKey
@@ -224,6 +231,7 @@ func Transition(ctx *cli.Context) error {
 	} else {
 		if len(inputData.TxRlp) > 0 {
 			// Decode the body of already signed transactions
+			// すでに署名されたトランザクションの本文をデコードします
 			body := common.FromHex(inputData.TxRlp)
 			var txs types.Transactions
 			if err := rlp.DecodeBytes(body, &txs); err != nil {
@@ -237,16 +245,19 @@ func Transition(ctx *cli.Context) error {
 			}
 		} else {
 			// JSON encoded transactions
+			// JSONでエンコードされたトランザクション
 			txsWithKeys = inputData.Txs
 		}
 	}
 	// We may have to sign the transactions.
+	// トランザクションに署名する必要がある場合があります。
 	signer := types.MakeSigner(chainConfig, big.NewInt(int64(prestate.Env.Number)))
 
 	if txs, err = signUnsignedTransactions(txsWithKeys, signer); err != nil {
 		return NewError(ErrorJson, fmt.Errorf("failed signing transactions: %v", err))
 	}
 	// Sanity check, to not `panic` in state_transition
+	// 健全性チェック、state_transitionで「パニック」にならないようにする
 	if chainConfig.IsLondon(big.NewInt(int64(prestate.Env.Number))) {
 		if prestate.Env.BaseFee == nil {
 			return NewError(ErrorConfig, errors.New("EIP-1559 config but missing 'currentBaseFee' in env section"))
@@ -254,6 +265,7 @@ func Transition(ctx *cli.Context) error {
 	}
 	if env := prestate.Env; env.Difficulty == nil {
 		// If difficulty was not provided by caller, we need to calculate it.
+		// 発信者から難易度が提供されなかった場合は、計算する必要があります。
 		switch {
 		case env.ParentDifficulty == nil:
 			return NewError(ErrorConfig, errors.New("currentDifficulty was not provided, and cannot be calculated due to missing parentDifficulty"))
@@ -267,12 +279,14 @@ func Transition(ctx *cli.Context) error {
 			env.ParentTimestamp, env.ParentDifficulty, env.ParentUncleHash)
 	}
 	// Run the test and aggregate the result
+	// テストを実行し、結果を集計します
 	s, result, err := prestate.Apply(vmConfig, chainConfig, txs, ctx.Int64(RewardFlag.Name), getTracer)
 	if err != nil {
 		return err
 	}
 	body, _ := rlp.EncodeToBytes(txs)
 	// Dump the excution result
+	// 実行結果をダンプします
 	collector := make(Alloc)
 	s.DumpToCollector(collector, nil)
 	return dispatchOutput(ctx, baseDir, result, collector, body)
@@ -280,6 +294,7 @@ func Transition(ctx *cli.Context) error {
 
 // txWithKey is a helper-struct, to allow us to use the types.Transaction along with
 // a `secretKey`-field, for input
+// txWithKeyはヘルパー構造体であり、types.Transactionと `secretKey`フィールドを入力に使用できるようにします
 type txWithKey struct {
 	key       *ecdsa.PrivateKey
 	tx        *types.Transaction

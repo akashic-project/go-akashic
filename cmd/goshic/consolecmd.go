@@ -35,13 +35,16 @@ var (
 	consoleCommand = cli.Command{
 		Action:   utils.MigrateFlags(localConsole),
 		Name:     "console",
-		Usage:    "Start an interactive JavaScript environment",
+		Usage:    "Start an interactive JavaScript environment", // インタラクティブなJavaScript環境を開始します
 		Flags:    append(append(nodeFlags, rpcFlags...), consoleFlags...),
 		Category: "CONSOLE COMMANDS",
 		Description: `
 The Geth console is an interactive shell for the JavaScript runtime environment
 which exposes a node admin interface as well as the Ðapp JavaScript API.
 See https://geth.ethereum.org/docs/interface/javascript-console.`,
+		// Gethコンソールは、JavaScriptランタイム環境用のインタラクティブシェルです。
+		// これは、ノード管理インターフェースとÐappJavaScriptAPIを公開します。
+		// https://geth.ethereum.org/docs/interface/javascript-console を参照してください。
 	}
 
 	attachCommand = cli.Command{

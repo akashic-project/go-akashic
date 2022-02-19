@@ -227,9 +227,11 @@ func (c *BoundContract) RawTransact(opts *TransactOpts, calldata []byte) (*types
 
 // Transfer initiates a plain transaction to move funds to the contract, calling
 // its default method if one is available.
+// Transferは、資金を契約に移動するためのプレーントランザクションを開始し、使用可能な場合はデフォルトのメソッドを呼び出します。
 func (c *BoundContract) Transfer(opts *TransactOpts) (*types.Transaction, error) {
 	// todo(rjl493456442) check the payable fallback or receive is defined
 	// or not, reject invalid transaction at the first place
+	// todo（rjl493456442）支払い可能なフォールバックまたは受信が定義されているかどうかを確認し、最初に無効なトランザクションを拒否します
 	return c.transact(opts, &c.address, nil)
 }
 
@@ -331,6 +333,7 @@ func (c *BoundContract) createLegacyTx(opts *TransactOpts, contract *common.Addr
 func (c *BoundContract) estimateGasLimit(opts *TransactOpts, contract *common.Address, input []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int) (uint64, error) {
 	if contract != nil {
 		// Gas estimation cannot succeed without code for method invocations.
+		// ガス推定は、メソッド呼び出しのコードがないと成功しません。
 		if code, err := c.transactor.PendingCodeAt(ensureContext(opts.Context), c.address); err != nil {
 			return 0, err
 		} else if len(code) == 0 {
@@ -366,6 +369,7 @@ func (c *BoundContract) transact(opts *TransactOpts, contract *common.Address, i
 		return nil, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
 	}
 	// Create the transaction
+	// トランザクションを作成します
 	var (
 		rawTx *types.Transaction
 		err   error
@@ -374,12 +378,14 @@ func (c *BoundContract) transact(opts *TransactOpts, contract *common.Address, i
 		rawTx, err = c.createLegacyTx(opts, contract, input)
 	} else {
 		// Only query for basefee if gasPrice not specified
+		// gasPriceが指定されていない場合にのみ、basefeeを照会します
 		if head, errHead := c.transactor.HeaderByNumber(ensureContext(opts.Context), nil); errHead != nil {
 			return nil, errHead
 		} else if head.BaseFee != nil {
 			rawTx, err = c.createDynamicTx(opts, contract, input, head)
 		} else {
 			// Chain is not London ready -> use legacy transaction
+			// チェーンはロンドン対応ではありません->レガシートランザクションを使用します
 			rawTx, err = c.createLegacyTx(opts, contract, input)
 		}
 	}
@@ -387,6 +393,7 @@ func (c *BoundContract) transact(opts *TransactOpts, contract *common.Address, i
 		return nil, err
 	}
 	// Sign the transaction and schedule it for execution
+	//トランザクションに署名し、実行をスケジュールします
 	if opts.Signer == nil {
 		return nil, errors.New("no signer to authorize the transaction with")
 	}
@@ -405,12 +412,16 @@ func (c *BoundContract) transact(opts *TransactOpts, contract *common.Address, i
 
 // FilterLogs filters contract logs for past blocks, returning the necessary
 // channels to construct a strongly typed bound iterator on top of them.
+// FilterLogsは、過去のブロックのコントラクトログをフィルタリングし、
+// それらの上に強く型付けされたバインドされたイテレータを構築するために必要なチャネルを返します。
 func (c *BoundContract) FilterLogs(opts *FilterOpts, name string, query ...[]interface{}) (chan types.Log, event.Subscription, error) {
 	// Don't crash on a lazy user
+	// 怠惰なユーザーにクラッシュしないでください
 	if opts == nil {
 		opts = new(FilterOpts)
 	}
 	// Append the event selector to the query parameters and construct the topic set
+	// イベントセレクタをクエリパラメータに追加し、トピックセットを作成します
 	query = append([][]interface{}{{c.abi.Events[name].ID}}, query...)
 
 	topics, err := abi.MakeTopics(query...)
@@ -418,6 +429,7 @@ func (c *BoundContract) FilterLogs(opts *FilterOpts, name string, query ...[]int
 		return nil, nil, err
 	}
 	// Start the background filtering
+	// バックグラウンドフィルタリングを開始します
 	logs := make(chan types.Log, 128)
 
 	config := ethereum.FilterQuery{
@@ -430,6 +442,9 @@ func (c *BoundContract) FilterLogs(opts *FilterOpts, name string, query ...[]int
 	}
 	/* TODO(karalabe): Replace the rest of the method below with this when supported
 	sub, err := c.filterer.SubscribeFilterLogs(ensureContext(opts.Context), config, logs)
+	*/
+	/* TODO（karalabe）：サポートされている場合、以下の残りのメソッドをこれに置き換えます
+	   sub、err：= c.filterer.SubscribeFilterLogs（ensureContext（opts.Context）、config、logs）
 	*/
 	buff, err := c.filterer.FilterLogs(ensureContext(opts.Context), config)
 	if err != nil {

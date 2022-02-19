@@ -153,6 +153,8 @@ func (ec *EthereumClient) SubscribeNewHead(ctx *Context, handler NewHeadHandler,
 
 // GetBalanceAt returns the wei balance of the given account.
 // The block number can be <0, in which case the balance is taken from the latest known block.
+// GetBalanceAtは、指定されたアカウントのwei残高を返します。
+// ブロック番号は<0にすることができます。その場合、バランスは最新の既知のブロックから取得されます。
 func (ec *EthereumClient) GetBalanceAt(ctx *Context, account *Address, number int64) (balance *BigInt, _ error) {
 	if number < 0 {
 		rawBalance, err := ec.client.BalanceAt(ctx.context, account.address, nil)

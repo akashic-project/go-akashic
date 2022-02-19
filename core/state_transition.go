@@ -422,6 +422,7 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 
 func (st *StateTransition) refundGas(refundQuotient uint64) {
 	// Apply refund counter, capped to a refund quotient
+	// 払い戻しの商に上限を設定して、払い戻しカウンターを適用します
 	refund := st.gasUsed() / refundQuotient
 	if refund > st.state.GetRefund() {
 		refund = st.state.GetRefund()
@@ -429,15 +430,18 @@ func (st *StateTransition) refundGas(refundQuotient uint64) {
 	st.gas += refund
 
 	// Return ETH for remaining gas, exchanged at the original rate.
+	// 元のレートで交換された残りのガスのETHを返します。
 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(st.gas), st.gasPrice)
 	st.state.AddBalance(st.msg.From(), remaining)
 
 	// Also return remaining gas to the block gas counter so it is
 	// available for the next transaction.
+	// また、残りのガスをブロックガスカウンターに戻し、次のトランザクションで使用できるようにします。
 	st.gp.AddGas(st.gas)
 }
 
 // gasUsed returns the amount of gas used up by the state transition.
+// gasUsedは、状態遷移によって使用されたガスの量を返します。
 func (st *StateTransition) gasUsed() uint64 {
 	return st.initialGas - st.gas
 }

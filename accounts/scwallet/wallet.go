@@ -497,8 +497,8 @@ func (w *Wallet) Close() error {
 // new non-zero accounts.
 // selfDeriveはアカウント派生ループであり、要求に応じてゼロ以外の新しいアカウントを見つけようとします。
 func (w *Wallet) selfDerive() {
-	w.log.Debug("Smart card wallet self-derivation started")
-	defer w.log.Debug("Smart card wallet self-derivation stopped")
+	w.log.Debug("Smart card wallet self-derivation started")       // スマートカードウォレットの自己派生が開始されました
+	defer w.log.Debug("Smart card wallet self-derivation stopped") // スマートカードウォレットの自己派生が停止しました
 
 	// Execute self-derivations until termination or error
 	// 終了またはエラーになるまで自己導出を実行します

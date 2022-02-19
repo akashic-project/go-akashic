@@ -236,6 +236,9 @@ func (bt *balanceTracker) BalanceOperation(id enode.ID, connAddress string, cb f
 // for the given node. It also sets the priorityFlag and adds balanceCallbackZero if
 // the node has a positive balance.
 // Note: this function should run inside a NodeStateMachine operation
+// newNodeBalanceはデータベースから残高をロードし、指定されたノードのnodeBalanceインスタンスを作成します。
+// また、priorityFlagを設定し、ノードのバランスが正の場合はbalanceCallbackZeroを追加します。
+// 注：この関数はNodeStateMachine操作内で実行する必要があります
 func (bt *balanceTracker) newNodeBalance(node *enode.Node, connAddress string, setFlags bool) *nodeBalance {
 	pb := bt.ndb.getOrNewBalance(node.ID().Bytes(), false)
 	nb := bt.ndb.getOrNewBalance([]byte(connAddress), true)
@@ -258,9 +261,10 @@ func (bt *balanceTracker) newNodeBalance(node *enode.Node, connAddress string, s
 }
 
 // storeBalance stores either a positive or a negative balance in the database
+// storeBalanceは、正または負の残高をデータベースに保存します
 func (bt *balanceTracker) storeBalance(id []byte, neg bool, value utils.ExpiredValue) {
 	if bt.canDropBalance(bt.clock.Now(), neg, value) {
-		bt.ndb.delBalance(id, neg) // balance is small enough, drop it directly.
+		bt.ndb.delBalance(id, neg) // バランスが十分に小さいので、直接ドロップします。 // balance is small enough, drop it directly.
 	} else {
 		bt.ndb.setBalance(id, neg, value)
 	}
@@ -268,6 +272,7 @@ func (bt *balanceTracker) storeBalance(id []byte, neg bool, value utils.ExpiredV
 
 // canDropBalance tells whether a positive or negative balance is below the threshold
 // and therefore can be dropped from the database
+// canDropBalanceは、正または負の残高がしきい値を下回っており、データベースから削除できるかどうかを示します
 func (bt *balanceTracker) canDropBalance(now mclock.AbsTime, neg bool, b utils.ExpiredValue) bool {
 	if neg {
 		return b.Value(bt.negExp.LogOffset(now)) <= negThreshold

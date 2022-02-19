@@ -127,10 +127,13 @@ func New(config Config) (*Console, error) {
 
 // init retrieves the available APIs from the remote RPC provider and initializes
 // the console's JavaScript namespaces based on the exposed modules.
+// initは、リモートRPCプロバイダーから使用可能なAPIを取得し、
+// 公開されたモジュールに基づいてコンソールのJavaScript名前空間を初期化します。
 func (c *Console) init(preload []string) error {
 	c.initConsoleObject()
 
 	// Initialize the JavaScript <-> Go RPC bridge.
+	// JavaScriptを初期化します<-> RPCブリッジに移動します。
 	bridge := newBridge(c.client, c.prompter, c.printer)
 	if err := c.initWeb3(bridge); err != nil {
 		return err
@@ -140,12 +143,14 @@ func (c *Console) init(preload []string) error {
 	}
 
 	// Add bridge overrides for web3.js functionality.
+	// web3.js機能のブリッジオーバーライドを追加します。
 	c.jsre.Do(func(vm *goja.Runtime) {
 		c.initAdmin(vm, bridge)
 		c.initPersonal(vm, bridge)
 	})
 
 	// Preload JavaScript files.
+	// JavaScriptファイルをプリロードします。
 	for _, path := range preload {
 		if err := c.jsre.Exec(path); err != nil {
 			failure := err.Error()
@@ -202,8 +207,10 @@ func (c *Console) initWeb3(bridge *bridge) error {
 }
 
 // initExtensions loads and registers web3.js extensions.
+// initExtensionsは、web3.js拡張機能をロードして登録します。
 func (c *Console) initExtensions() error {
 	// Compute aliases from server-provided modules.
+	// サーバー提供のモジュールからエイリアスを計算します。
 	apis, err := c.client.SupportedModules()
 	if err != nil {
 		return fmt.Errorf("api modules: %v", err)
@@ -222,6 +229,7 @@ func (c *Console) initExtensions() error {
 	}
 
 	// Apply aliases.
+	// エイリアスを適用します。
 	c.jsre.Do(func(vm *goja.Runtime) {
 		web3 := getObject(vm, "web3")
 		for name := range aliases {
