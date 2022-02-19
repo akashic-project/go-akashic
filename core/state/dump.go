@@ -49,14 +49,15 @@ type DumpCollector interface {
 
 // DumpAccount represents an account in the state.
 type DumpAccount struct {
-	Balance   string                 `json:"balance"`
-	Nonce     uint64                 `json:"nonce"`
-	Root      hexutil.Bytes          `json:"root"`
-	CodeHash  hexutil.Bytes          `json:"codeHash"`
-	Code      hexutil.Bytes          `json:"code,omitempty"`
-	Storage   map[common.Hash]string `json:"storage,omitempty"`
-	Address   *common.Address        `json:"address,omitempty"` // Address only present in iterative (line-by-line) mode
-	SecureKey hexutil.Bytes          `json:"key,omitempty"`     // If we don't have address, we can output the key
+	Balance         string                 `json:"balance"`
+	LastBlockNumber string                 `json:"LastBlockNumber"`
+	Nonce           uint64                 `json:"nonce"`
+	Root            hexutil.Bytes          `json:"root"`
+	CodeHash        hexutil.Bytes          `json:"codeHash"`
+	Code            hexutil.Bytes          `json:"code,omitempty"`
+	Storage         map[common.Hash]string `json:"storage,omitempty"`
+	Address         *common.Address        `json:"address,omitempty"` // Address only present in iterative (line-by-line) mode
+	SecureKey       hexutil.Bytes          `json:"key,omitempty"`     // If we don't have address, we can output the key
 
 }
 
@@ -125,6 +126,7 @@ func (d iterativeDump) OnRoot(root common.Hash) {
 
 // DumpToCollector iterates the state according to the given options and inserts
 // the items into a collector for aggregation or serialization.
+// DumpToCollectorは、指定されたオプションに従って状態を繰り返し、集約またはシリアル化のためにアイテムをコレクターに挿入します。
 func (s *StateDB) DumpToCollector(c DumpCollector, conf *DumpConfig) (nextKey []byte) {
 	// Sanitize the input to allow nil configs
 	if conf == nil {

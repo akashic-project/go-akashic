@@ -28,18 +28,24 @@ import (
 // with a byte slice. This format can be used to represent full-consensus format
 // or slim-snapshot format which replaces the empty root and code hash as nil
 // byte slice.
+// アカウントはstate.Accountの修正バージョンであり、ルートはバイトスライスに置き換えられます。
+// この形式は、フルコンセンサス形式またはスリムスナップショット形式を表すために使用できます。
+// これは、空のルートとコードハッシュをnilバイトスライスとして置き換えます。
 type Account struct {
-	Nonce    uint64
-	Balance  *big.Int
-	Root     []byte
-	CodeHash []byte
+	Nonce           uint64
+	Balance         *big.Int
+	LastBlockNumber *big.Int
+	Root            []byte
+	CodeHash        []byte
 }
 
 // SlimAccount converts a state.Account content into a slim snapshot account
-func SlimAccount(nonce uint64, balance *big.Int, root common.Hash, codehash []byte) Account {
+// SlimAccountはstate.Accountコンテンツをスリムスナップショットアカウントに変換します
+func SlimAccount(nonce uint64, balance *big.Int, LastBlockNumber *big.Int, root common.Hash, codehash []byte) Account {
 	slim := Account{
-		Nonce:   nonce,
-		Balance: balance,
+		Nonce:           nonce,
+		Balance:         balance,
+		LastBlockNumber: LastBlockNumber,
 	}
 	if root != emptyRoot {
 		slim.Root = root[:]
@@ -52,8 +58,9 @@ func SlimAccount(nonce uint64, balance *big.Int, root common.Hash, codehash []by
 
 // SlimAccountRLP converts a state.Account content into a slim snapshot
 // version RLP encoded.
-func SlimAccountRLP(nonce uint64, balance *big.Int, root common.Hash, codehash []byte) []byte {
-	data, err := rlp.EncodeToBytes(SlimAccount(nonce, balance, root, codehash))
+// SlimAccountRLPは、state.AccountコンテンツをRLPでエンコードされたスリムスナップショットバージョンに変換します。
+func SlimAccountRLP(nonce uint64, balance *big.Int, LastBlockNumber *big.Int, root common.Hash, codehash []byte) []byte {
+	data, err := rlp.EncodeToBytes(SlimAccount(nonce, balance, LastBlockNumber, root, codehash))
 	if err != nil {
 		panic(err)
 	}

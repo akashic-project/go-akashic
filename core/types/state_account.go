@@ -27,8 +27,9 @@ import (
 // StateAccountは、アカウントのイーサリアムコンセンサス表現です。
 // これらのオブジェクトはメインアカウントトライに保存されます。
 type StateAccount struct {
-	Nonce    uint64
-	Balance  *big.Int
-	Root     common.Hash // merkle root of the storage trie
-	CodeHash []byte
+	Nonce           uint64
+	Balance         *big.Int
+	LastBlockNumber *big.Int    //コインエイジ計算用　アカウントの最終更新ブロックナンバー
+	Root            common.Hash //ストレージトライのマークルルート // merkle root of the storage trie
+	CodeHash        []byte
 }

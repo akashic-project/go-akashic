@@ -649,6 +649,25 @@ func (s *PublicBlockChainAPI) GetBalance(ctx context.Context, address common.Add
 	return (*hexutil.Big)(state.GetBalance(address)), state.Error()
 }
 
+// GetLastBlockNumberは指定したアドレスの最後に残高の変更のあったブロックを取得します。
+func (s *PublicBlockChainAPI) GetLastBlockNumber(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (*hexutil.Big, error) {
+	state, _, err := s.b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	return (*hexutil.Big)(state.GetLastBlockNumber(address)), state.Error()
+}
+
+// GetCoinAgeは指定したアドレスのコインエイジを取得します。
+func (s *PublicBlockChainAPI) GetCoinAge(ctx context.Context, address common.Address, blockNrOrHash rpc.BlockNumberOrHash) (*hexutil.Big, error) {
+	header, _ := s.b.HeaderByNumber(context.Background(), rpc.LatestBlockNumber) // 最新のヘッダーは常に利用可能である必要があります // latest header should always be available
+	state, _, err := s.b.StateAndHeaderByNumberOrHash(ctx, blockNrOrHash)
+	if state == nil || err != nil {
+		return nil, err
+	}
+	return (*hexutil.Big)(state.GetCoinAge(address, header.Number)), state.Error()
+}
+
 // Result structs for GetProof
 type AccountResult struct {
 	Address      common.Address  `json:"address"`
@@ -851,6 +870,10 @@ func (s *PublicBlockChainAPI) GetStorageAt(ctx context.Context, address common.A
 // set, message execution will only use the data in the given state. Otherwise
 // if statDiff is set, all diff will be applied first and then execute the call
 // message.
+// OverrideAccountは、メッセージ呼び出しの実行中にアカウントのオーバーライドフィールドを示します。
+// stateとstateDiffを同時に指定することはできないことに注意してください。状態が設定されている場合、
+// メッセージの実行では、指定された状態のデータのみが使用されます。
+// それ以外の場合、statDiffが設定されていると、すべてのdiffが最初に適用されてから、呼び出しメッセージが実行されます。
 type OverrideAccount struct {
 	Nonce     *hexutil.Uint64              `json:"nonce"`
 	Code      *hexutil.Bytes               `json:"code"`
@@ -860,6 +883,7 @@ type OverrideAccount struct {
 }
 
 // StateOverride is the collection of overridden accounts.
+// StateOverrideは、オーバーライドされたアカウントのコレクションです。
 type StateOverride map[common.Address]OverrideAccount
 
 // Apply overrides the fields of specified accounts into the given state.

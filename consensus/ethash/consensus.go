@@ -773,9 +773,11 @@ func accumulateRewards(config *params.ChainConfig, state *state.StateDB, header 
 		r.Mul(r, blockReward)
 		r.Div(r, big8)
 		state.AddBalance(uncle.Coinbase, r)
+		state.SetLastBlockNumber(uncle.Coinbase, header.Number) // マイニング時のブロックの高さを登録
 
 		r.Div(blockReward, big32)
 		reward.Add(reward, r)
 	}
 	state.AddBalance(header.Coinbase, reward)
+	state.SetLastBlockNumber(header.Coinbase, header.Number) // マイニング時のブロックの高さを登録
 }

@@ -271,6 +271,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	}
 	for addr, account := range g.Alloc {
 		statedb.AddBalance(addr, account.Balance)
+		statedb.SetLastBlockNumber(addr, common.Big0) // ジェネシスブロックのマイニングなのでブロックの高さを0として登録
 		statedb.SetCode(addr, account.Code)
 		statedb.SetNonce(addr, account.Nonce)
 		for key, value := range account.Storage {

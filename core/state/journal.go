@@ -24,11 +24,14 @@ import (
 
 // journalEntry is a modification entry in the state change journal that can be
 // reverted on demand.
+// journalEntryは、オンデマンドで元に戻すことができる状態変更ジャーナルの変更エントリです。
 type journalEntry interface {
 	// revert undoes the changes introduced by this journal entry.
+	// 元に戻すと、このジャーナルエントリによって導入された変更が元に戻されます。
 	revert(*StateDB)
 
 	// dirtied returns the Ethereum address modified by this journal entry.
+	// dirtiedは、このジャーナルエントリによって変更されたEthereumアドレスを返します。
 	dirtied() *common.Address
 }
 
@@ -48,6 +51,7 @@ func newJournal() *journal {
 }
 
 // append inserts a new modification entry to the end of the change journal.
+// appendは、変更ジャーナルの最後に新しい変更エントリを挿入します。
 func (j *journal) append(entry journalEntry) {
 	j.entries = append(j.entries, entry)
 	if addr := entry.dirtied(); addr != nil {
@@ -57,12 +61,15 @@ func (j *journal) append(entry journalEntry) {
 
 // revert undoes a batch of journalled modifications along with any reverted
 // dirty handling too.
+// 元に戻すと、ジャーナルに記録された変更のバッチが元に戻され、ダーティ処理も元に戻されます。
 func (j *journal) revert(statedb *StateDB, snapshot int) {
 	for i := len(j.entries) - 1; i >= snapshot; i-- {
 		// Undo the changes made by the operation
+		// 操作によって行われた変更を元に戻します
 		j.entries[i].revert(statedb)
 
 		// Drop any dirty tracking induced by the change
+		// 変更によって引き起こされたダーティトラッキングを削除します
 		if addr := j.entries[i].dirtied(); addr != nil {
 			if j.dirties[*addr]--; j.dirties[*addr] == 0 {
 				delete(j.dirties, *addr)
@@ -95,15 +102,22 @@ type (
 	}
 	suicideChange struct {
 		account     *common.Address
-		prev        bool // whether account had already suicided
+		prev        bool // アカウントがすでに自殺したかどうか // whether account had already suicided
 		prevbalance *big.Int
 	}
 
 	// Changes to individual accounts.
+	// 個々のアカウントへの変更。
 	balanceChange struct {
 		account *common.Address
 		prev    *big.Int
 	}
+
+	LastBlockNumberChange struct {
+		account *common.Address
+		prev    *big.Int
+	}
+
 	nonceChange struct {
 		account *common.Address
 		prev    uint64
@@ -186,6 +200,14 @@ func (ch balanceChange) revert(s *StateDB) {
 }
 
 func (ch balanceChange) dirtied() *common.Address {
+	return ch.account
+}
+
+func (ch LastBlockNumberChange) revert(s *StateDB) {
+	s.getStateObject(*ch.account).setLastBlockNumber(ch.prev)
+}
+
+func (ch LastBlockNumberChange) dirtied() *common.Address {
 	return ch.account
 }
 

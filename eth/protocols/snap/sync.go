@@ -46,9 +46,11 @@ import (
 
 var (
 	// emptyRoot is the known root hash of an empty trie.
+	// emptyRootは、空のトライの既知のルートハッシュです。
 	emptyRoot = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 
 	// emptyCode is the known hash of the empty EVM bytecode.
+	// emptyCodeは、空のEVMバイトコードの既知のハッシュです。
 	emptyCode = crypto.Keccak256Hash(nil)
 )
 
@@ -56,6 +58,9 @@ const (
 	// minRequestSize is the minimum number of bytes to request from a remote peer.
 	// This number is used as the low cap for account and storage range requests.
 	// Bytecode and trienode are limited inherently by item count (1).
+	// minRequestSizeは、リモートピアから要求する最小バイト数です。
+	// この数値は、アカウントおよびストレージ範囲のリクエストの下限として使用されます。
+	// バイトコードとtrienodeは、本質的にアイテム数（1）によって制限されます。
 	minRequestSize = 64 * 1024
 
 	// maxRequestSize is the maximum number of bytes to request from a remote peer.
@@ -2153,8 +2158,11 @@ func (s *Syncer) processBytecodeHealResponse(res *bytecodeHealResponse) {
 // forwardAccountTask takes a filled account task and persists anything available
 // into the database, after which it forwards the next account marker so that the
 // task's next chunk may be filled.
+// forwardAccountTaskは、入力されたアカウントタスクを取得し、データベースで使用可能なすべてのものを保持します。
+// その後、タスクの次のチャンクが入力されるように、次のアカウントマーカーを転送します。
 func (s *Syncer) forwardAccountTask(task *accountTask) {
 	// Remove any pending delivery
+	// 保留中の配信を削除します
 	res := task.res
 	if res == nil {
 		return // nothing to forward
@@ -2164,6 +2172,8 @@ func (s *Syncer) forwardAccountTask(task *accountTask) {
 	// Persist the received account segements. These flat state maybe
 	// outdated during the sync, but it can be fixed later during the
 	// snapshot generation.
+	// 受信したアカウントセグメントを永続化します。
+	// これらのフラット状態は同期中に古くなっている可能性がありますが、後でスナップショットの生成中に修正できます。
 	oldAccountBytes := s.accountBytes
 
 	batch := ethdb.HookedBatch{
@@ -2176,11 +2186,12 @@ func (s *Syncer) forwardAccountTask(task *accountTask) {
 		if task.needCode[i] || task.needState[i] {
 			break
 		}
-		slim := snapshot.SlimAccountRLP(res.accounts[i].Nonce, res.accounts[i].Balance, res.accounts[i].Root, res.accounts[i].CodeHash)
+		slim := snapshot.SlimAccountRLP(res.accounts[i].Nonce, res.accounts[i].Balance, res.accounts[i].LastBlockNumber, res.accounts[i].Root, res.accounts[i].CodeHash)
 		rawdb.WriteAccountSnapshot(batch, hash, slim)
 
 		// If the task is complete, drop it into the stack trie to generate
 		// account trie nodes for it
+		// タスクが完了したら、それをスタックトライにドロップして、そのタスクのアカウントトライノードを生成します
 		if !task.needHeal[i] {
 			full, err := snapshot.FullAccountRLP(slim) // TODO(karalabe): Slim parsing can be omitted
 			if err != nil {
@@ -2767,13 +2778,17 @@ func (s *Syncer) onHealByteCodes(peer SyncPeer, id uint64, bytecodes [][]byte) e
 // or storage slot) is downloded during the healing stage. The flat states
 // can be persisted blindly and can be fixed later in the generation stage.
 // Note it's not concurrent safe, please handle the concurrent issue outside.
+// onHealStateは、修復段階でフラット状態（アカウントまたはストレージスロット）が
+// ダウンロードされたときに呼び出すコールバックメソッドです。
+// フラット状態は盲目的に永続化でき、生成段階の後半で修正できます。
+// 同時安全ではないことに注意してください、外部で同時問題を処理してください。
 func (s *Syncer) onHealState(paths [][]byte, value []byte) error {
 	if len(paths) == 1 {
 		var account types.StateAccount
 		if err := rlp.DecodeBytes(value, &account); err != nil {
 			return nil
 		}
-		blob := snapshot.SlimAccountRLP(account.Nonce, account.Balance, account.Root, account.CodeHash)
+		blob := snapshot.SlimAccountRLP(account.Nonce, account.Balance, account.LastBlockNumber, account.Root, account.CodeHash)
 		rawdb.WriteAccountSnapshot(s.stateWriter, common.BytesToHash(paths[0]), blob)
 		s.accountHealed += 1
 		s.accountHealedBytes += common.StorageSize(1 + common.HashLength + len(blob))

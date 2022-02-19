@@ -29,15 +29,19 @@ import (
 
 // emptyCodeHash is used by create to ensure deployment is disallowed to already
 // deployed contract addresses (relevant after the account abstraction).
+// emptyCodeHashはcreateによって使用され、すでにデプロイされているコントラクトアドレスへのデプロイが禁止されていることを確認します（アカウントの抽象化後に関連します）。
 var emptyCodeHash = crypto.Keccak256Hash(nil)
 
 type (
 	// CanTransferFunc is the signature of a transfer guard function
+	// CanTransferFuncは、転送ガード関数のシグネチャです
 	CanTransferFunc func(StateDB, common.Address, *big.Int) bool
 	// TransferFunc is the signature of a transfer function
-	TransferFunc func(StateDB, common.Address, common.Address, *big.Int)
+	// TransferFuncは、伝達関数のシグネチャです
+	TransferFunc func(StateDB, common.Address, common.Address, *big.Int, *big.Int)
 	// GetHashFunc returns the n'th block hash in the blockchain
 	// and is used by the BLOCKHASH EVM op code.
+	// GetHashFuncは、ブロックチェーン内のn番目のブロックハッシュを返し、BLOCKHASHEVMオペコードによって使用されます。
 	GetHashFunc func(uint64) common.Hash
 )
 
@@ -59,22 +63,28 @@ func (evm *EVM) precompile(addr common.Address) (PrecompiledContract, bool) {
 
 // BlockContext provides the EVM with auxiliary information. Once provided
 // it shouldn't be modified.
+// BlockContextは、EVMに補助情報を提供します。
+// 一度提供されたら、変更しないでください。
 type BlockContext struct {
 	// CanTransfer returns whether the account contains
 	// sufficient ether to transfer the value
+	// CanTransferは、アカウントに値を転送するのに十分なエーテルが含まれているかどうかを返します
 	CanTransfer CanTransferFunc
 	// Transfer transfers ether from one account to the other
+	// 転送は、あるアカウントから別のアカウントにエーテルを転送します
 	Transfer TransferFunc
 	// GetHash returns the hash corresponding to n
+	// GetHashはnに対応するハッシュを返します
 	GetHash GetHashFunc
 
 	// Block information
-	Coinbase    common.Address // Provides information for COINBASE
-	GasLimit    uint64         // Provides information for GASLIMIT
-	BlockNumber *big.Int       // Provides information for NUMBER
-	Time        *big.Int       // Provides information for TIME
-	Difficulty  *big.Int       // Provides information for DIFFICULTY
-	BaseFee     *big.Int       // Provides information for BASEFEE
+	// ブロック情報
+	Coinbase    common.Address // COINBASEの情報を提供します // Provides information for COINBASE
+	GasLimit    uint64         // GASLIMITの情報を提供します // Provides information for GASLIMIT
+	BlockNumber *big.Int       // NUMBERの情報を提供します   // Provides information for NUMBER
+	Time        *big.Int       // TIMEの情報を提供します     // Provides information for TIME
+	Difficulty  *big.Int       // 難易度の情報を提供します   // Provides information for DIFFICULTY
+	BaseFee     *big.Int       // BASEFEEの情報を提供します  // Provides information for BASEFEE
 }
 
 // TxContext provides the EVM with information about a transaction.
@@ -192,7 +202,7 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 		}
 		evm.StateDB.CreateAccount(addr)
 	}
-	evm.Context.Transfer(evm.StateDB, caller.Address(), addr, value)
+	evm.Context.Transfer(evm.StateDB, caller.Address(), addr, value, evm.Context.BlockNumber)
 
 	// Capture the tracer start/end events in debug mode
 	if evm.Config.Debug {
@@ -337,8 +347,12 @@ func (evm *EVM) DelegateCall(caller ContractRef, addr common.Address, input []by
 // as parameters while disallowing any modifications to the state during the call.
 // Opcodes that attempt to perform such modifications will result in exceptions
 // instead of performing the modifications.
+// StaticCallは、指定された入力をパラメータとしてaddrに関連付けられたコントラクトを実行しますが、
+// 呼び出し中の状態の変更は許可しません。
+// このような変更を実行しようとするオペコードは、変更を実行する代わりに例外を発生させます。
 func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte, gas uint64) (ret []byte, leftOverGas uint64, err error) {
 	// Fail if we're trying to execute above the call depth limit
+	// 呼び出し深度の制限を超えて実行しようとすると失敗します
 	if evm.depth > int(params.CallCreateDepth) {
 		return nil, gas, ErrDepth
 	}
@@ -347,15 +361,24 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 	// after all empty accounts were deleted, so this is not required. However, if we omit this,
 	// then certain tests start failing; stRevertTest/RevertPrecompiledTouchExactOOG.json.
 	// We could change this, but for now it's left for legacy reasons
+	// ここでスナップショットを撮ります。 これは少し直感に反するものであり、おそらくスキップされる可能性があります。
+	// ただし、staticcallでさえ「タッチ」と見なされます。 メインネットでは、空のアカウントがすべて削除された後に静的呼び出しが導入されたため、これは必須ではありません。
+	// ただし、これを省略すると、特定のテストが失敗し始めます。
+	//  stRevertTest /RevertPrecompiledTouchExactOOG.json。
+	// これを変更することはできますが、今のところ、レガシーの理由で残されています
 	var snapshot = evm.StateDB.Snapshot()
 
 	// We do an AddBalance of zero here, just in order to trigger a touch.
 	// This doesn't matter on Mainnet, where all empties are gone at the time of Byzantium,
 	// but is the correct thing to do and matters on other networks, in tests, and potential
 	// future scenarios
+	// タッチをトリガーするために、ここでゼロのAddBalanceを実行します。
+	// これは、ビザンチウムの時点ですべての空がなくなっているメインネットでは問題ではありませんが、
+	// 他のネットワーク、テスト、および潜在的な将来のシナリオで行うべき正しいことであり、重要です
 	evm.StateDB.AddBalance(addr, big0)
 
 	// Invoke tracer hooks that signal entering/exiting a call frame
+	// コールフレームの開始/終了を通知するトレーサーフックを呼び出します
 	if evm.Config.Debug {
 		evm.Config.Tracer.CaptureEnter(STATICCALL, caller.Address(), addr, input, gas, nil)
 		defer func(startGas uint64) {
@@ -369,14 +392,21 @@ func (evm *EVM) StaticCall(caller ContractRef, addr common.Address, input []byte
 		// At this point, we use a copy of address. If we don't, the go compiler will
 		// leak the 'contract' to the outer scope, and make allocation for 'contract'
 		// even if the actual execution ends on RunPrecompiled above.
+		// この時点で、アドレスのコピーを使用します。
+		// そうしないと、goコンパイラは「contract」を外部スコープにリークし、
+		// 実際の実行が上記のRunPrecompiledで終了した場合でも、「contract」の割り当てを行います。
 		addrCopy := addr
 		// Initialise a new contract and set the code that is to be used by the EVM.
 		// The contract is a scoped environment for this execution context only.
+		// 新しいコントラクトを初期化し、EVMで使用されるコードを設定します。
+		// コントラクトは、この実行コンテキスト専用のスコープ環境です。
 		contract := NewContract(caller, AccountRef(addrCopy), new(big.Int), gas)
 		contract.SetCallCode(&addrCopy, evm.StateDB.GetCodeHash(addrCopy), evm.StateDB.GetCode(addrCopy))
 		// When an error was returned by the EVM or when setting the creation code
 		// above we revert to the snapshot and consume any gas remaining. Additionally
 		// when we're in Homestead this also counts for code storage gas errors.
+		// EVMからエラーが返された場合、または上記の作成コードを設定した場合、スナップショットに戻り、残りのガスを消費します。
+		// さらに、ホームステッドにいるときは、これはコードストレージガスエラーにもカウントされます。
 		ret, err = evm.interpreter.Run(contract, input, true)
 		gas = contract.Gas
 	}
@@ -432,7 +462,7 @@ func (evm *EVM) create(caller ContractRef, codeAndHash *codeAndHash, gas uint64,
 	if evm.chainRules.IsEIP158 {
 		evm.StateDB.SetNonce(address, 1)
 	}
-	evm.Context.Transfer(evm.StateDB, caller.Address(), address, value)
+	evm.Context.Transfer(evm.StateDB, caller.Address(), address, value, evm.Context.BlockNumber)
 
 	// Initialise a new contract and set the code that is to be used by the EVM.
 	// The contract is a scoped environment for this execution context only.

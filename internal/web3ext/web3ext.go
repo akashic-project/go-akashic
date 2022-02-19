@@ -15,6 +15,7 @@
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
 // package web3ext contains geth specific web3.js extensions.
+// パッケージweb3extには、geth固有のweb3.js拡張機能が含まれています。
 package web3ext
 
 var Modules = map[string]string{
@@ -575,6 +576,20 @@ web3._extend({
 			call: 'eth_feeHistory',
 			params: 3,
 			inputFormatter: [null, web3._extend.formatters.inputBlockNumberFormatter, null]
+		}),
+		new web3._extend.Method({
+			name: 'getLastBlockNumber',
+			call: 'eth_getLastBlockNumber',
+			params: 2,
+			inputFormatter: [web3._extend.formatters.inputAddressFormatter, web3._extend.formatters.inputDefaultBlockNumberFormatter],
+			outputFormatter: web3._extend.utils.toBigNumber
+		}),
+		new web3._extend.Method({
+			name: 'getCoinAge',
+			call: 'eth_getCoinAge',
+			params: 2,
+			inputFormatter: [web3._extend.formatters.inputAddressFormatter, web3._extend.formatters.inputDefaultBlockNumberFormatter],
+			outputFormatter: web3._extend.utils.toBigNumber
 		}),
 	],
 	properties: [

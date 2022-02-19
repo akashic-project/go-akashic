@@ -117,6 +117,9 @@ func newObject(db *StateDB, address common.Address, data types.StateAccount) *st
 	if data.Balance == nil {
 		data.Balance = new(big.Int)
 	}
+	if data.LastBlockNumber == nil {
+		data.LastBlockNumber = new(big.Int)
+	}
 	if data.CodeHash == nil {
 		data.CodeHash = emptyCodeHash
 	}
@@ -519,6 +522,18 @@ func (s *stateObject) setBalance(amount *big.Int) {
 	s.data.Balance = amount
 }
 
+func (s *stateObject) SetLastBlockNumber(LastBlockNumber *big.Int) {
+	s.db.journal.append(LastBlockNumberChange{
+		account: &s.address,
+		prev:    new(big.Int).Set(s.data.LastBlockNumber),
+	})
+	s.setLastBlockNumber(LastBlockNumber)
+}
+
+func (s *stateObject) setLastBlockNumber(LastBlockNumber *big.Int) {
+	s.data.LastBlockNumber = LastBlockNumber
+}
+
 func (s *stateObject) deepCopy(db *StateDB) *stateObject {
 	stateObject := newObject(db, s.address, s.data)
 	if s.trie != nil {
@@ -618,6 +633,10 @@ func (s *stateObject) CodeHash() []byte {
 
 func (s *stateObject) Balance() *big.Int {
 	return s.data.Balance
+}
+
+func (s *stateObject) LastBlockNumber() *big.Int {
+	return s.data.LastBlockNumber
 }
 
 func (s *stateObject) Nonce() uint64 {

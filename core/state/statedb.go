@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state/snapshot"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -292,6 +293,30 @@ func (s *StateDB) GetBalance(addr common.Address) *big.Int {
 	return common.Big0
 }
 
+// GetLastBlockNumberは、指定されたアドレスから最後に残高変更有ったブロックを取得します。オブジェクトが見つからない場合はMAX値を取得します。
+func (s *StateDB) GetLastBlockNumber(addr common.Address) *big.Int {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.LastBlockNumber()
+	}
+	return math.MaxBig256
+}
+
+// GetCoinAgeはコインエイジを返します。オブジェクトが見つからない場合は0を返します。
+func (s *StateDB) GetCoinAge(addr common.Address, NowBlockNumber *big.Int) *big.Int {
+	stateObject := s.getStateObject(addr)
+	if stateObject != nil {
+		CoinAge := new(big.Int)
+		balance := new(big.Int)
+
+		CoinAge.Sub(NowBlockNumber, stateObject.LastBlockNumber())
+		balance.Div(stateObject.Balance(), big.NewInt(1000000000000000000))
+		CoinAge.Mul(CoinAge, balance)
+		return CoinAge
+	}
+	return common.Big0
+}
+
 func (s *StateDB) GetNonce(addr common.Address) uint64 {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
@@ -427,6 +452,13 @@ func (s *StateDB) SubBalance(addr common.Address, amount *big.Int) {
 	}
 }
 
+func (s *StateDB) SetLastBlockNumber(addr common.Address, LastBlockNumber *big.Int) {
+	stateObject := s.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetLastBlockNumber(LastBlockNumber)
+	}
+}
+
 func (s *StateDB) SetBalance(addr common.Address, amount *big.Int) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
@@ -523,7 +555,7 @@ func (s *StateDB) updateStateObject(obj *stateObject) {
 	// コミット時にアカウントの更新を追跡するだけで十分ですが、
 	// 状態のクリアを確実にキャプチャするには、削除をトランザクション境界レベルで追跡する必要があります。
 	if s.snap != nil {
-		s.snapAccounts[obj.addrHash] = snapshot.SlimAccountRLP(obj.data.Nonce, obj.data.Balance, obj.data.Root, obj.data.CodeHash)
+		s.snapAccounts[obj.addrHash] = snapshot.SlimAccountRLP(obj.data.Nonce, obj.data.Balance, obj.data.LastBlockNumber, obj.data.Root, obj.data.CodeHash)
 	}
 }
 
@@ -587,10 +619,11 @@ func (s *StateDB) getDeletedStateObject(addr common.Address) *stateObject {
 				return nil
 			}
 			data = &types.StateAccount{
-				Nonce:    acc.Nonce,
-				Balance:  acc.Balance,
-				CodeHash: acc.CodeHash,
-				Root:     common.BytesToHash(acc.Root),
+				Nonce:           acc.Nonce,
+				Balance:         acc.Balance,
+				LastBlockNumber: acc.LastBlockNumber,
+				CodeHash:        acc.CodeHash,
+				Root:            common.BytesToHash(acc.Root),
 			}
 			if len(data.CodeHash) == 0 {
 				data.CodeHash = emptyCodeHash
@@ -870,6 +903,7 @@ func (s *StateDB) RevertToSnapshot(revid int) {
 	snapshot := s.validRevisions[idx].journalIndex
 
 	// Replay the journal to undo changes and remove invalidated snapshots
+	// ジャーナルを再生して変更を元に戻し、無効になったスナップショットを削除します
 	s.journal.revert(s, snapshot)
 	s.validRevisions = s.validRevisions[:idx]
 }

@@ -124,7 +124,9 @@ func CanTransfer(db vm.StateDB, addr common.Address, amount *big.Int) bool {
 
 // Transfer subtracts amount from sender and adds amount to recipient using the given Db
 // 転送は送信者から金額を差し引き、指定されたDbを使用して受信者に金額を追加します
-func Transfer(db vm.StateDB, sender, recipient common.Address, amount *big.Int) {
+func Transfer(db vm.StateDB, sender, recipient common.Address, amount *big.Int, BlockNumber *big.Int) {
 	db.SubBalance(sender, amount)
+	db.SetLastBlockNumber(sender, BlockNumber)
 	db.AddBalance(recipient, amount)
+	db.SetLastBlockNumber(recipient, BlockNumber)
 }
