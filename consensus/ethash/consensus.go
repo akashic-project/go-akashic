@@ -43,7 +43,7 @@ var (
 	FrontierBlockReward, _        = big.NewInt(0).SetString("100000000000000000000", 10) // 100AKS // ブロックのマイニングに成功した場合のweiのブロック報酬                                // Block reward in wei for successfully mining a block
 	ByzantiumBlockReward, _       = big.NewInt(0).SetString("100000000000000000000", 10) // 100AKS // ビザンチウムから上向きのブロックをうまく採掘したことに対するweiのブロック報酬          // Block reward in wei for successfully mining a block upward from Byzantium
 	ConstantinopleBlockReward, _  = big.NewInt(0).SetString("100000000000000000000", 10) // 100AKS // コンスタンティノープルから上向きのブロックをうまく採掘したことに対するweiのブロック報酬 // Block reward in wei for successfully mining a block upward from Constantinople
-	maxUncles                     = 2                                                    // 1つのブロックで許可される叔父の最大数                                               // Maximum number of uncles allowed in a single block
+	maxUncles                     = 0                                                    // 1つのブロックで許可される叔父の最大数                                               // Maximum number of uncles allowed in a single block
 	allowedFutureBlockTimeSeconds = int64(15)                                            // ブロックに許可されている現在の時刻から、将来のブロックと見なされるまでの最大秒数        // Max seconds from current time allowed for blocks, before they're considered future blocks
 
 	// calcDifficultyEip4345 is the difficulty adjustment algorithm as specified by EIP 4345.
