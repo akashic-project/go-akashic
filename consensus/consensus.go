@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 )
@@ -82,7 +83,7 @@ type Engine interface {
 	// via the VerifySeal method.
 	// VerificationHeaderは、ヘッダーが特定のエンジンのコンセンサスルールに準拠しているかどうかを確認します。
 	// シールの検証は、オプションでここで実行することも、VerifySealメソッドを介して明示的に実行することもできます。
-	VerifyHeader(chain ChainHeaderReader, header *types.Header, seal bool) error
+	VerifyHeader(chain ChainHeaderReader, header *types.Header, seal bool, db ethdb.Database) error
 
 	// VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers
 	// concurrently. The method returns a quit channel to abort the operations and
@@ -91,12 +92,15 @@ type Engine interface {
 	// VerificationHeadersはVerifyHeaderに似ていますが、ヘッダーのバッチを同時に検証します。
 	// このメソッドは、操作を中止するための終了チャネルと、
 	// 非同期検証を取得するための結果チャネルを返します（順序は入力スライスの順序です）。
-	VerifyHeaders(chain ChainHeaderReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error)
+	VerifyHeaders(chain ChainHeaderReader, headers []*types.Header, seals []bool, db ethdb.Database) (chan<- struct{}, <-chan error)
+
+	// BlockMakeTimeはコインエイジからブロック作成間隔を決定する。
+	BlockMakeTime(number *big.Int, difficulty *big.Int, coinbase common.Address, statedb *state.StateDB) uint64
 
 	// VerifyUncles verifies that the given block's uncles conform to the consensus
 	// rules of a given engine.
 	// VerificationUnclesは、指定されたブロックの叔父が指定されたエンジンのコンセンサスルールに準拠していることを確認します。
-	VerifyUncles(chain ChainReader, block *types.Block) error
+	VerifyUncles(chain ChainReader, block *types.Block, db ethdb.Database) error
 
 	// Prepare initializes the consensus fields of a block header according to the
 	// rules of a particular engine. The changes are executed inline.

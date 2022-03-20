@@ -26,6 +26,7 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/misc"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
@@ -91,10 +92,10 @@ func (beacon *Beacon) Author(header *types.Header) (common.Address, error) {
 // VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum consensus engine.
 // VerificationHeaderは、ヘッダーがストックイーサリアムコンセンサスエンジンのコンセンサスルールに準拠しているかどうかを確認します。
-func (beacon *Beacon) VerifyHeader(chain consensus.ChainHeaderReader, header *types.Header, seal bool) error {
+func (beacon *Beacon) VerifyHeader(chain consensus.ChainHeaderReader, header *types.Header, seal bool, db ethdb.Database) error {
 	reached, _ := IsTTDReached(chain, header.ParentHash, header.Number.Uint64()-1)
 	if !reached {
-		return beacon.ethone.VerifyHeader(chain, header, seal)
+		return beacon.ethone.VerifyHeader(chain, header, seal, db)
 	}
 	// Short circuit if the parent is not known
 	// 親が不明な場合の短絡
@@ -104,7 +105,7 @@ func (beacon *Beacon) VerifyHeader(chain consensus.ChainHeaderReader, header *ty
 	}
 	// Sanity checks passed, do a proper verification
 	// 健全性チェックに合格し、適切な検証を行います
-	return beacon.verifyHeader(chain, header, parent)
+	return beacon.verifyHeader(chain, header, parent, db)
 }
 
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers
@@ -114,9 +115,9 @@ func (beacon *Beacon) VerifyHeader(chain consensus.ChainHeaderReader, header *ty
 // VerificationHeadersはVerifyHeaderに似ていますが、ヘッダーのバッチを同時に検証します。
 // このメソッドは、操作を中止するための終了チャネルと、非同期検証を取得するための結果チャネルを返します。
 // VerificationHeadersは、ヘッダーが順序付けられて連続していることを期待しています。
-func (beacon *Beacon) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error) {
+func (beacon *Beacon) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool, db ethdb.Database) (chan<- struct{}, <-chan error) {
 	if !beacon.IsPoSHeader(headers[len(headers)-1]) {
-		return beacon.ethone.VerifyHeaders(chain, headers, seals)
+		return beacon.ethone.VerifyHeaders(chain, headers, seals, db)
 	}
 	var (
 		preHeaders  []*types.Header
@@ -134,7 +135,7 @@ func (beacon *Beacon) VerifyHeaders(chain consensus.ChainHeaderReader, headers [
 	// All the headers have passed the transition point, use new rules.
 	// すべてのヘッダーが遷移点を通過しました。新しいルールを使用してください。
 	if len(preHeaders) == 0 {
-		return beacon.verifyHeaders(chain, headers, nil)
+		return beacon.verifyHeaders(chain, headers, nil, db)
 	}
 	// The transition point exists in the middle, separate the headers
 	// into two batches and apply different verification rules for them.
@@ -148,8 +149,8 @@ func (beacon *Beacon) VerifyHeaders(chain consensus.ChainHeaderReader, headers [
 			old, new, out      = 0, len(preHeaders), 0
 			errors             = make([]error, len(headers))
 			done               = make([]bool, len(headers))
-			oldDone, oldResult = beacon.ethone.VerifyHeaders(chain, preHeaders, preSeals)
-			newDone, newResult = beacon.verifyHeaders(chain, postHeaders, preHeaders[len(preHeaders)-1])
+			oldDone, oldResult = beacon.ethone.VerifyHeaders(chain, preHeaders, preSeals, db)
+			newDone, newResult = beacon.verifyHeaders(chain, postHeaders, preHeaders[len(preHeaders)-1], db)
 		)
 		for {
 			for ; done[out]; out++ {
@@ -179,9 +180,9 @@ func (beacon *Beacon) VerifyHeaders(chain consensus.ChainHeaderReader, headers [
 // rules of the Ethereum consensus engine.
 // VerificationUnclesは、指定されたブロックの叔父がイーサリアムコンセンサスエンジンの
 // コンセンサスルールに準拠していることを確認します。
-func (beacon *Beacon) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
+func (beacon *Beacon) VerifyUncles(chain consensus.ChainReader, block *types.Block, db ethdb.Database) error {
 	if !beacon.IsPoSHeader(block.Header()) {
-		return beacon.ethone.VerifyUncles(chain, block)
+		return beacon.ethone.VerifyUncles(chain, block, db)
 	}
 	// Verify that there is no uncle block. It's explicitly disabled in the beacon
 	// おじさんのブロックがないことを確認します。 ビーコンで明示的に無効になっています
@@ -208,7 +209,7 @@ func (beacon *Beacon) VerifyUncles(chain consensus.ChainReader, block *types.Blo
 // 目的の定数になる
 //（b）タイムスタンプはもう検証されません
 //（c）エクストラデータは32バイトに制限されています
-func (beacon *Beacon) verifyHeader(chain consensus.ChainHeaderReader, header, parent *types.Header) error {
+func (beacon *Beacon) verifyHeader(chain consensus.ChainHeaderReader, header, parent *types.Header, db ethdb.Database) error {
 	// Ensure that the header's extra-data section is of a reasonable size
 	// ヘッダーの追加データセクションが適切なサイズであることを確認します
 	if len(header.Extra) > 32 {
@@ -257,7 +258,7 @@ func (beacon *Beacon) verifyHeader(chain consensus.ChainHeaderReader, header, pa
 // verifyHeadersはverifyHeaderに似ていますが、ヘッダーのバッチを同時に検証します。
 // このメソッドは、操作を中止するための終了チャネルと、非同期検証を取得するための結果チャネルを返します。
 // 関連するヘッダーがまだデータベースにない場合は、追加の親ヘッダーが渡されます。
-func (beacon *Beacon) verifyHeaders(chain consensus.ChainHeaderReader, headers []*types.Header, ancestor *types.Header) (chan<- struct{}, <-chan error) {
+func (beacon *Beacon) verifyHeaders(chain consensus.ChainHeaderReader, headers []*types.Header, ancestor *types.Header, db ethdb.Database) (chan<- struct{}, <-chan error) {
 	var (
 		abort   = make(chan struct{})
 		results = make(chan error, len(headers))
@@ -282,7 +283,7 @@ func (beacon *Beacon) verifyHeaders(chain consensus.ChainHeaderReader, headers [
 				}
 				continue
 			}
-			err := beacon.verifyHeader(chain, header, parent)
+			err := beacon.verifyHeader(chain, header, parent, db)
 			select {
 			case <-abort:
 				return
@@ -444,4 +445,8 @@ func IsTTDReached(chain consensus.ChainHeaderReader, parentHash common.Hash, num
 		return false, consensus.ErrUnknownAncestor
 	}
 	return td.Cmp(chain.Config().TerminalTotalDifficulty) >= 0, nil
+}
+
+func (beacon *Beacon) BlockMakeTime(number *big.Int, difficulty *big.Int, coinbase common.Address, statedb *state.StateDB) uint64 {
+	return beacon.ethone.BlockMakeTime(number, difficulty, coinbase, statedb)
 }

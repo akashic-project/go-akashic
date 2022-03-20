@@ -58,10 +58,10 @@ func TestHeaderVerification(t *testing.T) {
 
 			if valid {
 				engine := ethash.NewFaker()
-				_, results = engine.VerifyHeaders(chain, []*types.Header{headers[i]}, []bool{true})
+				_, results = engine.VerifyHeaders(chain, []*types.Header{headers[i]}, []bool{true}, chain.db)
 			} else {
 				engine := ethash.NewFakeFailer(headers[i].Number.Uint64())
-				_, results = engine.VerifyHeaders(chain, []*types.Header{headers[i]}, []bool{true})
+				_, results = engine.VerifyHeaders(chain, []*types.Header{headers[i]}, []bool{true}, chain.db)
 			}
 			// Wait for the verification result
 			select {
@@ -173,7 +173,7 @@ func testHeaderVerificationForMerging(t *testing.T, isClique bool) {
 
 	// Verify the blocks before the merging
 	for i := 0; i < len(preBlocks); i++ {
-		_, results := runEngine.VerifyHeaders(chain, []*types.Header{preHeaders[i]}, []bool{true})
+		_, results := runEngine.VerifyHeaders(chain, []*types.Header{preHeaders[i]}, []bool{true}, chain.db)
 		// Wait for the verification result
 		select {
 		case result := <-results:
@@ -198,7 +198,7 @@ func testHeaderVerificationForMerging(t *testing.T, isClique bool) {
 
 	// Verify the blocks after the merging
 	for i := 0; i < len(postBlocks); i++ {
-		_, results := runEngine.VerifyHeaders(chain, []*types.Header{postHeaders[i]}, []bool{true})
+		_, results := runEngine.VerifyHeaders(chain, []*types.Header{postHeaders[i]}, []bool{true}, chain.db)
 		// Wait for the verification result
 		select {
 		case result := <-results:
@@ -230,7 +230,7 @@ func testHeaderVerificationForMerging(t *testing.T, isClique bool) {
 		headers = append(headers, block.Header())
 		seals = append(seals, true)
 	}
-	_, results := runEngine.VerifyHeaders(chain, headers, seals)
+	_, results := runEngine.VerifyHeaders(chain, headers, seals, chain.db)
 	for i := 0; i < len(headers); i++ {
 		select {
 		case result := <-results:
@@ -280,11 +280,11 @@ func testHeaderConcurrentVerification(t *testing.T, threads int) {
 
 		if valid {
 			chain, _ := NewBlockChain(testdb, nil, params.TestChainConfig, ethash.NewFaker(), vm.Config{}, nil, nil)
-			_, results = chain.engine.VerifyHeaders(chain, headers, seals)
+			_, results = chain.engine.VerifyHeaders(chain, headers, seals, chain.db)
 			chain.Stop()
 		} else {
 			chain, _ := NewBlockChain(testdb, nil, params.TestChainConfig, ethash.NewFakeFailer(uint64(len(headers)-1)), vm.Config{}, nil, nil)
-			_, results = chain.engine.VerifyHeaders(chain, headers, seals)
+			_, results = chain.engine.VerifyHeaders(chain, headers, seals, chain.db)
 			chain.Stop()
 		}
 		// Wait for all the verification results
@@ -349,7 +349,7 @@ func testHeaderConcurrentAbortion(t *testing.T, threads int) {
 	chain, _ := NewBlockChain(testdb, nil, params.TestChainConfig, ethash.NewFakeDelayer(time.Millisecond), vm.Config{}, nil, nil)
 	defer chain.Stop()
 
-	abort, results := chain.engine.VerifyHeaders(chain, headers, seals)
+	abort, results := chain.engine.VerifyHeaders(chain, headers, seals, chain.db)
 	close(abort)
 
 	// Deplete the results channel

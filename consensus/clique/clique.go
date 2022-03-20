@@ -214,20 +214,20 @@ func (c *Clique) Author(header *types.Header) (common.Address, error) {
 }
 
 // VerifyHeader checks whether a header conforms to the consensus rules.
-func (c *Clique) VerifyHeader(chain consensus.ChainHeaderReader, header *types.Header, seal bool) error {
-	return c.verifyHeader(chain, header, nil)
+func (c *Clique) VerifyHeader(chain consensus.ChainHeaderReader, header *types.Header, seal bool, db ethdb.Database) error {
+	return c.verifyHeader(chain, header, nil, db)
 }
 
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers. The
 // method returns a quit channel to abort the operations and a results channel to
 // retrieve the async verifications (the order is that of the input slice).
-func (c *Clique) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error) {
+func (c *Clique) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool, db ethdb.Database) (chan<- struct{}, <-chan error) {
 	abort := make(chan struct{})
 	results := make(chan error, len(headers))
 
 	go func() {
 		for i, header := range headers {
-			err := c.verifyHeader(chain, header, headers[:i])
+			err := c.verifyHeader(chain, header, headers[:i], db)
 
 			select {
 			case <-abort:
@@ -243,7 +243,7 @@ func (c *Clique) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*typ
 // caller may optionally pass in a batch of parents (ascending order) to avoid
 // looking those up from the database. This is useful for concurrently verifying
 // a batch of new headers.
-func (c *Clique) verifyHeader(chain consensus.ChainHeaderReader, header *types.Header, parents []*types.Header) error {
+func (c *Clique) verifyHeader(chain consensus.ChainHeaderReader, header *types.Header, parents []*types.Header, db ethdb.Database) error {
 	if header.Number == nil {
 		return errUnknownBlock
 	}
@@ -448,7 +448,7 @@ func (c *Clique) snapshot(chain consensus.ChainHeaderReader, number uint64, hash
 
 // VerifyUncles implements consensus.Engine, always returning an error for any
 // uncles as this consensus mechanism doesn't permit uncles.
-func (c *Clique) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
+func (c *Clique) VerifyUncles(chain consensus.ChainReader, block *types.Block, db ethdb.Database) error {
 	if len(block.Uncles()) > 0 {
 		return errors.New("uncles not allowed")
 	}
@@ -742,4 +742,8 @@ func encodeSigHeader(w io.Writer, header *types.Header) {
 	if err := rlp.Encode(w, enc); err != nil {
 		panic("can't encode: " + err.Error())
 	}
+}
+
+func (c *Clique) BlockMakeTime(number *big.Int, difficulty *big.Int, coinbase common.Address, statedb *state.StateDB) uint64 {
+	return 1
 }

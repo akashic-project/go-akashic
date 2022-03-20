@@ -87,6 +87,9 @@ const (
 	// staleThreshold is the maximum depth of the acceptable stale block.
 	// staleThresholdは、許容可能な古いブロックの最大深度です。
 	staleThreshold = 7
+
+	// ブロック生成の最大時間
+	allowedMaxTimeSeconds = int64(20)
 )
 
 // environment is the worker's current environment and holds all of the current state information.
@@ -439,12 +442,12 @@ func (w *worker) newWorkLoop(recommit time.Duration) {
 		select {
 		case <-w.startCh:
 			clearPending(w.chain.CurrentBlock().NumberU64())
-			timestamp = time.Now().Unix()
+			timestamp = time.Now().UnixMilli() / 10
 			commit(false, commitInterruptNewHead)
 
 		case head := <-w.chainHeadCh:
 			clearPending(head.Block.NumberU64())
-			timestamp = time.Now().Unix()
+			timestamp = time.Now().UnixMilli() / 10
 			commit(false, commitInterruptNewHead)
 
 		case <-timer.C:
@@ -516,6 +519,7 @@ func (w *worker) mainLoop() {
 	for {
 		select {
 		case req := <-w.newWorkCh:
+			log.Error("req.timestamp:", "", req.timestamp)
 			w.commitNewWork(req.interrupt, req.noempty, req.timestamp)
 
 		case ev := <-w.chainSideCh:
@@ -603,7 +607,8 @@ func (w *worker) mainLoop() {
 				// ここでマイニング作業を送信します。
 				// もちろん、事前封印（空の提出）は無効になっています。
 				if w.chainConfig.Clique != nil && w.chainConfig.Clique.Period == 0 {
-					w.commitNewWork(nil, true, time.Now().Unix())
+					time_tmp := time.Now().UnixMilli() / 10
+					w.commitNewWork(nil, true, time.Now().UnixMilli()/10)
 				}
 			}
 			atomic.AddInt32(&w.newTxs, int32(len(ev.Txs)))
@@ -1028,10 +1033,15 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	tstart := time.Now()
 	parent := w.chain.CurrentBlock()
 
-	if parent.Time() >= uint64(timestamp) {
-		timestamp = int64(parent.Time() + 1)
-	}
 	num := parent.Number()
+	diff := parent.Header().Difficulty
+
+	timespase := int64(1)
+
+	if w.current != nil {
+		timespase = int64(w.engine.BlockMakeTime(num, diff, w.coinbase, w.current.state))
+	}
+	timestamp = timestamp + timespase
 	header := &types.Header{
 		ParentHash: parent.Hash(),
 		Number:     num.Add(num, common.Big1),

@@ -193,7 +193,7 @@ func newHandler(config *handlerConfig) (*handler, error) {
 				return errors.New("unexpected post-merge header")
 			}
 		}
-		return h.chain.Engine().VerifyHeader(h.chain, header, true)
+		return h.chain.Engine().VerifyHeader(h.chain, header, true, h.database)
 	}
 	heighter := func() uint64 {
 		return h.chain.CurrentBlock().NumberU64()

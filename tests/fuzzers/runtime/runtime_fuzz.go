@@ -24,6 +24,9 @@ import (
 //
 // This returns 1 for valid parsable/runable code, 0
 // for invalid opcode.
+//ファズはgo-fuzzツールの基本的なエントリポイントです
+//
+//これは、有効な解析可能/実行可能コードの場合は1を返し、無効なオペコードの場合は0を返します。
 func Fuzz(input []byte) int {
 	_, _, err := runtime.Execute(input, input, &runtime.Config{
 		GasLimit: 12000000,

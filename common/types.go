@@ -46,6 +46,7 @@ var (
 )
 
 // Hash represents the 32 byte Keccak256 hash of arbitrary data.
+// ハッシュは、任意のデータの32バイトのKeccak256ハッシュを表します。
 type Hash [HashLength]byte
 
 // BytesToHash sets b to hash.

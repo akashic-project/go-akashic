@@ -65,7 +65,7 @@ func (v *BlockValidator) ValidateBody(block *types.Block) error {
 	// Header validity is known at this point, check the uncles and transactions
 	// ヘッダーの有効性はこの時点でわかっています、叔父とトランザクションを確認してください
 	header := block.Header()
-	if err := v.engine.VerifyUncles(v.bc, block); err != nil {
+	if err := v.engine.VerifyUncles(v.bc, block, v.bc.db); err != nil {
 		return err
 	}
 	if hash := types.CalcUncleHash(block.Uncles()); hash != header.UncleHash {

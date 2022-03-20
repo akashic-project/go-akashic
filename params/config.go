@@ -22,6 +22,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -76,6 +77,7 @@ var (
 		BerlinBlock:         big.NewInt(2),
 		LondonBlock:         big.NewInt(3),
 		ArrowGlacierBlock:   big.NewInt(3),
+		AkashicFirstBlock:   big.NewInt(3),
 		Ethash:              new(EthashConfig),
 	}
 
@@ -194,6 +196,7 @@ var (
 		BerlinBlock:         big.NewInt(8_290_928),
 		LondonBlock:         big.NewInt(8_897_988),
 		ArrowGlacierBlock:   nil,
+		AkashicFirstBlock:   nil,
 		Clique: &CliqueConfig{
 			Period: 15,
 			Epoch:  30000,
@@ -240,6 +243,7 @@ var (
 		BerlinBlock:         big.NewInt(4_460_644),
 		LondonBlock:         big.NewInt(5_062_605),
 		ArrowGlacierBlock:   nil,
+		AkashicFirstBlock:   nil,
 		Clique: &CliqueConfig{
 			Period: 15,
 			Epoch:  30000,
@@ -278,7 +282,7 @@ var (
 	// adding flags to the config to also have to set these fields.
 	// この構成では、キー付きフィールドを意図的に使用していないため、
 	// 構成にフラグを追加する人は、これらのフィールドも設定する必要があります。
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, new(EthashConfig), nil}
+	AllEthashProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, new(EthashConfig), nil}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Ethereum core developers into the Clique consensus.
@@ -289,9 +293,9 @@ var (
 	// adding flags to the config to also have to set these fields.
 	// この構成では、キー付きフィールドを意図的に使用していないため、
 	// 構成にフラグを追加する人は、これらのフィールドも設定する必要があります。
-	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}}
+	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}}
 
-	TestChainConfig = &ChainConfig{big.NewInt(1), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, new(EthashConfig), nil}
+	TestChainConfig = &ChainConfig{big.NewInt(1), big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, new(EthashConfig), nil}
 	TestRules       = TestChainConfig.Rules(new(big.Int))
 )
 
@@ -384,6 +388,7 @@ type ChainConfig struct {
 	LondonBlock         *big.Int `json:"londonBlock,omitempty"`         // ロンドンスイッチブロック（nil =フォークなし、0 =すでにロンドンにあります）                  // London switch block (nil = no fork, 0 = already on london)
 	ArrowGlacierBlock   *big.Int `json:"arrowGlacierBlock,omitempty"`   // Eip-4345（爆弾遅延）スイッチブロック（nil =フォークなし、0 =すでにアクティブ化されています） // Eip-4345 (bomb delay) switch block (nil = no fork, 0 = already activated)
 	MergeForkBlock      *big.Int `json:"mergeForkBlock,omitempty"`      // EIP-3675 (TheMerge) switch block (nil = no fork, 0 = already in merge proceedings)
+	AkashicFirstBlock   *big.Int `json:"Akashic1Block,omitempty"`       // アカシックファーストスイッチブロック（nil =フォークなし、0 =すでにアクティブ化されています）
 
 	// TerminalTotalDifficulty is the amount of total difficulty reached by
 	// the network that triggers the consensus upgrade.
@@ -448,6 +453,7 @@ func (c *ChainConfig) String() string {
 		c.LondonBlock,
 		c.ArrowGlacierBlock,
 		c.MergeForkBlock,
+		c.AkashicFirstBlock,
 		engine,
 	)
 }
@@ -534,6 +540,11 @@ func (c *ChainConfig) IsArrowGlacier(num *big.Int) bool {
 	return isForked(c.ArrowGlacierBlock, num)
 }
 
+func (c *ChainConfig) IsAkashicFirst(num *big.Int) bool {
+
+	return isForked(c.AkashicFirstBlock, num)
+}
+
 // IsTerminalPoWBlock returns whether the given block is the last block of PoW stage.
 // IsTerminalPoWBlockは、指定されたブロックがPoWステージの最後のブロックであるかどうかを返します。
 func (c *ChainConfig) IsTerminalPoWBlock(parentTotalDiff *big.Int, totalDiff *big.Int) bool {
@@ -589,6 +600,7 @@ func (c *ChainConfig) CheckConfigForkOrder() error {
 		{name: "londonBlock", block: c.LondonBlock},
 		{name: "arrowGlacierBlock", block: c.ArrowGlacierBlock, optional: true},
 		{name: "mergeStartBlock", block: c.MergeForkBlock, optional: true},
+		{name: "AkashicFirstBlock", block: c.AkashicFirstBlock, optional: true},
 	} {
 		if lastFork.name != "" {
 			// Next one must be higher number
@@ -667,6 +679,9 @@ func (c *ChainConfig) checkCompatible(newcfg *ChainConfig, head *big.Int) *Confi
 	}
 	if isForkIncompatible(c.MergeForkBlock, newcfg.MergeForkBlock, head) {
 		return newCompatError("Merge Start fork block", c.MergeForkBlock, newcfg.MergeForkBlock)
+	}
+	if isForkIncompatible(c.AkashicFirstBlock, newcfg.AkashicFirstBlock, head) {
+		return newCompatError("AkashicFirst fork block", c.AkashicFirstBlock, newcfg.AkashicFirstBlock)
 	}
 	return nil
 }

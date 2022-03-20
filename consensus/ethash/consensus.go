@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+
 	"math/big"
 	"runtime"
 	"time"
@@ -31,6 +32,8 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/misc"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
@@ -44,7 +47,7 @@ var (
 	ByzantiumBlockReward, _       = big.NewInt(0).SetString("100000000000000000000", 10) // 100AKS // ビザンチウムから上向きのブロックをうまく採掘したことに対するweiのブロック報酬          // Block reward in wei for successfully mining a block upward from Byzantium
 	ConstantinopleBlockReward, _  = big.NewInt(0).SetString("100000000000000000000", 10) // 100AKS // コンスタンティノープルから上向きのブロックをうまく採掘したことに対するweiのブロック報酬 // Block reward in wei for successfully mining a block upward from Constantinople
 	maxUncles                     = 0                                                    // 1つのブロックで許可される叔父の最大数                                               // Maximum number of uncles allowed in a single block
-	allowedFutureBlockTimeSeconds = int64(15)                                            // ブロックに許可されている現在の時刻から、将来のブロックと見なされるまでの最大秒数        // Max seconds from current time allowed for blocks, before they're considered future blocks
+	allowedFutureBlockTimeSeconds = int64(25)                                            // ブロックに許可されている現在の時刻から、将来のブロックと見なされるまでの最大秒数        // Max seconds from current time allowed for blocks, before they're considered future blocks
 
 	// calcDifficultyEip4345 is the difficulty adjustment algorithm as specified by EIP 4345.
 	// It offsets the bomb a total of 10.7M blocks.
@@ -90,6 +93,9 @@ var (
 	// 計算にはビザンチウムのルールが使用されます。
 	// 仕様EIP-649：https://eips.ethereum.org/EIPS/eip-649
 	calcDifficultyByzantium = makeDifficultyCalculator(big.NewInt(3000000))
+
+	// ブロック作成平均時間
+	BlockMakeAveTimeSeconds = uint64(15)
 )
 
 // Various error messages to mark blocks invalid. These should be private to
@@ -121,7 +127,7 @@ func (ethash *Ethash) Author(header *types.Header) (common.Address, error) {
 // VerifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
 // VerificationHeaderは、ヘッダーがストックのイーサリアムエタッシュエンジンのコンセンサスルールに準拠しているかどうかを確認します。
-func (ethash *Ethash) VerifyHeader(chain consensus.ChainHeaderReader, header *types.Header, seal bool) error {
+func (ethash *Ethash) VerifyHeader(chain consensus.ChainHeaderReader, header *types.Header, seal bool, db ethdb.Database) error {
 	// If we're running a full engine faking, accept any input as valid
 	// フルエンジンの偽造を実行している場合は、すべての入力を有効なものとして受け入れます
 	if ethash.config.PowMode == ModeFullFake {
@@ -139,7 +145,7 @@ func (ethash *Ethash) VerifyHeader(chain consensus.ChainHeaderReader, header *ty
 	}
 	// Sanity checks passed, do a proper verification
 	// 健全性チェックに合格し、適切な検証を行う
-	return ethash.verifyHeader(chain, header, parent, false, seal, time.Now().Unix())
+	return ethash.verifyHeader(chain, header, parent, false, seal, time.Now().Unix(), db)
 }
 
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers
@@ -147,7 +153,7 @@ func (ethash *Ethash) VerifyHeader(chain consensus.ChainHeaderReader, header *ty
 // a results channel to retrieve the async verifications.
 // VerificationHeadersはVerifyHeaderに似ていますが、ヘッダーのバッチを同時に検証します。
 // このメソッドは、操作を中止するための終了チャネルと、非同期検証を取得するための結果チャネルを返します。
-func (ethash *Ethash) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error) {
+func (ethash *Ethash) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool, db ethdb.Database) (chan<- struct{}, <-chan error) {
 	// If we're running a full engine faking, accept any input as valid
 	// フルエンジンの偽造を実行している場合は、すべての入力を有効なものとして受け入れます
 	if ethash.config.PowMode == ModeFullFake || len(headers) == 0 {
@@ -177,7 +183,7 @@ func (ethash *Ethash) VerifyHeaders(chain consensus.ChainHeaderReader, headers [
 	for i := 0; i < workers; i++ {
 		go func() {
 			for index := range inputs {
-				errors[index] = ethash.verifyHeaderWorker(chain, headers, seals, index, unixNow)
+				errors[index] = ethash.verifyHeaderWorker(chain, headers, seals, index, unixNow, db)
 				done <- index
 			}
 		}()
@@ -214,7 +220,7 @@ func (ethash *Ethash) VerifyHeaders(chain consensus.ChainHeaderReader, headers [
 	return abort, errorsOut
 }
 
-func (ethash *Ethash) verifyHeaderWorker(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool, index int, unixNow int64) error {
+func (ethash *Ethash) verifyHeaderWorker(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool, index int, unixNow int64, db ethdb.Database) error {
 	var parent *types.Header
 	if index == 0 {
 		parent = chain.GetHeader(headers[0].ParentHash, headers[0].Number.Uint64()-1)
@@ -224,13 +230,13 @@ func (ethash *Ethash) verifyHeaderWorker(chain consensus.ChainHeaderReader, head
 	if parent == nil {
 		return consensus.ErrUnknownAncestor
 	}
-	return ethash.verifyHeader(chain, headers[index], parent, false, seals[index], unixNow)
+	return ethash.verifyHeader(chain, headers[index], parent, false, seals[index], unixNow, db)
 }
 
 // VerifyUncles verifies that the given block's uncles conform to the consensus
 // rules of the stock Ethereum ethash engine.
 // VerificationUnclesは、指定されたブロックの叔父がストックイーサリアムエタッシュエンジンのコンセンサスルールに準拠していることを確認します。
-func (ethash *Ethash) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
+func (ethash *Ethash) VerifyUncles(chain consensus.ChainReader, block *types.Block, db ethdb.Database) error {
 	// If we're running a full engine faking, accept any input as valid
 	// フルエンジンの偽造を実行している場合は、すべての入力を有効なものとして受け入れます
 	if ethash.config.PowMode == ModeFullFake {
@@ -292,11 +298,79 @@ func (ethash *Ethash) VerifyUncles(chain consensus.ChainReader, block *types.Blo
 		if ancestors[uncle.ParentHash] == nil || uncle.ParentHash == block.ParentHash() {
 			return errDanglingUncle
 		}
-		if err := ethash.verifyHeader(chain, uncle, ancestors[uncle.ParentHash], true, true, time.Now().Unix()); err != nil {
+		if err := ethash.verifyHeader(chain, uncle, ancestors[uncle.ParentHash], true, true, time.Now().Unix(), db); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func calcCoinAge(coinAge *big.Int, difficulty *big.Int, numerator *big.Int, denominator *big.Int) *big.Int { // numerator:分子,denominator:分母
+	difficulty.Div(difficulty, denominator)
+	difficulty.Mul(difficulty, numerator)
+	ret := coinAge
+	if coinAge.Cmp(difficulty) == -1 { // coinAgeがdifficulty*(numerator/denominator)未満の時、coinAge*(numerator/denominator)に補正
+		ret.Div(ret, denominator)
+		ret.Mul(ret, numerator)
+	} else { // coinAgeがdifficulty*(numerator/denominator)以上の時coinAgeは100とする
+		ret = big.NewInt(100)
+	}
+	return ret
+}
+
+func adjustmentCoinAge(coinAge *big.Int, difficulty *big.Int, number *big.Int) *big.Int {
+
+	number10 := new(big.Int)
+	number2 := new(big.Int)
+	number10.Mod(number, big.NewInt(10))
+	number2.Mod(number, big.NewInt(2))
+	ret := coinAge                       //ブロックナンバー下一桁0の時
+	if number2.Cmp(big.NewInt(1)) == 0 { //ブロックナンバー奇数の時
+		ret = calcCoinAge(coinAge, difficulty, big.NewInt(15), big.NewInt(10))
+	} else if number10.Cmp(big.NewInt(0)) == 0 { //ブロックナンバー下一桁0の時
+		//コインエイジの調整無し
+	} else if number10.Cmp(big.NewInt(2)) == 0 || number10.Cmp(big.NewInt(6)) == 0 { // ブロックナンバー下一桁2か6の時
+		ret = calcCoinAge(coinAge, difficulty, big.NewInt(5), big.NewInt(10))
+	} else if number10.Cmp(big.NewInt(4)) == 0 { // ブロックナンバー下一桁5の時
+		ret = calcCoinAge(coinAge, difficulty, big.NewInt(3), big.NewInt(10))
+	} else { // ブロックナンバー下一桁8の時
+		ret = calcCoinAge(coinAge, difficulty, big.NewInt(1), big.NewInt(10))
+	}
+	return ret
+}
+
+// BlockMakeTimeはコインエイジからブロック作成間隔を決定する。
+func (ethash *Ethash) BlockMakeTime(number *big.Int, difficulty *big.Int, coinbase common.Address, statedb *state.StateDB) uint64 {
+	// TMax = BlockMakeAveTimeSeconds * 2
+	// difficultyMax = difficulty * 2
+	// T = ( ( -(TMax / difficultyMax) * coinAge ) * 100 ) + TMax
+
+	coinAge := statedb.GetCoinAge(coinbase, number)
+	coinAge = adjustmentCoinAge(coinAge, difficulty, number)
+
+	difficultyMax := new(big.Int)
+	difficultyMax.Mul(difficulty, big.NewInt(2)) // difficultyMax = difficulty * 2
+
+	TMax := new(big.Float).SetUint64(BlockMakeAveTimeSeconds)
+	TMax.Mul(TMax, big.NewFloat(2))                  // TMax = BlockMakeAveTimeSeconds * 2
+	TMax.Mul(TMax, big.NewFloat(100))                // TMax = BlockMakeAveTimeSeconds * 2 * 100
+	difficultyMax.Mul(difficultyMax, big.NewInt(-1)) // difficultyMax * (-1)
+	difficultyMaxF := new(big.Float).SetInt(difficultyMax)
+	a := new(big.Float).SetPrec(1024).Quo(TMax, difficultyMaxF) // a = -(TMax / difficultyMax)
+
+	t := new(big.Float)
+	t.Mul(a, new(big.Float).SetInt(coinAge)) // T = -(TMax / difficultyMax) * coinAge
+	t.Add(t, TMax) // T = ( -(TMax / difficultyMax) * coinAge ) + TMax
+	TimeUint64, _ := t.Uint64()
+	// a = -(TMax / difficultyMax) * coinAge * 100
+
+	if TimeUint64 <= 100 {
+		TimeUint64 = 100
+	} else if TimeUint64 > BlockMakeAveTimeSeconds*2*100 {
+		TimeUint64 = BlockMakeAveTimeSeconds * 2 * 100
+	}
+
+	return TimeUint64
 }
 
 // verifyHeader checks whether a header conforms to the consensus rules of the
@@ -304,7 +378,7 @@ func (ethash *Ethash) VerifyUncles(chain consensus.ChainReader, block *types.Blo
 // See YP section 4.3.4. "Block Header Validity"
 // verifyHeaderは、ヘッダーがストックのイーサリアムethashエンジンのコンセンサスルールに準拠しているかどうかを確認します。
 // YPセクション4.3.4を参照してください。 「ブロックヘッダーの有効性」
-func (ethash *Ethash) verifyHeader(chain consensus.ChainHeaderReader, header, parent *types.Header, uncle bool, seal bool, unixNow int64) error {
+func (ethash *Ethash) verifyHeader(chain consensus.ChainHeaderReader, header, parent *types.Header, uncle bool, seal bool, unixNow int64, db ethdb.Database) error {
 	// Ensure that the header's extra-data section is of a reasonable size
 	// ヘッダーの追加データセクションが適切なサイズであることを確認します
 	if uint64(len(header.Extra)) > params.MaximumExtraDataSize {
@@ -313,7 +387,18 @@ func (ethash *Ethash) verifyHeader(chain consensus.ChainHeaderReader, header, pa
 	// Verify the header's timestamp
 	// ヘッダーのタイムスタンプを確認します
 	if !uncle {
-		if header.Time > uint64(unixNow+allowedFutureBlockTimeSeconds) {
+
+		statedb, _ := state.New(header.Root, state.NewDatabase(db), nil)
+		num := parent.Number
+		timestamp := parent.Time + ethash.BlockMakeTime(num, parent.Difficulty, header.Coinbase, statedb)
+
+		if uint64(unixNow) > header.Time { // タイムスタンプが現在時間より早い場合は除外する
+			return consensus.ErrFutureBlock
+		}
+		if header.Time >= timestamp { // ブロックタイムスタンプがコインエイジから計算されるタイムスタンプより早い場合は違反としてエラーを返す。
+			return consensus.ErrFutureBlock
+		}
+		if header.Time > uint64(unixNow+allowedFutureBlockTimeSeconds*100) { // 1[s]→0.01[s]
 			return consensus.ErrFutureBlock
 		}
 	}
@@ -393,6 +478,8 @@ func (ethash *Ethash) CalcDifficulty(chain consensus.ChainHeaderReader, time uin
 func CalcDifficulty(config *params.ChainConfig, time uint64, parent *types.Header) *big.Int {
 	next := new(big.Int).Add(parent.Number, big1)
 	switch {
+	case config.IsAkashicFirst(next):
+		return calcDifficultyAkashicFirst(time, parent)
 	case config.IsArrowGlacier(next):
 		return calcDifficultyEip4345(time, parent)
 	case config.IsLondon(next):
@@ -550,6 +637,37 @@ func calcDifficultyHomestead(time uint64, parent *types.Header) *big.Int {
 		y.Exp(big2, y, nil)
 		x.Add(x, y)
 	}
+	return x
+}
+
+func calcDifficultyAkashicFirst(time uint64, parent *types.Header) *big.Int {
+	// algorithm:
+	// アルゴリズム：
+	// NewDiff = parent_diff -
+	// ( BlockMakeAveTimeSeconds*100 - ( block_timestamp - parent_timestamp ) ) * 100 // 平均との差0.01s
+	// max(NewDiff,100)
+	bigTime := new(big.Int).SetUint64(time)
+	bigParentTime := new(big.Int).SetUint64(parent.Time)
+
+	// holds intermediate values to make the algo easier to read & audit
+	// アルゴを読みやすく監査しやすくするために中間値を保持します
+	x := new(big.Int)
+	y := new(big.Int)
+
+	// ( ( BlockMakeAveTimeSeconds*100 - ( block_timestamp - parent_timestamp ) )
+	x.Sub(bigTime, bigParentTime)
+	y.Mul(new(big.Int).SetUint64(BlockMakeAveTimeSeconds), big.NewInt(100))
+	x.Sub(y, x)
+	// diff = parent_diff - ( ( BlockMakeAveTimeSeconds*100 - (parent_timestamp - block_timestamp) ) * 100 )
+	x.Mul(x, big.NewInt(100))
+	x.Add(parent.Difficulty, x)
+
+	// max(NewDiff,100)
+	if x.Cmp(big.NewInt(100)) < 0 {
+		x.Set(big.NewInt(100))
+	}
+	//x = big.NewInt(100000)
+
 	return x
 }
 

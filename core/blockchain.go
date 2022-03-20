@@ -402,7 +402,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	// it in advance.
 	// ノードが最初に行うことは、ヘッドブロックの検証データ（ethashキャッシュまたはクリーク投票スナップショット）を再構築することです。
 	// 事前にそれを行うこともできます。
-	bc.engine.VerifyHeader(bc, bc.CurrentHeader(), true)
+	bc.engine.VerifyHeader(bc, bc.CurrentHeader(), true, bc.db)
 
 	// Check the current state of the block hashes and make sure that we do not have any of the bad blocks in our chain
 	// ブロックハッシュの現在の状態をチェックし、チェーンに不良ブロックがないことを確認します
@@ -1658,7 +1658,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals, setHead bool)
 		headers[i] = block.Header()
 		seals[i] = verifySeals
 	}
-	abort, results := bc.engine.VerifyHeaders(bc, headers, seals)
+	abort, results := bc.engine.VerifyHeaders(bc, headers, seals, bc.db)
 	defer close(abort)
 
 	// Peek the error for the first block to decide the directing import logic

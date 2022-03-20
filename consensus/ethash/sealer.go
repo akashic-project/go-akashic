@@ -147,16 +147,14 @@ func (ethash *Ethash) mine(block *types.Block, id int, seed uint64, abort chan s
 	var (
 		header  = block.Header()
 		hash    = ethash.SealHash(header).Bytes()
-		target  = new(big.Int).Div(two256, header.Difficulty)
 		number  = header.Number.Uint64()
 		dataset = ethash.dataset(number, false)
 	)
 	// Start generating random nonces until we abort or find a good one
 	// 中止するか、適切なナンスが見つかるまで、ランダムなナンスの生成を開始します
 	var (
-		attempts  = int64(0)
-		nonce     = seed
-		powBuffer = new(big.Int)
+		attempts = int64(0)
+		nonce    = seed
 	)
 	logger := ethash.config.Log.New("miner", id)
 	logger.Trace("Started ethash search for new nonces", "seed", seed)
@@ -171,6 +169,15 @@ search:
 			break search
 
 		default:
+			// システムタイマ取得してブロックのタイムスタンプを超えたときにブロックを作成する。
+			// タイマ経過までwaitする。
+			NowTime := time.Now().UnixMilli() / 10
+
+			if NowTime < int64(header.Time) {
+				time.Sleep(10 * time.Millisecond)
+				continue
+			}
+
 			// We don't have to update hash rate on every nonce, so update after after 2^X nonces
 			// すべてのナンスでハッシュレートを更新する必要がないため、2 ^ Xノンスの後に更新します
 			attempts++
@@ -180,25 +187,22 @@ search:
 			}
 			// Compute the PoW value of this nonce
 			// このナンスのPoW値を計算します
-			digest, result := hashimotoFull(dataset.dataset, hash, nonce)
-			if powBuffer.SetBytes(result).Cmp(target) <= 0 {
-				// Correct nonce found, create a new header with it
-				// 見つかったナンスを修正し、それを使用して新しいヘッダーを作成します
-				header = types.CopyHeader(header)
-				header.Nonce = types.EncodeNonce(nonce)
-				header.MixDigest = common.BytesToHash(digest)
+			digest, _ := hashimotoFull(dataset.dataset, hash, nonce)
 
-				// Seal and return a block (if still needed)
-				// ブロックを封印して返却します（まだ必要な場合）
-				select {
-				case found <- block.WithSeal(header):
-					logger.Trace("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce)
-				case <-abort:
-					logger.Trace("Ethash nonce found but discarded", "attempts", nonce-seed, "nonce", nonce)
-				}
-				break search
+			// Correct nonce found, create a new header with it
+			// 見つかったナンスを修正し、それを使用して新しいヘッダーを作成します
+			header = types.CopyHeader(header)
+			header.Nonce = types.EncodeNonce(nonce)
+			header.MixDigest = common.BytesToHash(digest)
+			// Seal and return a block (if still needed)
+			// ブロックを封印して返却します（まだ必要な場合）
+			select {
+			case found <- block.WithSeal(header):
+				logger.Trace("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce) // Ethash nonceが見つかり、報告されました
+			case <-abort:
+				logger.Trace("Ethash nonce found but discarded", "attempts", nonce-seed, "nonce", nonce) // Ethash nonceが見つかりましたが、破棄されました
 			}
-			nonce++
+			break search
 		}
 	}
 	// Datasets are unmapped in a finalizer. Ensure that the dataset stays live
@@ -292,7 +296,7 @@ func startRemoteSealer(ethash *Ethash, urls []string, noverify bool) *remoteSeal
 
 func (s *remoteSealer) loop() {
 	defer func() {
-		s.ethash.config.Log.Trace("Ethash remote sealer is exiting")
+		s.ethash.config.Log.Trace("Ethash remote sealer is exiting") // Ethashリモートシーラーが終了しています
 		s.cancelNotify()
 		s.reqWG.Wait()
 		close(s.exitCh)
