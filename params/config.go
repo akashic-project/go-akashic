@@ -22,7 +22,6 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
 	"golang.org/x/crypto/sha3"
 )
 
