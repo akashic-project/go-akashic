@@ -33,7 +33,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
@@ -360,7 +359,7 @@ func (ethash *Ethash) BlockMakeTime(number *big.Int, difficulty *big.Int, coinba
 
 	t := new(big.Float)
 	t.Mul(a, new(big.Float).SetInt(coinAge)) // T = -(TMax / difficultyMax) * coinAge
-	t.Add(t, TMax) // T = ( -(TMax / difficultyMax) * coinAge ) + TMax
+	t.Add(t, TMax)                           // T = ( -(TMax / difficultyMax) * coinAge ) + TMax
 	TimeUint64, _ := t.Uint64()
 	// a = -(TMax / difficultyMax) * coinAge * 100
 

@@ -607,7 +607,6 @@ func (w *worker) mainLoop() {
 				// ここでマイニング作業を送信します。
 				// もちろん、事前封印（空の提出）は無効になっています。
 				if w.chainConfig.Clique != nil && w.chainConfig.Clique.Period == 0 {
-					time_tmp := time.Now().UnixMilli() / 10
 					w.commitNewWork(nil, true, time.Now().UnixMilli()/10)
 				}
 			}
