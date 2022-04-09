@@ -23,14 +23,18 @@ import (
 )
 
 // hashes is a helper to implement sort.Interface.
+// ハッシュはsort.Interfaceを実装するためのヘルパーです。
 type hashes []common.Hash
 
 // Len is the number of elements in the collection.
+// Lenは、コレクション内の要素の数です。
 func (hs hashes) Len() int { return len(hs) }
 
 // Less reports whether the element with index i should sort before the element
 // with index j.
+//インデックスiの要素がインデックスjの要素の前にソートする必要があるかどうかのレポートが少なくなります。
 func (hs hashes) Less(i, j int) bool { return bytes.Compare(hs[i][:], hs[j][:]) < 0 }
 
 // Swap swaps the elements with indexes i and j.
+// スワップは、要素をインデックスiおよびjとスワップします。
 func (hs hashes) Swap(i, j int) { hs[i], hs[j] = hs[j], hs[i] }

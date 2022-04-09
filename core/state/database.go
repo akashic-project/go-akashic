@@ -31,69 +31,95 @@ import (
 
 const (
 	// Number of codehash->size associations to keep.
+	// 保持するcodehash->sizeアソシエーションの数。
 	codeSizeCacheSize = 100000
 
 	// Cache size granted for caching clean code.
+	// クリーンなコードをキャッシュするために付与されたキャッシュサイズ。
 	codeCacheSize = 64 * 1024 * 1024
 )
 
 // Database wraps access to tries and contract code.
+// データベースは試行とコントラクトコードへのアクセスをラップします。
 type Database interface {
 	// OpenTrie opens the main account trie.
+	// OpenTrieはメインアカウントのトライを開きます。
 	OpenTrie(root common.Hash) (Trie, error)
 
 	// OpenStorageTrie opens the storage trie of an account.
+	// OpenStorageTrieは、アカウントのストレージトライを開きます。
 	OpenStorageTrie(addrHash, root common.Hash) (Trie, error)
 
 	// CopyTrie returns an independent copy of the given trie.
+	// CopyTrieは、指定されたトライの独立したコピーを返します。
 	CopyTrie(Trie) Trie
 
 	// ContractCode retrieves a particular contract's code.
+	// ContractCodeは、特定のコントラクトのコードを取得します。
 	ContractCode(addrHash, codeHash common.Hash) ([]byte, error)
 
 	// ContractCodeSize retrieves a particular contracts code's size.
+	// ContractCodeSizeは、特定のコントラクトコードのサイズを取得します。
 	ContractCodeSize(addrHash, codeHash common.Hash) (int, error)
 
 	// TrieDB retrieves the low level trie database used for data storage.
+	// TrieDBは、データストレージに使用される低レベルのtrieデータベースを取得します。
 	TrieDB() *trie.Database
 }
 
 // Trie is a Ethereum Merkle Patricia trie.
+// TrieはEthereumMerklePatriciaトライです。
 type Trie interface {
 	// GetKey returns the sha3 preimage of a hashed key that was previously used
 	// to store a value.
 	//
 	// TODO(fjl): remove this when SecureTrie is removed
+	// GetKeyは、以前に値を格納するために使用されたハッシュキーのsha3プリイメージを返します。
+	//
+	// TODO（fjl）：SecureTrieが削除されたときにこれを削除します
 	GetKey([]byte) []byte
 
 	// TryGet returns the value for key stored in the trie. The value bytes must
 	// not be modified by the caller. If a node was not found in the database, a
 	// trie.MissingNodeError is returned.
+	// TryGetは、トライに格納されているキーの値を返します。値bytesは、呼び出し元が変更してはなりません。
+	// データベースでノードが見つからなかった場合は、trie.MissingNodeErrorが返されます。
 	TryGet(key []byte) ([]byte, error)
 
 	// TryUpdateAccount abstract an account write in the trie.
+	// TryUpdateAccountは、トライでのアカウント書き込みを抽象化します。
 	TryUpdateAccount(key []byte, account *types.StateAccount) error
 
 	// TryUpdate associates key with value in the trie. If value has length zero, any
 	// existing value is deleted from the trie. The value bytes must not be modified
 	// by the caller while they are stored in the trie. If a node was not found in the
 	// database, a trie.MissingNodeError is returned.
+	// TryUpdateは、キーをトライの値に関連付けます。値の長さがゼロの場合、既存の値はすべてトライから削除されます。値バイトは、トライに格納されている間は呼び出し元が変更してはなりません。
+	// データベースでノードが見つからなかった場合は、trie.MissingNodeErrorが返されます。
 	TryUpdate(key, value []byte) error
 
 	// TryDelete removes any existing value for key from the trie. If a node was not
 	// found in the database, a trie.MissingNodeError is returned.
+	// TryDeleteは、キーの既存の値をトライから削除します。
+	// データベースでノードが見つからなかった場合は、trie.MissingNodeErrorが返されます。
 	TryDelete(key []byte) error
 
 	// Hash returns the root hash of the trie. It does not write to the database and
 	// can be used even if the trie doesn't have one.
+	// Hashはトライのルートハッシュを返します。
+	// データベースには書き込まれず、トライにデータベースがなくても使用できます。
 	Hash() common.Hash
 
 	// Commit writes all nodes to the trie's memory database, tracking the internal
 	// and external (for account tries) references.
+	// Commitは、すべてのノードをトライのメモリデータベースに書き込み、
+	// 内部および外部（アカウント試行の場合）の参照を追跡します。
 	Commit(onleaf trie.LeafCallback) (common.Hash, int, error)
 
 	// NodeIterator returns an iterator that returns nodes of the trie. Iteration
 	// starts at the key after the given start key.
+	// NodeIteratorは、トライのノードを返すイテレータを返します。
+	// 反復は、指定された開始キーの後のキーから開始されます。
 	NodeIterator(startKey []byte) trie.NodeIterator
 
 	// Prove constructs a Merkle proof for key. The result contains all encoded nodes
@@ -103,12 +129,22 @@ type Trie interface {
 	// If the trie does not contain a value for key, the returned proof contains all
 	// nodes of the longest existing prefix of the key (at least the root), ending
 	// with the node that proves the absence of the key.
+	// Proveは、キーのMerkle証明を作成します。
+	// 結果には、キーの値へのパス上のすべてのエンコードされたノードが含まれます。
+	// 値自体も最後のノードに含まれており、証明を検証することで取得できます。
+	//
+	// トライにキーの値が含まれていない場合、返されるプルーフには、
+	// キーの既存の最長プレフィックス（少なくともルート）のすべてのノードが含まれ、
+	// キーがないことを証明するノードで終わります。
 	Prove(key []byte, fromLevel uint, proofDb ethdb.KeyValueWriter) error
 }
 
 // NewDatabase creates a backing store for state. The returned database is safe for
 // concurrent use, but does not retain any recent trie nodes in memory. To keep some
 // historical state in memory, use the NewDatabaseWithConfig constructor.
+// NewDatabaseは、状態のバッキングストアを作成します。
+// 返されたデータベースは同時使用しても安全ですが、最近のトライノードはメモリに保持されません。
+// 履歴状態をメモリに保持するには、NewDatabaseWithConfigコンストラクターを使用します。
 func NewDatabase(db ethdb.Database) Database {
 	return NewDatabaseWithConfig(db, nil)
 }
@@ -116,6 +152,9 @@ func NewDatabase(db ethdb.Database) Database {
 // NewDatabaseWithConfig creates a backing store for state. The returned database
 // is safe for concurrent use and retains a lot of collapsed RLP trie nodes in a
 // large memory cache.
+// NewDatabaseWithConfigは、状態のバッキングストアを作成します。
+// 返されたデータベースは、同時使用に対して安全であり、
+// 大きなメモリキャッシュに多くの折りたたまれたRLPトライノードを保持します。
 func NewDatabaseWithConfig(db ethdb.Database, config *trie.Config) Database {
 	csc, _ := lru.New(codeSizeCacheSize)
 	return &cachingDB{
@@ -132,6 +171,7 @@ type cachingDB struct {
 }
 
 // OpenTrie opens the main account trie at a specific root hash.
+// OpenTrieは、特定のルートハッシュでメインアカウントトライを開きます。
 func (db *cachingDB) OpenTrie(root common.Hash) (Trie, error) {
 	tr, err := trie.NewSecure(root, db.db)
 	if err != nil {
@@ -141,6 +181,7 @@ func (db *cachingDB) OpenTrie(root common.Hash) (Trie, error) {
 }
 
 // OpenStorageTrie opens the storage trie of an account.
+// OpenStorageTrieは、アカウントのストレージトライを開きます。
 func (db *cachingDB) OpenStorageTrie(addrHash, root common.Hash) (Trie, error) {
 	tr, err := trie.NewSecure(root, db.db)
 	if err != nil {
@@ -150,6 +191,7 @@ func (db *cachingDB) OpenStorageTrie(addrHash, root common.Hash) (Trie, error) {
 }
 
 // CopyTrie returns an independent copy of the given trie.
+// CopyTrieは、指定されたトライの独立したコピーを返します。
 func (db *cachingDB) CopyTrie(t Trie) Trie {
 	switch t := t.(type) {
 	case *trie.SecureTrie:
@@ -160,6 +202,7 @@ func (db *cachingDB) CopyTrie(t Trie) Trie {
 }
 
 // ContractCode retrieves a particular contract's code.
+// ContractCodeは、特定のコントラクトのコードを取得します。
 func (db *cachingDB) ContractCode(addrHash, codeHash common.Hash) ([]byte, error) {
 	if code := db.codeCache.Get(nil, codeHash.Bytes()); len(code) > 0 {
 		return code, nil
@@ -176,6 +219,8 @@ func (db *cachingDB) ContractCode(addrHash, codeHash common.Hash) ([]byte, error
 // ContractCodeWithPrefix retrieves a particular contract's code. If the
 // code can't be found in the cache, then check the existence with **new**
 // db scheme.
+// ContractCodeWithPrefixは、特定のコントラクトのコードを取得します。
+// キャッシュにコードが見つからない場合は、** new**dbスキームで存在を確認してください。
 func (db *cachingDB) ContractCodeWithPrefix(addrHash, codeHash common.Hash) ([]byte, error) {
 	if code := db.codeCache.Get(nil, codeHash.Bytes()); len(code) > 0 {
 		return code, nil
@@ -190,6 +235,7 @@ func (db *cachingDB) ContractCodeWithPrefix(addrHash, codeHash common.Hash) ([]b
 }
 
 // ContractCodeSize retrieves a particular contracts code's size.
+// ContractCodeSizeは、特定のコントラクトコードのサイズを取得します。
 func (db *cachingDB) ContractCodeSize(addrHash, codeHash common.Hash) (int, error) {
 	if cached, ok := db.codeSizeCache.Get(codeHash); ok {
 		return cached.(int), nil
@@ -199,6 +245,7 @@ func (db *cachingDB) ContractCodeSize(addrHash, codeHash common.Hash) (int, erro
 }
 
 // TrieDB retrieves any intermediate trie-node caching layer.
+// TrieDBは、中間のトライノードキャッシングレイヤーを取得します。
 func (db *cachingDB) TrieDB() *trie.Database {
 	return db.db
 }

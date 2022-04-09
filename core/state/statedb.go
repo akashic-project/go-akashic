@@ -916,6 +916,9 @@ func (s *StateDB) GetRefund() uint64 {
 // Finalise finalises the state by removing the s destructed objects and clears
 // the journal as well as the refunds. Finalise, however, will not push any updates
 // into the tries just yet. Only IntermediateRoot or Commit will do that.
+// Finalizeは、破壊されたオブジェクトを削除して状態を確定し、ジャーナルと払い戻しをクリアします。
+// ただし、Finaliseは、まだ更新を試行にプッシュしません。
+// IntermediateRootまたはCommitのみがそれを行います。
 func (s *StateDB) Finalise(deleteEmptyObjects bool) {
 	addressesToPrefetch := make([][]byte, 0, len(s.journal.dirties))
 	for addr := range s.journal.dirties {

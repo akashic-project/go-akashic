@@ -38,12 +38,15 @@ type journalEntry interface {
 // journal contains the list of state modifications applied since the last state
 // commit. These are tracked to be able to be reverted in the case of an execution
 // exception or request for reversal.
+// ジャーナルには、最後の状態コミット以降に適用された状態変更のリストが含まれています。
+// これらは、実行例外または取り消しの要求が発生した場合に元に戻すことができるように追跡されます。
 type journal struct {
-	entries []journalEntry         // Current changes tracked by the journal
-	dirties map[common.Address]int // Dirty accounts and the number of changes
+	entries []journalEntry         // ジャーナルによって追跡される現在の変更 // Current changes tracked by the journal
+	dirties map[common.Address]int // ダーティアカウントと変更の数 // Dirty accounts and the number of changes
 }
 
 // newJournal creates a new initialized journal.
+// newJournalは、新しい初期化されたジャーナルを作成します。
 func newJournal() *journal {
 	return &journal{
 		dirties: make(map[common.Address]int),
@@ -82,17 +85,21 @@ func (j *journal) revert(statedb *StateDB, snapshot int) {
 // dirty explicitly sets an address to dirty, even if the change entries would
 // otherwise suggest it as clean. This method is an ugly hack to handle the RIPEMD
 // precompile consensus exception.
+// ダーティは、変更エントリがクリーンであると示唆する場合でも、アドレスをダーティに明示的に設定します。
+// このメソッドは、RIPEMDプリコンパイルコンセンサス例外を処理するための醜いハックです。
 func (j *journal) dirty(addr common.Address) {
 	j.dirties[addr]++
 }
 
 // length returns the current number of entries in the journal.
+// lengthは、ジャーナルの現在のエントリ数を返します。
 func (j *journal) length() int {
 	return len(j.entries)
 }
 
 type (
 	// Changes to the account trie.
+	// アカウントトライへの変更。
 	createObjectChange struct {
 		account *common.Address
 	}
@@ -132,6 +139,7 @@ type (
 	}
 
 	// Changes to other state values.
+	// 他の状態値に変更します。
 	refundChange struct {
 		prev uint64
 	}
@@ -145,6 +153,7 @@ type (
 		account *common.Address
 	}
 	// Changes to the access list
+	// アクセスリストへの変更
 	accessListAddAccountChange struct {
 		address *common.Address
 	}
@@ -274,6 +283,14 @@ func (ch accessListAddAccountChange) revert(s *StateDB) {
 		Therefore, when unrolling the change, we can always blindly delete the
 		(addr) at this point, since no storage adds can remain when come upon
 		a single (addr) change.
+	*/
+	/*
+			ここで重要な不変条件の1つは、（addr、slot）が追加されるたびに、
+			addrがまだ存在しない場合、追加によって2つのジャーナルエントリが発生することです。
+			 -アドレス用に1つ、
+			 --（address、slot）用に1つ。したがって、変更を展開するときは、
+		    この時点でいつでも盲目的に（addr）を削除できます。
+			これは、単一の（addr）変更が発生したときにストレージの追加が残っていないためです。
 	*/
 	s.accessList.DeleteAddress(*ch.address)
 }

@@ -31,13 +31,19 @@ import (
 // specifying a particular key range for deletion.
 //
 // Origin is included for wiping and limit is excluded if they are specified.
+// wipeKeyRangeは、プレフィックスで始まり、特定の合計キー長を持つキーの範囲をデータベースから削除します。
+// 開始と制限は、削除する特定のキー範囲を指定するためのオプションです。
+//
+// 原点はワイプに含まれ、制限が指定されている場合は除外されます。
 func wipeKeyRange(db ethdb.KeyValueStore, kind string, prefix []byte, origin []byte, limit []byte, keylen int, meter metrics.Meter, report bool) error {
 	// Batch deletions together to avoid holding an iterator for too long
+	// イテレータを長時間保持しないように、削除をまとめてバッチ処理します
 	var (
 		batch = db.NewBatch()
 		items int
 	)
 	// Iterate over the key-range and delete all of them
+	// キー範囲を繰り返し処理し、それらをすべて削除します
 	start, logged := time.Now(), time.Now()
 
 	it := db.NewIterator(prefix, origin)
@@ -47,6 +53,7 @@ func wipeKeyRange(db ethdb.KeyValueStore, kind string, prefix []byte, origin []b
 	}
 	for it.Next() {
 		// Skip any keys with the correct prefix but wrong length (trie nodes)
+		// プレフィックスは正しいが長さが間違っているキーをスキップします（トライノード）
 		key := it.Key()
 		if !bytes.HasPrefix(key, prefix) {
 			break
@@ -58,11 +65,13 @@ func wipeKeyRange(db ethdb.KeyValueStore, kind string, prefix []byte, origin []b
 			break
 		}
 		// Delete the key and periodically recreate the batch and iterator
+		// キーを削除し、バッチとイテレータを定期的に再作成します
 		batch.Delete(key)
 		items++
 
 		if items%10000 == 0 {
 			// Batch too large (or iterator too long lived, flush and recreate)
+			// バッチが大きすぎます（またはイテレータの寿命が長すぎます、フラッシュして再作成します）
 			it.Release()
 			if err := batch.Write(); err != nil {
 				return err
@@ -72,7 +81,7 @@ func wipeKeyRange(db ethdb.KeyValueStore, kind string, prefix []byte, origin []b
 			it = db.NewIterator(prefix, seekPos)
 
 			if time.Since(logged) > 8*time.Second && report {
-				log.Info("Deleting state snapshot leftovers", "kind", kind, "wiped", items, "elapsed", common.PrettyDuration(time.Since(start)))
+				log.Info("Deleting state snapshot leftovers", "kind", kind, "wiped", items, "elapsed", common.PrettyDuration(time.Since(start))) // 状態スナップショットの残り物を削除する
 				logged = time.Now()
 			}
 		}
@@ -85,7 +94,7 @@ func wipeKeyRange(db ethdb.KeyValueStore, kind string, prefix []byte, origin []b
 		meter.Mark(int64(items))
 	}
 	if report {
-		log.Info("Deleted state snapshot leftovers", "kind", kind, "wiped", items, "elapsed", common.PrettyDuration(time.Since(start)))
+		log.Info("Deleted state snapshot leftovers", "kind", kind, "wiped", items, "elapsed", common.PrettyDuration(time.Since(start))) // 削除された状態のスナップショットの残り物
 	}
 	return nil
 }

@@ -54,6 +54,8 @@ func (f stateBloomHasher) Sum64() uint64                     { return binary.Big
 //
 // After the entire state is generated, the bloom filter should be persisted into
 // the disk. It indicates the whole generation procedure is finished.
+//状態全体が生成された後、ブルームフィルターをディスクに永続化する必要があります。
+// 生成手順全体が終了したことを示します。
 type stateBloom struct {
 	bloom *bloomfilter.Filter
 }
@@ -62,6 +64,11 @@ type stateBloom struct {
 // The bloom filter will be created by the passing bloom filter size. According
 // to the https://hur.st/bloomfilter/?n=600000000&p=&m=2048MB&k=4, the parameters
 // are picked so that the false-positive rate for mainnet is low enough.
+
+// newStateBloomWithSizeは、状態生成用のまったく新しい状態ブルームを作成します。
+// ブルームフィルターは、通過するブルームフィルターサイズによって作成されます。
+//  https://hur.st/bloomfilter/?n=600000000&p3%m=2048MB&k=4
+// によると、メインネットの誤検知率が十分に低くなるようにパラメーターが選択されます。
 func newStateBloomWithSize(size uint64) (*stateBloom, error) {
 	bloom, err := bloomfilter.New(size*1024*1024*8, 4)
 	if err != nil {
@@ -73,6 +80,8 @@ func newStateBloomWithSize(size uint64) (*stateBloom, error) {
 
 // NewStateBloomFromDisk loads the state bloom from the given file.
 // In this case the assumption is held the bloom filter is complete.
+// NewStateBloomFromDiskは、指定されたファイルから状態ブルームをロードします。
+// この場合、仮定が保持され、ブルームフィルターが完了します。
 func NewStateBloomFromDisk(filename string) (*stateBloom, error) {
 	bloom, _, err := bloomfilter.ReadFile(filename)
 	if err != nil {
@@ -83,13 +92,16 @@ func NewStateBloomFromDisk(filename string) (*stateBloom, error) {
 
 // Commit flushes the bloom filter content into the disk and marks the bloom
 // as complete.
+// Commitは、ブルームフィルターのコンテンツをディスクにフラッシュし、ブルームを完了としてマークします。
 func (bloom *stateBloom) Commit(filename, tempname string) error {
 	// Write the bloom out into a temporary file
+	// ブルームを一時ファイルに書き込みます
 	_, err := bloom.bloom.WriteFile(tempname)
 	if err != nil {
 		return err
 	}
 	// Ensure the file is synced to disk
+	// ファイルがディスクに同期されていることを確認します
 	f, err := os.OpenFile(tempname, os.O_RDWR, 0666)
 	if err != nil {
 		return err
@@ -101,17 +113,20 @@ func (bloom *stateBloom) Commit(filename, tempname string) error {
 	f.Close()
 
 	// Move the teporary file into it's final location
+	// 一時ファイルを最終的な場所に移動します
 	return os.Rename(tempname, filename)
 }
 
 // Put implements the KeyValueWriter interface. But here only the key is needed.
+// PutはKeyValueWriterインターフェイスを実装します。ただし、ここで必要なのはキーだけです。
 func (bloom *stateBloom) Put(key []byte, value []byte) error {
 	// If the key length is not 32bytes, ensure it's contract code
 	// entry with new scheme.
+	// キーの長さが32バイトでない場合は、新しいスキームを使用したコントラクトコードエントリであることを確認してください。
 	if len(key) != common.HashLength {
 		isCode, codeKey := rawdb.IsCodeKey(key)
 		if !isCode {
-			return errors.New("invalid entry")
+			return errors.New("invalid entry") // 無効なエントリ
 		}
 		bloom.bloom.Add(stateBloomHasher(codeKey))
 		return nil
@@ -121,12 +136,16 @@ func (bloom *stateBloom) Put(key []byte, value []byte) error {
 }
 
 // Delete removes the key from the key-value data store.
-func (bloom *stateBloom) Delete(key []byte) error { panic("not supported") }
+// Deleteは、Key-Valueデータストアからキーを削除します。
+func (bloom *stateBloom) Delete(key []byte) error { panic("not supported") } // サポートされていません
 
 // Contain is the wrapper of the underlying contains function which
 // reports whether the key is contained.
 // - If it says yes, the key may be contained
 // - If it says no, the key is definitely not contained.
+// Containは、キーが含まれているかどうかを報告する基になるcontains関数のラッパーです。
+// -「はい」と表示されている場合、キーが含まれている可能性があります
+// -「いいえ」と表示されている場合、キーは間違いなく含まれていません。
 func (bloom *stateBloom) Contain(key []byte) (bool, error) {
 	return bloom.bloom.Contains(stateBloomHasher(key)), nil
 }

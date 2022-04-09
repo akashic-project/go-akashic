@@ -69,6 +69,7 @@ func SlimAccountRLP(nonce uint64, balance *big.Int, LastBlockNumber *big.Int, ro
 
 // FullAccount decodes the data on the 'slim RLP' format and return
 // the consensus format account.
+// FullAccountは、「スリムRLP」形式でデータをデコードし、コンセンサス形式のアカウントを返します。
 func FullAccount(data []byte) (Account, error) {
 	var account Account
 	if err := rlp.DecodeBytes(data, &account); err != nil {
@@ -84,6 +85,7 @@ func FullAccount(data []byte) (Account, error) {
 }
 
 // FullAccountRLP converts data on the 'slim RLP' format into the full RLP-format.
+// FullAccountRLPは、「スリムRLP」形式のデータを完全なRLP形式に変換します。
 func FullAccountRLP(data []byte) ([]byte, error) {
 	account, err := FullAccount(data)
 	if err != nil {

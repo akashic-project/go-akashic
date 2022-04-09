@@ -40,26 +40,33 @@ import (
 
 const (
 	// stateBloomFilePrefix is the filename prefix of state bloom filter.
+	// stateBloomFilePrefixは、状態ブルームフィルターのファイル名プレフィックスです。
 	stateBloomFilePrefix = "statebloom"
 
 	// stateBloomFilePrefix is the filename suffix of state bloom filter.
+	// stateBloomFilePrefixは、状態ブルームフィルターのファイル名サフィックスです。
 	stateBloomFileSuffix = "bf.gz"
 
 	// stateBloomFileTempSuffix is the filename suffix of state bloom filter
 	// while it is being written out to detect write aborts.
+    // stateBloomFileTempSuffixは、書き込みの中止を検出するために書き出されている間の状態ブルームフィルターのファイル名サフィックスです。
 	stateBloomFileTempSuffix = ".tmp"
 
 	// rangeCompactionThreshold is the minimal deleted entry number for
 	// triggering range compaction. It's a quite arbitrary number but just
 	// to avoid triggering range compaction because of small deletion.
+	// rangeCompactionThresholdは、範囲の圧縮をトリガーするために削除された最小のエントリ番号です。
+    // これはかなり任意の数ですが、削除が少ないために範囲の圧縮がトリガーされないようにするためです。
 	rangeCompactionThreshold = 100000
 )
 
 var (
 	// emptyRoot is the known root hash of an empty trie.
+	// emptyRootは、空のトライの既知のルートハッシュです。
 	emptyRoot = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
 
 	// emptyCode is the known hash of the empty EVM bytecode.
+	// emptyCodeは、空のEVMバイトコードの既知のハッシュです。
 	emptyCode = crypto.Keccak256(nil)
 )
 
@@ -74,6 +81,15 @@ var (
 // the whole pruning work. It's recommended to run this offline tool
 // periodically in order to release the disk usage and improve the
 // disk read performance to some extent.
+// Prunerは、スナップショットを使用して古い状態をプルーニングするオフラインツールです。
+// 剪定はさみのワークフローは非常に単純です。
+//
+//  -スナップショットを繰り返し、関連する状態を再構築します
+//  -データベースを反復処理し、ターゲット状態とジェネシス状態に属していない他のすべての状態エントリを削除します
+//
+// 剪定作業全体が完了するまでに数時間（メインネットの場合は約2時間）かかる場合があります。
+// ディスク使用量を解放し、ディスク読み取りパフォーマンスをある程度向上させるために、
+// このオフラインツールを定期的に実行することをお勧めします。
 type Pruner struct {
 	db            ethdb.Database
 	stateBloom    *stateBloom
@@ -84,18 +100,20 @@ type Pruner struct {
 }
 
 // NewPruner creates the pruner instance.
+// NewPrunerはprunerインスタンスを作成します。
 func NewPruner(db ethdb.Database, datadir, trieCachePath string, bloomSize uint64) (*Pruner, error) {
 	headBlock := rawdb.ReadHeadBlock(db)
 	if headBlock == nil {
-		return nil, errors.New("Failed to load head block")
+		return nil, errors.New("Failed to load head block") // ヘッドブロックのロードに失敗しました
 	}
 	snaptree, err := snapshot.New(db, trie.NewDatabase(db), 256, headBlock.Root(), false, false, false)
 	if err != nil {
-		return nil, err // The relevant snapshot(s) might not exist
+		return nil, err // // 関連するスナップショットが存在しない可能性があります// The relevant snapshot(s) might not exist
 	}
 	// Sanitize the bloom filter size if it's too small.
+	// ブルームフィルターのサイズが小さすぎる場合は、サニタイズします。
 	if bloomSize < 256 {
-		log.Warn("Sanitizing bloomfilter size", "provided(MB)", bloomSize, "updated(MB)", 256)
+		log.Warn("Sanitizing bloomfilter size", "provided(MB)", bloomSize, "updated(MB)", 256) // ブルームフィルターのサイズを消毒する
 		bloomSize = 256
 	}
 	stateBloom, err := newStateBloomWithSize(bloomSize)
@@ -120,6 +138,12 @@ func prune(snaptree *snapshot.Tree, root common.Hash, maindb ethdb.Database, sta
 	// that the false-positive is low enough(~0.05%). The probablity of the
 	// dangling node is the state root is super low. So the dangling nodes in
 	// theory will never ever be visited again.
+	// ディスク内の古いトライノードをすべて削除します。
+	// 状態ブルームの助けを借りて、アクティブ状態に属するトライノード（およびコード）は除外されます。
+	// ブルームフィルターの偽陽性率のため、失効した試行のごく一部もフィルター処理されます。
+	// ただし、ここでは、誤検知が十分に低い（〜0.05％）という仮定が保持されています。
+	// ぶら下がっているノードの確率は、状態ルートが非常に低いことです。
+	// したがって、理論上、ぶら下がっているノードは二度と訪問されることはありません。
 	var (
 		count  int
 		size   common.StorageSize
@@ -135,6 +159,10 @@ func prune(snaptree *snapshot.Tree, root common.Hash, maindb ethdb.Database, sta
 		// - trie node
 		// - legacy contract code
 		// - new-scheme contract code
+		// すべての状態エントリは特定の状態に属しておらず、ジェネシスはここで削除されます
+		// -トライノード
+		// -レガシー契約コード
+		// -new-schemeコントラクトコード
 		isCode, codeKey := rawdb.IsCodeKey(key)
 		if len(key) == common.HashLength || isCode {
 			checkKey := key
@@ -142,7 +170,7 @@ func prune(snaptree *snapshot.Tree, root common.Hash, maindb ethdb.Database, sta
 				checkKey = codeKey
 			}
 			if _, exist := middleStateRoots[common.BytesToHash(checkKey)]; exist {
-				log.Debug("Forcibly delete the middle state roots", "hash", common.BytesToHash(checkKey))
+				log.Debug("Forcibly delete the middle state roots", "hash", common.BytesToHash(checkKey)) // 中間状態のルートを強制的に削除します
 			} else {
 				if ok, err := stateBloom.Contain(checkKey); err != nil {
 					return err
@@ -188,6 +216,9 @@ func prune(snaptree *snapshot.Tree, root common.Hash, maindb ethdb.Database, sta
 	// Pruning is done, now drop the "useless" layers from the snapshot.
 	// Firstly, flushing the target layer into the disk. After that all
 	// diff layers below the target will all be merged into the disk.
+	// プルーニングが完了しました。ここで、スナップショットから「役に立たない」レイヤーを削除します。
+    // まず、ターゲットレイヤーをディスクにフラッシュします。
+    // その後、ターゲットの下にあるすべての差分レイヤーがすべてディスクにマージされます。
 	if err := snaptree.Cap(root, 0); err != nil {
 		return err
 	}
@@ -195,6 +226,10 @@ func prune(snaptree *snapshot.Tree, root common.Hash, maindb ethdb.Database, sta
 	// layers upon are dropped silently. Eventually the entire snapshot
 	// tree is converted into a single disk layer with the pruning target
 	// as the root.
+	// 次に、スナップショットジャーナルをディスクにフラッシュします。
+	// 上のすべての差分レイヤーはサイレントにドロップされます。
+	// 最終的に、スナップショットツリー全体が、
+	// プルーニングターゲットをルートとする単一のディスクレイヤーに変換されます。
 	if _, err := snaptree.Journal(root); err != nil {
 		return err
 	}
@@ -202,10 +237,15 @@ func prune(snaptree *snapshot.Tree, root common.Hash, maindb ethdb.Database, sta
 	// finished. If any crashes or manual exit happens before this,
 	// `RecoverPruning` will pick it up in the next restarts to redo all
 	// the things.
+	// 状態ブルームを削除します。これは、プルーニング手順全体が終了したことを示します。
+	// この前にクラッシュまたは手動終了が発生した場合、
+	//  `RecoverPruning`は次の再起動でそれを取得し、すべてをやり直します。
 	os.RemoveAll(bloomPath)
 
 	// Start compactions, will remove the deleted data from the disk immediately.
 	// Note for small pruning, the compaction is skipped.
+	// 圧縮を開始し、削除されたデータをディスクからすぐに削除します。
+    // 小さな剪定については、圧縮はスキップされます。
 	if count >= rangeCompactionThreshold {
 		cstart := time.Now()
 		for b := 0x00; b <= 0xf0; b += 0x10 {
@@ -231,11 +271,17 @@ func prune(snaptree *snapshot.Tree, root common.Hash, maindb ethdb.Database, sta
 // Prune deletes all historical state nodes except the nodes belong to the
 // specified state version. If user doesn't specify the state version, use
 // the bottom-most snapshot diff layer as the target.
+// Pruneは、指定された状態バージョンに属するノードを除くすべての履歴状態ノードを削除します。
+// ユーザーが状態バージョンを指定しない場合は、
+// 最下部のスナップショット差分レイヤーをターゲットとして使用します。
 func (p *Pruner) Prune(root common.Hash) error {
 	// If the state bloom filter is already committed previously,
 	// reuse it for pruning instead of generating a new one. It's
 	// mandatory because a part of state may already be deleted,
 	// the recovery procedure is necessary.
+	// 状態ブルームフィルターが以前にコミットされている場合は、
+	// 新しいフィルターを生成する代わりに、それをプルーニングに再利用します。
+	// 状態の一部がすでに削除されている可能性があるため、これは必須です。回復手順が必要です。
 	_, stateBloomRoot, err := findBloomFilter(p.datadir)
 	if err != nil {
 		return err
@@ -247,6 +293,10 @@ func (p *Pruner) Prune(root common.Hash) error {
 	// target. The reason for picking it is:
 	// - in most of the normal cases, the related state is available
 	// - the probability of this layer being reorg is very low
+	// ターゲット状態のルートが指定されていない場合は、HEAD-127をターゲットとして使用します。
+	// それを選ぶ理由は次のとおりです。
+    // -通常のほとんどの場合、関連する状態が利用可能です
+    // -このレイヤーが再編成される可能性は非常に低いです
 	var layers []snapshot.Snapshot
 	if root == (common.Hash{}) {
 		// Retrieve all snapshot layers from the current HEAD.
