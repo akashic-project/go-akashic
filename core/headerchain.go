@@ -56,17 +56,31 @@ const (
 //
 // It is not thread safe either, the encapsulating chain structures should do
 // the necessary mutex locking/unlocking.
+// HeaderChainは、core.BlockChainとlight.LightChainによって共有される基本的なブロックヘッダーチェーンロジックを実装します。
+// それ自体は使用できず、いずれかの構造の一部としてのみ使用できます。
+//
+// HeaderChainは、ヘッダークエリと更新を含むヘッダーチェーンの維持を担当します。
+//
+// ヘッダーチェーンによって維持されるコンポーネントには、
+// （1）合計難易度
+// （2）ヘッダー
+// （3）ブロックハッシュ->番号マッピング
+// （4）正規番号->ハッシュマッピングおよび
+// （5）ヘッドヘッダーフラグが含まれます。
+//
+// スレッドセーフでもありません。
+// カプセル化チェーン構造は、必要なミューテックスのロック/ロック解除を実行する必要があります。
 type HeaderChain struct {
 	config        *params.ChainConfig
 	chainDb       ethdb.Database
 	genesisHeader *types.Header
 
-	currentHeader     atomic.Value // Current head of the header chain (may be above the block chain!)
-	currentHeaderHash common.Hash  // Hash of the current head of the header chain (prevent recomputing all the time)
+	currentHeader     atomic.Value // ヘッダーチェーンの現在のヘッド（ブロックチェーンの上にある可能性があります！）// Current head of the header chain (may be above the block chain!)
+	currentHeaderHash common.Hash  // ヘッダーチェーンの現在のヘッドのハッシュ（常に再計算を防ぐ）// Hash of the current head of the header chain (prevent recomputing all the time)
 
-	headerCache *lru.Cache // Cache for the most recent block headers
-	tdCache     *lru.Cache // Cache for the most recent block total difficulties
-	numberCache *lru.Cache // Cache for the most recent block numbers
+	headerCache *lru.Cache // 最新のブロックヘッダーのキャッシュ         // Cache for the most recent block headers
+	tdCache     *lru.Cache // 最新のブロック合計の問題をキャッシュします // Cache for the most recent block total difficulties
+	numberCache *lru.Cache //最新のブロック番号をキャッシュします       // Cache for the most recent block numbers
 
 	procInterrupt func() bool
 
@@ -76,12 +90,15 @@ type HeaderChain struct {
 
 // NewHeaderChain creates a new HeaderChain structure. ProcInterrupt points
 // to the parent's interrupt semaphore.
+// NewHeaderChainは、新しいHeaderChain構造を作成します。
+// ProcInterruptは、親の割り込みセマフォを指します。
 func NewHeaderChain(chainDb ethdb.Database, config *params.ChainConfig, engine consensus.Engine, procInterrupt func() bool) (*HeaderChain, error) {
 	headerCache, _ := lru.New(headerCacheLimit)
 	tdCache, _ := lru.New(tdCacheLimit)
 	numberCache, _ := lru.New(numberCacheLimit)
 
 	// Seed a fast but crypto originating random generator
+	// 高速ですが暗号化元のランダムジェネレーターをシードします
 	seed, err := crand.Int(crand.Reader, big.NewInt(math.MaxInt64))
 	if err != nil {
 		return nil, err
@@ -113,6 +130,7 @@ func NewHeaderChain(chainDb ethdb.Database, config *params.ChainConfig, engine c
 
 // GetBlockNumber retrieves the block number belonging to the given hash
 // from the cache or database
+// GetBlockNumberは、指定されたハッシュに属するブロック番号をキャッシュまたはデータベースから取得します
 func (hc *HeaderChain) GetBlockNumber(hash common.Hash) *uint64 {
 	if cached, ok := hc.numberCache.Get(hash); ok {
 		number := cached.(uint64)
@@ -136,8 +154,11 @@ type headerWriteResult struct {
 // Reorg reorgs the local canonical chain into the specified chain. The reorg
 // can be classified into two cases: (a) extend the local chain (b) switch the
 // head to the given header.
+// Reorgは、ローカルの正規チェーンを指定されたチェーンに再編成します。再編成は、次の2つのケースに分類できます。
+// （a）ローカルチェーンを拡張する（b）ヘッドを特定のヘッダーに切り替える。
 func (hc *HeaderChain) Reorg(headers []*types.Header) error {
 	// Short circuit if nothing to reorg.
+	// 再編成するものがない場合は短絡します。
 	if len(headers) == 0 {
 		return nil
 	}
@@ -145,6 +166,9 @@ func (hc *HeaderChain) Reorg(headers []*types.Header) error {
 	// we don't have to go backwards to delete canon blocks, but simply
 	// pile them onto the existing chain. Otherwise, do the necessary
 	// reorgs.
+	//（最初の）ブロックの親がすでにcanonヘッダーである場合、
+	// canonブロックを削除するために逆方向に移動する必要はありませんが、既存のチェーンにそれらを重ねるだけです。
+	// それ以外の場合は、必要な再編成を行います。
 	var (
 		first = headers[0]
 		last  = headers[len(headers)-1]
@@ -152,6 +176,7 @@ func (hc *HeaderChain) Reorg(headers []*types.Header) error {
 	)
 	if first.ParentHash != hc.currentHeaderHash {
 		// Delete any canonical number assignments above the new head
+		// 新しい頭の上にある正規の番号の割り当てを削除します
 		for i := last.Number.Uint64() + 1; ; i++ {
 			hash := rawdb.ReadCanonicalHash(hc.chainDb, i)
 			if hash == (common.Hash{}) {
@@ -162,6 +187,8 @@ func (hc *HeaderChain) Reorg(headers []*types.Header) error {
 		// Overwrite any stale canonical number assignments, going
 		// backwards from the first header in this import until the
 		// cross link between two chains.
+		// 古い正規番号の割り当てを上書きし、
+		// このインポートの最初のヘッダーから2つのチェーン間のクロスリンクまで逆方向に進みます。
 		var (
 			header     = first
 			headNumber = header.Number.Uint64()
@@ -170,7 +197,7 @@ func (hc *HeaderChain) Reorg(headers []*types.Header) error {
 		for rawdb.ReadCanonicalHash(hc.chainDb, headNumber) != headHash {
 			rawdb.WriteCanonicalHash(batch, headHash, headNumber)
 			if headNumber == 0 {
-				break // It shouldn't be reached
+				break // 到達すべきではありません // It shouldn't be reached
 			}
 			headHash, headNumber = header.ParentHash, header.Number.Uint64()-1
 			header = hc.GetHeader(headHash, headNumber)
@@ -180,13 +207,15 @@ func (hc *HeaderChain) Reorg(headers []*types.Header) error {
 		}
 	}
 	// Extend the canonical chain with the new headers
+	// 新しいヘッダーで正規チェーンを拡張します
 	for i := 0; i < len(headers)-1; i++ {
-		hash := headers[i+1].ParentHash // Save some extra hashing
+		hash := headers[i+1].ParentHash // 余分なハッシュを保存します // Save some extra hashing
 		num := headers[i].Number.Uint64()
 		rawdb.WriteCanonicalHash(batch, hash, num)
 		rawdb.WriteHeadHeaderHash(batch, hash)
 	}
 	// Write the last header
+	// 最後のヘッダーを書き込みます
 	hash := headers[len(headers)-1].Hash()
 	num := headers[len(headers)-1].Number.Uint64()
 	rawdb.WriteCanonicalHash(batch, hash, num)
@@ -196,6 +225,7 @@ func (hc *HeaderChain) Reorg(headers []*types.Header) error {
 		return err
 	}
 	// Last step update all in-memory head header markers
+	// 最後のステップで、メモリ内のすべてのヘッドヘッダーマーカーを更新します
 	hc.currentHeaderHash = last.Hash()
 	hc.currentHeader.Store(types.CopyHeader(last))
 	headHeaderGauge.Update(last.Number.Int64())
@@ -206,6 +236,8 @@ func (hc *HeaderChain) Reorg(headers []*types.Header) error {
 // parents are already known. The chain head header won't be updated in this
 // function, the additional setChainHead is expected in order to finish the entire
 // procedure.
+// 親がすでにわかっている場合、WriteHeadersはヘッダーのチェーンをローカルチェーンに書き込みます。
+// この関数ではチェーンヘッドヘッダーは更新されません。手順全体を完了するために、追加のsetChainHeadが必要です。
 func (hc *HeaderChain) WriteHeaders(headers []*types.Header) (int, error) {
 	if len(headers) == 0 {
 		return 0, nil
@@ -215,9 +247,9 @@ func (hc *HeaderChain) WriteHeaders(headers []*types.Header) (int, error) {
 		return 0, consensus.ErrUnknownAncestor
 	}
 	var (
-		newTD       = new(big.Int).Set(ptd) // Total difficulty of inserted chain
-		inserted    []rawdb.NumberHash      // Ephemeral lookup of number/hash for the chain
-		parentKnown = true                  // Set to true to force hc.HasHeader check the first iteration
+		newTD       = new(big.Int).Set(ptd) // 挿入されたチェーンの全体的な難易度 // Total difficulty of inserted chain
+		inserted    []rawdb.NumberHash      // チェーンの番号/ハッシュの一時的なルックアップ // Ephemeral lookup of number/hash for the chain
+		parentKnown = true                  // trueに設定すると、hc.HasHeaderが最初の反復をチェックします。 // Set to true to force hc.HasHeader check the first iteration
 		batch       = hc.chainDb.NewBatch()
 	)
 	for i, header := range headers {
@@ -225,6 +257,8 @@ func (hc *HeaderChain) WriteHeaders(headers []*types.Header) (int, error) {
 		// The headers have already been validated at this point, so we already
 		// know that it's a contiguous chain, where
 		// headers[i].Hash() == headers[i+1].ParentHash
+		// ヘッダーはこの時点ですでに検証されているため、連続したチェーンであることがすでにわかっています。
+		// headers [i] .Hash（）== headers [i + 1] .ParentHash
 		if i < len(headers)-1 {
 			hash = headers[i+1].ParentHash
 		} else {
@@ -235,9 +269,11 @@ func (hc *HeaderChain) WriteHeaders(headers []*types.Header) (int, error) {
 
 		// If the parent was not present, store it
 		// If the header is already known, skip it, otherwise store
+		// 親が存在しなかった場合は、それを保存しますヘッダーがすでにわかっている場合はスキップし、そうでない場合は保存します
 		alreadyKnown := parentKnown && hc.HasHeader(hash, number)
 		if !alreadyKnown {
 			// Irrelevant of the canonical status, write the TD and header to the database.
+			// 正規のステータスとは関係なく、TDとヘッダーをデータベースに書き込みます。
 			rawdb.WriteTd(batch, hash, number, newTD)
 			hc.tdCache.Add(hash, new(big.Int).Set(newTD))
 
@@ -249,13 +285,15 @@ func (hc *HeaderChain) WriteHeaders(headers []*types.Header) (int, error) {
 		parentKnown = alreadyKnown
 	}
 	// Skip the slow disk write of all headers if interrupted.
+	// 中断された場合、すべてのヘッダーの低速ディスク書き込みをスキップします。
 	if hc.procInterrupt() {
-		log.Debug("Premature abort during headers import")
+		log.Debug("Premature abort during headers import") // ヘッダーのインポート中の早期アボート
 		return 0, errors.New("aborted")
 	}
 	// Commit to disk!
+	// ディスクにコミットします！
 	if err := batch.Write(); err != nil {
-		log.Crit("Failed to write headers", "error", err)
+		log.Crit("Failed to write headers", "error", err) // ヘッダーの書き込みに失敗しました
 	}
 	return len(inserted), nil
 }
@@ -267,6 +305,12 @@ func (hc *HeaderChain) WriteHeaders(headers []*types.Header) (int, error) {
 // without the real blocks. Hence, writing headers directly should only be done
 // in two scenarios: pure-header mode of operation (light clients), or properly
 // separated header/block phases (non-archive clients).
+// writeHeadersAndSetHeadは、ブロックヘッダーのバッチを書き込み、
+// フォーク選択者がチェーンを更新してもよいと言った場合、最後のヘッダーをチェーンヘッドとして適用します。
+// 注：再編成によって引き起こされる副作用は実際のブロックなしではエミュレートできないため、
+// この方法は、ブロックをチェーンに同時に挿入する場合の同時安全ではありません。
+// したがって、ヘッダーの直接書き込みは、純粋なヘッダーモードの操作（ライトクライアント）
+// または適切に分離されたヘッダー/ブロックフェーズ（非アーカイブクライアント）の2つのシナリオでのみ実行する必要があります。
 func (hc *HeaderChain) writeHeadersAndSetHead(headers []*types.Header, forker *ForkChoice) (*headerWriteResult, error) {
 	inserted, err := hc.WriteHeaders(headers)
 	if err != nil {
@@ -342,7 +386,7 @@ func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int)
 		// Last should always be verified to avoid junk.
 		seals[len(seals)-1] = true
 	}
-
+	log.Error("ValidateHeaderChain を通っている")
 	abort, results := hc.engine.VerifyHeaders(hc, chain, seals, hc.chainDb)
 	defer close(abort)
 
@@ -575,6 +619,8 @@ type (
 
 // SetHead rewinds the local chain to a new head. Everything above the new head
 // will be deleted and the new one set.
+// SetHeadは、ローカルチェーンを新しいヘッドに巻き戻します。
+// 新しい頭の上にあるものはすべて削除され、新しい頭が設定されます。
 func (hc *HeaderChain) SetHead(head uint64, updateFn UpdateHeadBlocksCallback, delFn DeleteBlockContentCallback) {
 	var (
 		parentHash common.Hash
@@ -585,6 +631,7 @@ func (hc *HeaderChain) SetHead(head uint64, updateFn UpdateHeadBlocksCallback, d
 		num := hdr.Number.Uint64()
 
 		// Rewind block chain to new head.
+		// ブロックチェーンを新しいヘッドに巻き戻します。
 		parent := hc.GetHeader(hdr.ParentHash, num-1)
 		if parent == nil {
 			parent = hc.genesisHeader
@@ -598,6 +645,10 @@ func (hc *HeaderChain) SetHead(head uint64, updateFn UpdateHeadBlocksCallback, d
 		// first then remove the relative data from the database.
 		//
 		// Update head first(head fast block, head full block) before deleting the data.
+		// 特に、gethには、古代の頭よりもさらに低い高さに頭を設定する可能性があるためです。
+		// ヘッドが常にデータベース内のデータ（古代ストアまたはアクティブストア）より高くならないようにするには、最初にヘッドを更新してから、データベースから相対データを削除する必要があります。
+		//
+		// データを削除する前に、ヘッドファースト（ヘッドファストブロック、ヘッドフルブロック）を更新します。
 		markerBatch := hc.chainDb.NewBatch()
 		if updateFn != nil {
 			newHead, force := updateFn(markerBatch, parent)
@@ -607,6 +658,7 @@ func (hc *HeaderChain) SetHead(head uint64, updateFn UpdateHeadBlocksCallback, d
 			}
 		}
 		// Update head header then.
+		// 次にヘッドヘッダーを更新します。
 		rawdb.WriteHeadHeaderHash(markerBatch, parentHash)
 		if err := markerBatch.Write(); err != nil {
 			log.Crit("Failed to update chain markers", "error", err)
@@ -617,21 +669,26 @@ func (hc *HeaderChain) SetHead(head uint64, updateFn UpdateHeadBlocksCallback, d
 
 		// If this is the first iteration, wipe any leftover data upwards too so
 		// we don't end up with dangling daps in the database
+		// これが最初の反復である場合は、残りのデータも上向きにワイプして、
+		// データベースにぶら下がっているダップが発生しないようにします
 		var nums []uint64
 		if origin {
 			for n := num + 1; len(rawdb.ReadAllHashes(hc.chainDb, n)) > 0; n++ {
-				nums = append([]uint64{n}, nums...) // suboptimal, but we don't really expect this path
+				nums = append([]uint64{n}, nums...) // 最適ではありませんが、このパスは実際には期待していません // suboptimal, but we don't really expect this path
 			}
 			origin = false
 		}
 		nums = append(nums, num)
 
 		// Remove the related data from the database on all sidechains
+		// すべてのサイドチェーンのデータベースから関連データを削除します
 		for _, num := range nums {
 			// Gather all the side fork hashes
+			// すべてのサイドフォークハッシュを収集します
 			hashes := rawdb.ReadAllHashes(hc.chainDb, num)
 			if len(hashes) == 0 {
 				// No hashes in the database whatsoever, probably frozen already
+				// データベースにハッシュはありません。おそらくすでに凍結されています
 				hashes = append(hashes, hdr.Hash())
 			}
 			for _, hash := range hashes {
@@ -645,28 +702,35 @@ func (hc *HeaderChain) SetHead(head uint64, updateFn UpdateHeadBlocksCallback, d
 		}
 	}
 	// Flush all accumulated deletions.
+	// 蓄積されたすべての削除をフラッシュします。
 	if err := batch.Write(); err != nil {
 		log.Crit("Failed to rewind block", "error", err)
 	}
 	// Clear out any stale content from the caches
+	// キャッシュから古いコンテンツをクリアします
 	hc.headerCache.Purge()
 	hc.tdCache.Purge()
 	hc.numberCache.Purge()
 }
 
 // SetGenesis sets a new genesis block header for the chain
+// SetGenesisは、チェーンの新しいジェネシスブロックヘッダーを設定します
 func (hc *HeaderChain) SetGenesis(head *types.Header) {
 	hc.genesisHeader = head
 }
 
 // Config retrieves the header chain's chain configuration.
+// Configは、ヘッダーチェーンのチェーン構成を取得します。
 func (hc *HeaderChain) Config() *params.ChainConfig { return hc.config }
 
 // Engine retrieves the header chain's consensus engine.
+// エンジンはヘッダーチェーンのコンセンサスエンジンを取得します。
 func (hc *HeaderChain) Engine() consensus.Engine { return hc.engine }
 
 // GetBlock implements consensus.ChainReader, and returns nil for every input as
 // a header chain does not have blocks available for retrieval.
+// GetBlockはconsensus.ChainReaderを実装し、ヘッダーチェーンには取得可能なブロックがないため、
+// すべての入力に対してnilを返します。
 func (hc *HeaderChain) GetBlock(hash common.Hash, number uint64) *types.Block {
 	return nil
 }

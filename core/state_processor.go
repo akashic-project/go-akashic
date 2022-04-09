@@ -34,13 +34,17 @@ import (
 // state from one point to another.
 //
 // StateProcessor implements Processor.
+// StateProcessorは基本的なプロセッサであり、あるポイントから別のポイントへの状態の遷移を処理します。
+//
+// StateProcessorはProcessorを実装します。
 type StateProcessor struct {
-	config *params.ChainConfig // Chain configuration options
-	bc     *BlockChain         // Canonical block chain
-	engine consensus.Engine    // Consensus engine used for block rewards
+	config *params.ChainConfig // チェーン構成オプション // Chain configuration options
+	bc     *BlockChain         // 正規のブロックチェーン // Canonical block chain
+	engine consensus.Engine    // ブロック報酬に使用されるコンセンサスエンジン // Consensus engine used for block rewards
 }
 
 // NewStateProcessor initialises a new StateProcessor.
+// NewStateProcessorは新しいStateProcessorを初期化します。
 func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, engine consensus.Engine) *StateProcessor {
 	return &StateProcessor{
 		config: config,
@@ -56,6 +60,12 @@ func NewStateProcessor(config *params.ChainConfig, bc *BlockChain, engine consen
 // Process returns the receipts and logs accumulated during the process and
 // returns the amount of gas that was used in the process. If any of the
 // transactions failed to execute due to insufficient gas it will return an error.
+// プロセスは、statementedbを使用してトランザクションメッセージを実行し、
+// プロセッサ（コインベース）と含まれている叔父の両方に報酬を適用することにより、
+// イーサリアムのルールに従って状態の変化を処理します。
+//
+// プロセスは、プロセス中に蓄積されたレシートとログを返し、プロセスで使用されたガスの量を返します。
+// ガスが不足しているためにトランザクションのいずれかが実行に失敗した場合、エラーが返されます。
 func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg vm.Config) (types.Receipts, []*types.Log, uint64, error) {
 	var (
 		receipts    types.Receipts
@@ -67,12 +77,14 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		gp          = new(GasPool).AddGas(block.GasLimit())
 	)
 	// Mutate the block and state according to any hard-fork specs
+	// ハードフォークの仕様に従ってブロックと状態を変更します
 	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
 		misc.ApplyDAOHardFork(statedb)
 	}
 	blockContext := NewEVMBlockContext(header, p.bc, nil)
 	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, statedb, p.config, cfg)
 	// Iterate over and process the individual transactions
+	// 個々のトランザクションを繰り返し処理します
 	for i, tx := range block.Transactions() {
 		msg, err := tx.AsMessage(types.MakeSigner(p.config, header.Number), header.BaseFee)
 		if err != nil {
@@ -87,6 +99,7 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		allLogs = append(allLogs, receipt.Logs...)
 	}
 	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
+	// コンセンサスエンジン固有の追加機能（ブロック報酬など）を適用して、ブロックを完成させます
 	p.engine.Finalize(p.bc, header, statedb, block.Transactions(), block.Uncles())
 
 	return receipts, allLogs, *usedGas, nil
@@ -94,16 +107,19 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 
 func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, blockNumber *big.Int, blockHash common.Hash, tx *types.Transaction, usedGas *uint64, evm *vm.EVM) (*types.Receipt, error) {
 	// Create a new context to be used in the EVM environment.
+	// EVM環境で使用される新しいコンテキストを作成します。
 	txContext := NewEVMTxContext(msg)
 	evm.Reset(txContext, statedb)
 
 	// Apply the transaction to the current state (included in the env).
+	// トランザクションを現在の状態（envに含まれる）に適用します。
 	result, err := ApplyMessage(evm, msg, gp)
 	if err != nil {
 		return nil, err
 	}
 
 	// Update the state with pending changes.
+	// 保留中の変更で状態を更新します。
 	var root []byte
 	if config.IsByzantium(blockNumber) {
 		statedb.Finalise(true)
@@ -114,6 +130,7 @@ func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainCon
 
 	// Create a new receipt for the transaction, storing the intermediate root and gas used
 	// by the tx.
+	// トランザクションの新しいレシートを作成し、txが使用する中間ルートとガスを保存します。
 	receipt := &types.Receipt{Type: tx.Type(), PostState: root, CumulativeGasUsed: *usedGas}
 	if result.Failed() {
 		receipt.Status = types.ReceiptStatusFailed
@@ -124,11 +141,13 @@ func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainCon
 	receipt.GasUsed = result.UsedGas
 
 	// If the transaction created a contract, store the creation address in the receipt.
+	// トランザクションで契約が作成された場合は、作成アドレスを領収書に保存します。
 	if msg.To() == nil {
 		receipt.ContractAddress = crypto.CreateAddress(evm.TxContext.Origin, tx.Nonce())
 	}
 
 	// Set the receipt logs and create the bloom filter.
+	// レシートログを設定し、ブルームフィルターを作成します。
 	receipt.Logs = statedb.GetLogs(tx.Hash(), blockHash)
 	receipt.Bloom = types.CreateBloom(types.Receipts{receipt})
 	receipt.BlockHash = blockHash
@@ -141,12 +160,16 @@ func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainCon
 // and uses the input parameters for its environment. It returns the receipt
 // for the transaction, gas used and an error if the transaction failed,
 // indicating the block was invalid.
+// ApplyTransactionは、指定された状態データベースにトランザクションを適用しようとし、
+// その環境の入力パラメーターを使用します。トランザクションの領収書、使用されたガス、
+// およびトランザクションが失敗した場合はエラーを返し、ブロックが無効であることを示します。
 func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, error) {
 	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number), header.BaseFee)
 	if err != nil {
 		return nil, err
 	}
 	// Create a new context to be used in the EVM environment
+	// EVM環境で使用される新しいコンテキストを作成します
 	blockContext := NewEVMBlockContext(header, bc, author)
 	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, statedb, config, cfg)
 	return applyTransaction(msg, config, bc, author, gp, statedb, header.Number, header.Hash(), tx, usedGas, vmenv)

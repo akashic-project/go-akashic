@@ -209,7 +209,7 @@ func WriteSnapshotRecoveryNumber(db ethdb.KeyValueWriter, number uint64) {
 	var buf [8]byte
 	binary.BigEndian.PutUint64(buf[:], number)
 	if err := db.Put(snapshotRecoveryKey, buf[:]); err != nil {
-		log.Crit("Failed to store snapshot recovery number", "err", err)
+		log.Crit("Failed to store snapshot recovery number", "err", err) // スナップショットリカバリ番号の保存に失敗しました
 	}
 }
 

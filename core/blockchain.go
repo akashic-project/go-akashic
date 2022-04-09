@@ -354,7 +354,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 				rawdb.WriteSnapshotRecoveryNumber(bc.db, snapDisk)
 			}
 		} else {
-			log.Warn("Head state missing, repairing", "number", head.Number(), "hash", head.Hash())
+			log.Warn("Head state missing, repairing", "number", head.Number(), "hash", head.Hash()) // ヘッド状態が欠落している、修復中
 			if _, err := bc.setHeadBeyondRoot(head.NumberU64(), common.Hash{}, true); err != nil {
 				return nil, err
 			}
@@ -391,7 +391,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 			}
 		}
 		if needRewind {
-			log.Error("Truncating ancient chain", "from", bc.CurrentHeader().Number.Uint64(), "to", low)
+			log.Error("Truncating ancient chain", "from", bc.CurrentHeader().Number.Uint64(), "to", low) // 古代のチェーンを切り捨てる
 			if err := bc.SetHead(low); err != nil {
 				return nil, err
 			}
@@ -414,11 +414,11 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 			// make sure the headerByNumber (if present) is in our current canonical chain
 			// headerByNumber（存在する場合）が現在の正規チェーンにあることを確認してください
 			if headerByNumber != nil && headerByNumber.Hash() == header.Hash() {
-				log.Error("Found bad hash, rewinding chain", "number", header.Number, "hash", header.ParentHash)
+				log.Error("Found bad hash, rewinding chain", "number", header.Number, "hash", header.ParentHash) // 不良ハッシュが見つかりました、チェーンを巻き戻します
 				if err := bc.SetHead(header.Number.Uint64() - 1); err != nil {
 					return nil, err
 				}
-				log.Error("Chain rewind was successful, resuming normal operation")
+				log.Error("Chain rewind was successful, resuming normal operation") // チェーンの巻き戻しが成功し、通常の操作が再開されました
 			}
 		}
 	}
@@ -437,7 +437,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 
 		head := bc.CurrentBlock()
 		if layer := rawdb.ReadSnapshotRecoveryNumber(bc.db); layer != nil && *layer > head.NumberU64() {
-			log.Warn("Enabling snapshot recovery", "chainhead", head.NumberU64(), "diskbase", *layer)
+			log.Warn("Enabling snapshot recovery", "chainhead", head.NumberU64(), "diskbase", *layer) // スナップショットリカバリの有効化
 			recover = true
 		}
 		bc.snaps, _ = snapshot.New(bc.db, bc.stateCache.TrieDB(), bc.cacheConfig.SnapshotLimit, head.Root(), !bc.cacheConfig.SnapshotWait, true, recover)
@@ -461,7 +461,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	// 定期的なキャッシュジャーナルが必要な場合は、スピンアップします。
 	if bc.cacheConfig.TrieCleanRejournal > 0 {
 		if bc.cacheConfig.TrieCleanRejournal < time.Minute {
-			log.Warn("Sanitizing invalid trie cache journal time", "provided", bc.cacheConfig.TrieCleanRejournal, "updated", time.Minute)
+			log.Warn("Sanitizing invalid trie cache journal time", "provided", bc.cacheConfig.TrieCleanRejournal, "updated", time.Minute) // 無効なトライキャッシュジャーナル時間をサニタイズする
 			bc.cacheConfig.TrieCleanRejournal = time.Minute
 		}
 		triedb := bc.stateCache.TrieDB()
@@ -511,7 +511,7 @@ func (bc *BlockChain) loadLastState() error {
 	if currentBlock == nil {
 		// Corrupt or empty database, init from scratch
 		// 破損または空のデータベース、最初から初期化
-		log.Warn("Head block missing, resetting chain", "hash", head)
+		log.Warn("Head block missing, resetting chain", "hash", head) // ヘッドブロックがない、チェーンをリセット
 		return bc.Reset()
 	}
 	// Everything seems to be fine, set as the head block
@@ -548,11 +548,11 @@ func (bc *BlockChain) loadLastState() error {
 	blockTd := bc.GetTd(currentBlock.Hash(), currentBlock.NumberU64())
 	fastTd := bc.GetTd(currentFastBlock.Hash(), currentFastBlock.NumberU64())
 
-	log.Info("Loaded most recent local header", "number", currentHeader.Number, "hash", currentHeader.Hash(), "td", headerTd, "age", common.PrettyAge(time.Unix(int64(currentHeader.Time), 0)))
-	log.Info("Loaded most recent local full block", "number", currentBlock.Number(), "hash", currentBlock.Hash(), "td", blockTd, "age", common.PrettyAge(time.Unix(int64(currentBlock.Time()), 0)))
-	log.Info("Loaded most recent local fast block", "number", currentFastBlock.Number(), "hash", currentFastBlock.Hash(), "td", fastTd, "age", common.PrettyAge(time.Unix(int64(currentFastBlock.Time()), 0)))
+	log.Info("Loaded most recent local header", "number", currentHeader.Number, "hash", currentHeader.Hash(), "td", headerTd, "age", common.PrettyAge(time.Unix(int64(currentHeader.Time), 0)))                // 最新のローカルヘッダーをロードしました
+	log.Info("Loaded most recent local full block", "number", currentBlock.Number(), "hash", currentBlock.Hash(), "td", blockTd, "age", common.PrettyAge(time.Unix(int64(currentBlock.Time()), 0)))            // 最新のローカルフルブロックをロードしました
+	log.Info("Loaded most recent local fast block", "number", currentFastBlock.Number(), "hash", currentFastBlock.Hash(), "td", fastTd, "age", common.PrettyAge(time.Unix(int64(currentFastBlock.Time()), 0))) // 最新のローカル高速ブロックをロードしました
 	if pivot := rawdb.ReadLastPivotNumber(bc.db); pivot != nil {
-		log.Info("Loaded last fast-sync pivot marker", "number", *pivot)
+		log.Info("Loaded last fast-sync pivot marker", "number", *pivot) //	最後にロードされた高速同期ピボットマーカー
 	}
 	return nil
 }
@@ -611,7 +611,7 @@ func (bc *BlockChain) setHeadBeyondRoot(head uint64, root common.Hash, repair bo
 		if currentBlock := bc.CurrentBlock(); currentBlock != nil && header.Number.Uint64() <= currentBlock.NumberU64() {
 			newHeadBlock := bc.GetBlock(header.Hash(), header.Number.Uint64())
 			if newHeadBlock == nil {
-				log.Error("Gap in the chain, rewinding to genesis", "number", header.Number, "hash", header.Hash())
+				log.Error("Gap in the chain, rewinding to genesis", "number", header.Number, "hash", header.Hash()) // チェーンのギャップ、創世記に巻き戻す
 				newHeadBlock = bc.genesisBlock
 			} else {
 				// Block exists, keep rewinding until we find one with state,
@@ -628,24 +628,25 @@ func (bc *BlockChain) setHeadBeyondRoot(head uint64, root common.Hash, repair bo
 						beyondRoot, rootNumber = true, newHeadBlock.NumberU64()
 					}
 					if _, err := state.New(newHeadBlock.Root(), bc.stateCache, bc.snaps); err != nil {
-						log.Trace("Block state missing, rewinding further", "number", newHeadBlock.NumberU64(), "hash", newHeadBlock.Hash())
+						log.Trace("Block state missing, rewinding further", "number", newHeadBlock.NumberU64(), "hash", newHeadBlock.Hash()) // ブロック状態が欠落しており、さらに巻き戻します
 						if pivot == nil || newHeadBlock.NumberU64() > *pivot {
 							parent := bc.GetBlock(newHeadBlock.ParentHash(), newHeadBlock.NumberU64()-1)
 							if parent != nil {
 								newHeadBlock = parent
 								continue
 							}
-							log.Error("Missing block in the middle, aiming genesis", "number", newHeadBlock.NumberU64()-1, "hash", newHeadBlock.ParentHash())
+							log.Error("Missing block in the middle, aiming genesis", "number", newHeadBlock.NumberU64()-1, "hash", newHeadBlock.ParentHash()) // 創世記を目指して、真ん中にブロックがありません
 							newHeadBlock = bc.genesisBlock
 						} else {
-							log.Trace("Rewind passed pivot, aiming genesis", "number", newHeadBlock.NumberU64(), "hash", newHeadBlock.Hash(), "pivot", *pivot)
+							log.Trace("Rewind passed pivot, aiming genesis", "number", newHeadBlock.NumberU64(), "hash", newHeadBlock.Hash(), "pivot", *pivot) // ジェネシスを目指して、通過したピボットを巻き戻します
 							newHeadBlock = bc.genesisBlock
 						}
 					}
 					if beyondRoot || newHeadBlock.NumberU64() == 0 {
-						log.Debug("Rewound to block with state", "number", newHeadBlock.NumberU64(), "hash", newHeadBlock.Hash())
+						log.Debug("Rewound to block with state", "number", newHeadBlock.NumberU64(), "hash", newHeadBlock.Hash()) // 状態でブロックするために巻き戻されます
 						break
 					}
+					// しきい値状態のスキップブロック
 					log.Debug("Skipping block with threshold state", "number", newHeadBlock.NumberU64(), "hash", newHeadBlock.Hash(), "root", newHeadBlock.Root())
 					newHeadBlock = bc.GetBlock(newHeadBlock.ParentHash(), newHeadBlock.NumberU64()-1) // Keep rewinding 巻き戻しを続ける
 				}
@@ -737,7 +738,7 @@ func (bc *BlockChain) setHeadBeyondRoot(head uint64, root common.Hash, repair bo
 		// block with a state is found or fast sync pivot is passed
 		// チェーンを要求されたヘッドに巻き戻し、状態のあるブロックが見つかるか、
 		// 高速同期ピボットが渡されるまで後方に移動し続けます
-		log.Warn("Rewinding blockchain", "target", head)
+		log.Warn("Rewinding blockchain", "target", head) // ブロックチェーンの巻き戻し
 		bc.hc.SetHead(head, updateFn, delFn)
 	}
 	// Clear out any stale content from the caches
@@ -783,7 +784,7 @@ func (bc *BlockChain) SnapSyncCommitHead(hash common.Hash) error {
 	if bc.snaps != nil {
 		bc.snaps.Rebuild(block.Root())
 	}
-	log.Info("Committed new head block", "number", block.Number(), "hash", hash)
+	log.Info("Committed new head block", "number", block.Number(), "hash", hash) // コミットされた新しいヘッドブロック
 	return nil
 }
 
@@ -1055,9 +1056,9 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 	for i := 0; i < len(blockChain); i++ {
 		if i != 0 {
 			if blockChain[i].NumberU64() != blockChain[i-1].NumberU64()+1 || blockChain[i].ParentHash() != blockChain[i-1].Hash() {
-				log.Error("Non contiguous receipt insert", "number", blockChain[i].Number(), "hash", blockChain[i].Hash(), "parent", blockChain[i].ParentHash(),
+				log.Error("Non contiguous receipt insert", "number", blockChain[i].Number(), "hash", blockChain[i].Hash(), "parent", blockChain[i].ParentHash(), // 連続していない領収書の挿入
 					"prevnumber", blockChain[i-1].Number(), "prevhash", blockChain[i-1].Hash())
-				return 0, fmt.Errorf("non contiguous insert: item %d is #%d [%x..], item %d is #%d [%x..] (parent [%x..])", i-1, blockChain[i-1].NumberU64(),
+				return 0, fmt.Errorf("non contiguous insert: item %d is #%d [%x..], item %d is #%d [%x..] (parent [%x..])", i-1, blockChain[i-1].NumberU64(), // 非連続インサート
 					blockChain[i-1].Hash().Bytes()[:4], i, blockChain[i].NumberU64(), blockChain[i].Hash().Bytes()[:4], blockChain[i].ParentHash().Bytes()[:4])
 			}
 		}
@@ -1089,7 +1090,7 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 		if bc.CurrentHeader().Number.Cmp(head.Number()) >= 0 {
 			reorg, err := bc.forker.ReorgNeeded(bc.CurrentFastBlock().Header(), head.Header())
 			if err != nil {
-				log.Warn("Reorg failed", "err", err)
+				log.Warn("Reorg failed", "err", err) // 再編成に失敗しました
 				return false
 			} else if !reorg {
 				return false
@@ -1391,6 +1392,7 @@ func (bc *BlockChain) writeKnownBlock(block *types.Block) error {
 
 // writeBlockWithState writes block, metadata and corresponding state data to the
 // database.
+// writeBlockWithStateは、ブロック、メタデータ、および対応する状態データをデータベースに書き込みます。
 func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.Receipt, logs []*types.Log, state *state.StateDB) error {
 	// Calculate the total difficulty of the block
 	// ブロックの合計難易度を計算します
@@ -1459,7 +1461,7 @@ func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.
 				// この操作が完了するまでコミットを一時停止します。
 				header := bc.GetHeaderByNumber(chosen)
 				if header == nil {
-					log.Warn("Reorg in progress, trie commit postponed", "number", chosen)
+					log.Warn("Reorg in progress, trie commit postponed", "number", chosen) // 再編成が進行中、トライコミットは延期されました
 				} else {
 					// If we're exceeding limits but haven't reached a large enough memory gap,
 					// warn the user that the system is becoming unstable.
@@ -1541,6 +1543,10 @@ func (bc *BlockChain) writeBlockAndSetHead(block *types.Block, receipts []*types
 		// canonicial blocks. Avoid firing too many ChainHeadEvents,
 		// we will fire an accumulated ChainHeadEvent and disable fire
 		// event here.
+		// 理論的には、正規ブロックを挿入するときにChainHeadEventを起動する必要がありますが、
+		// 正規ブロックのバッチを挿入できる場合もあります。
+		// あまりにも多くのChainHeadEventを発生させないでください。
+		// ここでは、蓄積されたChainHeadEventを発生させ、発生イベントを無効にします。
 		if emitHeadEvent {
 			bc.chainHeadFeed.Send(ChainHeadEvent{Block: block})
 		}
@@ -1695,6 +1701,9 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals, setHead bool)
 				// In eth2 the forker always returns true for reorg decision (blindly trusting
 				// the external consensus engine), but in order to prevent the unnecessary
 				// reorgs when importing known blocks, the special case is handled here.
+				// フォーカーが再編成が必要であり、ブロックが正規チェーン上にないと言った場合は、インポートモードに切り替えます。
+				// eth2では、フォーカーは再編成の決定に対して常にtrueを返します（外部コンセンサスエンジンを盲目的に信頼します）が、
+				// 既知のブロックをインポートするときに不要な再編成を防ぐために、ここでは特殊なケースが処理されます。
 				if block.NumberU64() > current.NumberU64() || bc.GetCanonicalHash(block.NumberU64()) != block.Hash() {
 					break
 				}
@@ -1733,13 +1742,16 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals, setHead bool)
 	}
 	switch {
 	// First block is pruned
+	// 最初のブロックが剪定されます
 	case errors.Is(err, consensus.ErrPrunedAncestor):
 		if setHead {
 			// First block is pruned, insert as sidechain and reorg only if TD grows enough
+			// 最初のブロックは剪定され、サイドチェーンとして挿入され、TDが十分に成長した場合にのみ再編成されます
 			log.Debug("Pruned ancestor, inserting as sidechain", "number", block.Number(), "hash", block.Hash())
 			return bc.insertSideChain(block, it)
 		} else {
 			// We're post-merge and the parent is pruned, try to recover the parent state
+			// マージ後、親が削除されました。親の状態を回復してみてください
 			log.Debug("Pruned ancestor", "number", block.Number(), "hash", block.Hash())
 			return it.index, bc.recoverAncestors(block)
 		}
@@ -1942,6 +1954,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals, setHead bool)
 		var status WriteStatus
 		if !setHead {
 			// Don't set the head, only insert the block
+			// ヘッドを設定せず、ブロックを挿入するだけです
 			err = bc.writeBlockWithState(block, receipts, logs, statedb)
 		} else {
 			status, err = bc.writeBlockAndSetHead(block, receipts, logs, statedb, false)
@@ -1951,9 +1964,10 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals, setHead bool)
 			return it.index, err
 		}
 		// Update the metrics touched during block commit
-		accountCommitTimer.Update(statedb.AccountCommits)   // Account commits are complete, we can mark them
-		storageCommitTimer.Update(statedb.StorageCommits)   // Storage commits are complete, we can mark them
-		snapshotCommitTimer.Update(statedb.SnapshotCommits) // Snapshot commits are complete, we can mark them
+		// ブロックコミット中に触れられたメトリックを更新します
+		accountCommitTimer.Update(statedb.AccountCommits)   // アカウントのコミットが完了しました、マークを付けることができます // Account commits are complete, we can mark them
+		storageCommitTimer.Update(statedb.StorageCommits)   // ストレージのコミットが完了しました。マークを付けることができます // Storage commits are complete, we can mark them
+		snapshotCommitTimer.Update(statedb.SnapshotCommits) // スナップショットのコミットが完了しました。マークを付けることができます// Snapshot commits are complete, we can mark them
 
 		blockWriteTimer.Update(time.Since(substart) - statedb.AccountCommits - statedb.StorageCommits - statedb.SnapshotCommits)
 		blockInsertTimer.UpdateSince(start)
@@ -2180,6 +2194,8 @@ func (bc *BlockChain) insertSideChain(block *types.Block, it *insertIterator) (i
 // recoverAncestors finds the closest ancestor with available state and re-execute
 // all the ancestor blocks since that.
 // recoverAncestors is only used post-merge.
+// restoreAncestorsは、使用可能な状態で最も近い祖先を見つけ、それ以降のすべての祖先ブロックを再実行します。
+// recoverAncestorsはマージ後にのみ使用されます。
 func (bc *BlockChain) recoverAncestors(block *types.Block) error {
 	// Gather all the sidechain hashes (full blocks may be memory heavy)
 	var (
@@ -2193,6 +2209,7 @@ func (bc *BlockChain) recoverAncestors(block *types.Block) error {
 		parent = bc.GetBlock(parent.ParentHash(), parent.NumberU64()-1)
 
 		// If the chain is terminating, stop iteration
+		// チェーンが終了している場合は、反復を停止します
 		if bc.insertStopped() {
 			log.Debug("Abort during blocks iteration")
 			return errInsertionInterrupted
@@ -2202,8 +2219,10 @@ func (bc *BlockChain) recoverAncestors(block *types.Block) error {
 		return errors.New("missing parent")
 	}
 	// Import all the pruned blocks to make the state available
+	// プルーニングされたすべてのブロックをインポートして、状態を使用可能にします
 	for i := len(hashes) - 1; i >= 0; i-- {
 		// If the chain is terminating, stop processing blocks
+		// チェーンが終了している場合は、ブロックの処理を停止します
 		if bc.insertStopped() {
 			log.Debug("Abort during blocks processing")
 			return errInsertionInterrupted
@@ -2426,6 +2445,8 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 // The key difference between the InsertChain is it won't do the canonical chain
 // updating. It relies on the additional SetChainHead call to finalize the entire
 // procedure.
+// InsertBlockWithoutSetHeadはブロックを実行し、必要な検証を実行してから、ブロックと関連する状態をデータベースに永続化します。
+// InsertChainの主な違いは、正規のチェーン更新を行わないことです。追加のSetChainHead呼び出しに依存して、プロシージャ全体を終了します。
 func (bc *BlockChain) InsertBlockWithoutSetHead(block *types.Block) error {
 	if !bc.chainmu.TryLock() {
 		return errChainStopped

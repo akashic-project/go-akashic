@@ -88,21 +88,23 @@ func StartNode(ctx *cli.Context, stack *node.Node, isConsole bool) {
 		}
 
 		shutdown := func() {
-			log.Info("Got interrupt, shutting down...")
+			log.Info("Got interrupt, shutting down...") // 割り込みを取得し、シャットダウンします...
 			go stack.Close()
 			for i := 10; i > 0; i-- {
 				<-sigc
 				if i > 1 {
-					log.Warn("Already shutting down, interrupt more to panic.", "times", i-1)
+					log.Warn("Already shutting down, interrupt more to panic.", "times", i-1) // すでにシャットダウンしています。パニックになるまでさらに中断してください。
 				}
 			}
-			debug.Exit() // ensure trace and CPU profile data is flushed.
+			debug.Exit() // トレースとCPUプロファイルデータがフラッシュされていることを確認します。 // ensure trace and CPU profile data is flushed.
 			debug.LoudPanic("boom")
 		}
 
 		if isConsole {
 			// In JS console mode, SIGINT is ignored because it's handled by the console.
 			// However, SIGTERM still shuts down the node.
+			// JSコンソールモードでは、SIGINTはコンソールによって処理されるため、無視されます。
+			// ただし、SIGTERMは引き続きノードをシャットダウンします。
 			for {
 				sig := <-sigc
 				if sig == syscall.SIGTERM {

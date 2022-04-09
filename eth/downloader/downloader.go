@@ -320,6 +320,8 @@ func (d *Downloader) UnregisterPeer(id string) error {
 
 // Synchronise tries to sync up our local block chain with a remote peer, both
 // adding various sanity checks as well as wrapping it with various log entries.
+// Synchronizeは、ローカルブロックチェーンをリモートピアと同期しようとします。
+// これにより、さまざまな健全性チェックが追加され、さまざまなログエントリでラップされます。
 func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode SyncMode) error {
 	err := d.synchronise(id, head, td, mode)
 
@@ -347,33 +349,44 @@ func (d *Downloader) Synchronise(id string, head common.Hash, td *big.Int, mode 
 // synchronise will select the peer and use it for synchronising. If an empty string is given
 // it will use the best peer possible and synchronize if its TD is higher than our own. If any of the
 // checks fail an error will be returned. This method is synchronous
+// synchronizeはピアを選択し、同期に使用します。空の文字列が指定された場合、可能な限り最高のピアを使用し、そのTDが自分のTDよりも高い場合は同期します。
+// チェックのいずれかが失敗した場合、エラーが返されます。この方法は同期的です
 func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode SyncMode) error {
 	// Mock out the synchronisation if testing
+	// テストする場合は同期をモックアウトします
 	if d.synchroniseMock != nil {
 		return d.synchroniseMock(id, hash)
 	}
 	// Make sure only one goroutine is ever allowed past this point at once
+	// 一度に1つのゴルーチンのみがこのポイントを通過できるようにします
 	if !atomic.CompareAndSwapInt32(&d.synchronising, 0, 1) {
 		return errBusy
 	}
 	defer atomic.StoreInt32(&d.synchronising, 0)
 
 	// Post a user notification of the sync (only once per session)
+	// 同期のユーザー通知を投稿します（セッションごとに1回のみ）
 	if atomic.CompareAndSwapInt32(&d.notified, 0, 1) {
 		log.Info("Block synchronisation started")
 	}
 	// If snap sync was requested, create the snap scheduler and switch to snap
 	// sync mode. Long term we could drop snap sync or merge the two together,
 	// but until snap becomes prevalent, we should support both. TODO(karalabe).
+	// スナップ同期が要求された場合は、スナップスケジューラを作成し、スナップ同期モードに切り替えます。
+	// 長期的には、スナップ同期を削除するか、2つをマージすることができますが、スナップが普及するまでは、両方をサポートする必要があります。
+	// TODO（コールラビ）。
 	if mode == SnapSync {
 		// Snap sync uses the snapshot namespace to store potentially flakey data until
 		// sync completely heals and finishes. Pause snapshot maintenance in the mean-
 		// time to prevent access.
+		// スナップ同期は、スナップショット名前空間を使用して、同期が完全に回復して終了するまで、潜在的に不安定なデータを格納します。
+		// その間、スナップショットのメンテナンスを一時停止して、アクセスを防止します。
 		if snapshots := d.blockchain.Snapshots(); snapshots != nil { // Only nil in tests
 			snapshots.Disable()
 		}
 	}
 	// Reset the queue, peer set and wake channels to clean any internal leftover state
+	// キュー、ピアセット、ウェイクチャネルをリセットして、内部の残りの状態をクリーンアップします
 	d.queue.Reset(blockCacheMaxItems, blockCacheInitialItems)
 	d.peers.Reset()
 
@@ -391,17 +404,20 @@ func (d *Downloader) synchronise(id string, hash common.Hash, td *big.Int, mode 
 		}
 	}
 	// Create cancel channel for aborting mid-flight and mark the master peer
+	// 飛行中を中止するためのキャンセルチャネルを作成し、マスターピアにマークを付けます
 	d.cancelLock.Lock()
 	d.cancelCh = make(chan struct{})
 	d.cancelPeer = id
 	d.cancelLock.Unlock()
 
-	defer d.Cancel() // No matter what, we can't leave the cancel channel open
+	defer d.Cancel() // 何があっても、キャンセルチャンネルを開いたままにすることはできません // No matter what, we can't leave the cancel channel open
 
 	// Atomically set the requested sync mode
+	// 要求された同期モードを原子的に設定します
 	atomic.StoreUint32(&d.mode, uint32(mode))
 
 	// Retrieve the origin peer and initiate the downloading process
+	// オリジンピアを取得し、ダウンロードプロセスを開始します
 	p := d.peers.Peer(id)
 	if p == nil {
 		return errUnknownPeer
@@ -415,10 +431,12 @@ func (d *Downloader) getMode() SyncMode {
 
 // syncWithPeer starts a block synchronization based on the hash chain from the
 // specified peer and head hash.
+// syncWithPeerは、指定されたピアおよびヘッドハッシュからのハッシュチェーンに基づいてブロック同期を開始します。
 func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, td *big.Int) (err error) {
 	d.mux.Post(StartEvent{})
 	defer func() {
 		// reset on error
+		// エラー時にリセット
 		if err != nil {
 			d.mux.Post(FailedEvent{err})
 		} else {
@@ -437,6 +455,7 @@ func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, td *big.I
 	}(time.Now())
 
 	// Look up the sync boundaries: the common ancestor and the target block
+	// 同期境界を検索します：共通の祖先とターゲットブロック
 	latest, pivot, err := d.fetchHead(p)
 	if err != nil {
 		return err
@@ -446,6 +465,8 @@ func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, td *big.I
 		// threshold (i.e. new chain). In that case we won't really snap sync
 		// anyway, but still need a valid pivot block to avoid some code hitting
 		// nil panics on an access.
+		// ピボットブロックが返されない場合、ヘッドは最小フルブロックしきい値（つまり、新しいチェーン）を下回っています。
+		// その場合、とにかく実際にはスナップ同期は行いませんが、アクセスで一部のコードがnilパニックに陥るのを防ぐために、有効なピボットブロックが必要です。
 		pivot = d.blockchain.CurrentBlock().Header()
 	}
 	height := latest.Number.Uint64()
@@ -462,6 +483,7 @@ func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, td *big.I
 	d.syncStatsLock.Unlock()
 
 	// Ensure our origin point is below any snap sync pivot point
+	// 原点がスナップ同期ピボットポイントの下にあることを確認します
 	if mode == SnapSync {
 		if height <= uint64(fsMinFullBlocks) {
 			origin = 0
@@ -472,6 +494,7 @@ func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, td *big.I
 			}
 			// Write out the pivot into the database so a rollback beyond it will
 			// reenable snap sync
+			// ピボットをデータベースに書き出して、それを超えるロールバックでスナップ同期が再度有効になるようにします
 			rawdb.WriteLastPivotNumber(d.stateDB, pivotNumber)
 		}
 	}
@@ -494,6 +517,16 @@ func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, td *big.I
 		// The peer would start to feed us valid blocks until head, resulting in all of
 		// the blocks might be written into the ancient store. A following mini-reorg
 		// could cause issues.
+		// 古いデータ制限を設定します。
+		// スナップ同期を実行している場合、ancientLimitより古いすべてのブロックデータが古代のストアに書き込まれます。
+		// 最新のデータがアクティブなデータベースに書き込まれ、フリーザーが移行するのを待ちます。
+		//
+		// 利用可能なチェックポイントがある場合は、それを介してancientLimitを計算します。
+		// それ以外の場合は、リモートピアのアドバタイズされた高さから古代の制限を計算します。
+		//
+		// 最初にチェックポイントを選択する理由は、悪意のあるピアが偽の（非常に高い）高さを提供し、古代の制限も非常に高くする可能性があるためです。
+		// ピアは、headまで有効なブロックをフィードし始め、その結果、すべてのブロックが古いストアに書き込まれる可能性があります。
+		// 次のミニ再編成は問題を引き起こす可能性があります。
 		if d.checkpoint != 0 && d.checkpoint > fullMaxForkAncestry+1 {
 			d.ancientLimit = d.checkpoint
 		} else if height > fullMaxForkAncestry+1 {
@@ -1342,6 +1375,7 @@ func (d *Downloader) processHeaders(origin uint64, td *big.Int) error {
 }
 
 // processFullSyncContent takes fetch results from the queue and imports them into the chain.
+// processFullSyncContentは、キューからフェッチ結果を取得し、それらをチェーンにインポートします。
 func (d *Downloader) processFullSyncContent() error {
 	for {
 		results := d.queue.Results(true)
@@ -1359,6 +1393,7 @@ func (d *Downloader) processFullSyncContent() error {
 
 func (d *Downloader) importBlockResults(results []*fetchResult) error {
 	// Check for any early termination requests
+	// 早期終了リクエストを確認します
 	if len(results) == 0 {
 		return nil
 	}
@@ -1368,6 +1403,7 @@ func (d *Downloader) importBlockResults(results []*fetchResult) error {
 	default:
 	}
 	// Retrieve the a batch of results to import
+	// インポートする結果のバッチを取得します
 	first, last := results[0].Header, results[len(results)-1].Header
 	log.Debug("Inserting downloaded chain", "items", len(results),
 		"firstnum", first.Number, "firsthash", first.Hash(),
@@ -1380,6 +1416,8 @@ func (d *Downloader) importBlockResults(results []*fetchResult) error {
 	// Downloaded blocks are always regarded as trusted after the
 	// transition. Because the downloaded chain is guided by the
 	// consensus-layer.
+	// ダウンロードされたブロックは、移行後は常に信頼できると見なされます。
+	// ダウンロードされたチェーンはコンセンサスレイヤーによってガイドされるためです。
 	if index, err := d.blockchain.InsertChain(blocks); err != nil {
 		if index < len(results) {
 			log.Debug("Downloaded item processing failed", "number", results[index].Header.Number, "hash", results[index].Header.Hash(), "err", err)
@@ -1388,6 +1426,10 @@ func (d *Downloader) importBlockResults(results []*fetchResult) error {
 			// when it needs to preprocess blocks to import a sidechain.
 			// The importer will put together a new list of blocks to import, which is a superset
 			// of the blocks delivered from the downloader, and the indexing will be off.
+			// ブロックチェーンをインポートするためにブロックを前処理する必要がある場合、
+			// blockchain.goのInsertChainメソッドが範囲外のインデックスを返すことがあります。
+			// インポーターは、インポートするブロックの新しいリストをまとめます。
+			// これは、ダウンローダーから配信されたブロックのスーパーセットであり、インデックス作成はオフになります。
 			log.Debug("Downloaded item processing failed on sidechain import", "index", index, "err", err)
 		}
 		return fmt.Errorf("%w: %v", errInvalidChain, err)

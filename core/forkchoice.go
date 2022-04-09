@@ -58,9 +58,10 @@ type ForkChoice struct {
 
 func NewForkChoice(chainReader ChainReader, preserve func(header *types.Header) bool) *ForkChoice {
 	// Seed a fast but crypto originating random generator
+	// 高速ですが暗号化元のランダムジェネレーターをシードします
 	seed, err := crand.Int(crand.Reader, big.NewInt(math.MaxInt64))
 	if err != nil {
-		log.Crit("Failed to initialize random seed", "err", err)
+		log.Crit("Failed to initialize random seed", "err", err) // ランダムシードの初期化に失敗しました
 	}
 	return &ForkChoice{
 		chain:    chainReader,

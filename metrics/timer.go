@@ -6,6 +6,7 @@ import (
 )
 
 // Timers capture the duration and rate of events.
+// タイマーは、イベントの期間とレートをキャプチャします。
 type Timer interface {
 	Count() int64
 	Max() int64

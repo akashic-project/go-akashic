@@ -502,17 +502,20 @@ func (h *handler) Start(maxPeers int) {
 	h.maxPeers = maxPeers
 
 	// broadcast transactions
+	// ブロードキャストトランザクション
 	h.wg.Add(1)
 	h.txsCh = make(chan core.NewTxsEvent, txChanSize)
 	h.txsSub = h.txpool.SubscribeNewTxsEvent(h.txsCh)
 	go h.txBroadcastLoop()
 
 	// broadcast mined blocks
+	// マイニングされたブロックをブロードキャストします
 	h.wg.Add(1)
 	h.minedBlockSub = h.eventMux.Subscribe(core.NewMinedBlockEvent{})
 	go h.minedBroadcastLoop()
 
 	// start sync handlers
+	// 同期ハンドラーを開始します
 	h.wg.Add(1)
 	go h.chainSync.loop()
 }

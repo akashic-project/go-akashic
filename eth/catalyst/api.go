@@ -245,6 +245,7 @@ func (api *ConsensusAPI) invalid() ExecutePayloadResponse {
 }
 
 // ExecutePayload creates an Eth1 block, inserts it in the chain, and returns the status of the chain.
+// ExecutePayloadはEth1ブロックを作成し、それをチェーンに挿入して、チェーンのステータスを返します。
 func (api *ConsensusAPI) ExecutePayloadV1(params ExecutableDataV1) (ExecutePayloadResponse, error) {
 	block, err := ExecutableDataToBlock(params)
 	if err != nil {

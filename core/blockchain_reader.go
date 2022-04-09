@@ -116,8 +116,10 @@ func (bc *BlockChain) GetBody(hash common.Hash) *types.Body {
 
 // GetBodyRLP retrieves a block body in RLP encoding from the database by hash,
 // caching it if found.
+// GetBodyRLPは、データベースからRLPエンコーディングのブロック本体をハッシュで取得し、見つかった場合はキャッシュします。
 func (bc *BlockChain) GetBodyRLP(hash common.Hash) rlp.RawValue {
 	// Short circuit if the body's already in the cache, retrieve otherwise
+	// 本体がすでにキャッシュにある場合は短絡し、そうでない場合は取得します
 	if cached, ok := bc.bodyRLPCache.Get(hash); ok {
 		return cached.(rlp.RawValue)
 	}
@@ -130,11 +132,13 @@ func (bc *BlockChain) GetBodyRLP(hash common.Hash) rlp.RawValue {
 		return nil
 	}
 	// Cache the found body for next time and return
+	// 見つかった本文を次回のためにキャッシュし、
 	bc.bodyRLPCache.Add(hash, body)
 	return body
 }
 
 // HasBlock checks if a block is fully present in the database or not.
+// HasBlockは、ブロックがデータベースに完全に存在するかどうかをチェックします。
 func (bc *BlockChain) HasBlock(hash common.Hash, number uint64) bool {
 	if bc.blockCache.Contains(hash) {
 		return true
@@ -143,6 +147,7 @@ func (bc *BlockChain) HasBlock(hash common.Hash, number uint64) bool {
 }
 
 // HasFastBlock checks if a fast block is fully present in the database or not.
+// HasFastBlockは、高速ブロックがデータベースに完全に存在するかどうかをチェックします。
 func (bc *BlockChain) HasFastBlock(hash common.Hash, number uint64) bool {
 	if !bc.HasBlock(hash, number) {
 		return false

@@ -98,6 +98,7 @@ func (cs *chainSyncer) handlePeerEvent(peer *eth.Peer) bool {
 }
 
 // loop runs in its own goroutine and launches the sync when necessary.
+// ループは独自のゴルーチンで実行され、必要に応じて同期を開始します。
 func (cs *chainSyncer) loop() {
 	defer cs.handler.wg.Done()
 
@@ -109,6 +110,8 @@ func (cs *chainSyncer) loop() {
 
 	// The force timer lowers the peer count threshold down to one when it fires.
 	// This ensures we'll always start sync even if there aren't enough peers.
+	// 強制タイマーは、起動時にピアカウントのしきい値を1に下げます。
+	// これにより、十分なピアがない場合でも常に同期を開始できます。
 	cs.force = time.NewTimer(forceSyncCycle)
 	defer cs.force.Stop()
 
@@ -119,6 +122,7 @@ func (cs *chainSyncer) loop() {
 		select {
 		case <-cs.peerEventCh:
 			// Peer information changed, recheck.
+			// ピア情報が変更されました、再確認してください。
 		case <-cs.doneCh:
 			cs.doneCh = nil
 			cs.force.Reset(forceSyncCycle)
@@ -201,12 +205,14 @@ func (cs *chainSyncer) modeAndLocalHead() (downloader.SyncMode, *big.Int) {
 }
 
 // startSync launches doSync in a new goroutine.
+// startSyncは、新しいゴルーチンでdoSyncを起動します。
 func (cs *chainSyncer) startSync(op *chainSyncOp) {
 	cs.doneCh = make(chan error, 1)
 	go func() { cs.doneCh <- cs.handler.doSync(op) }()
 }
 
 // doSync synchronizes the local blockchain with a remote peer.
+// doSyncは、ローカルブロックチェーンをリモートピアと同期します
 func (h *handler) doSync(op *chainSyncOp) error {
 	if op.mode == downloader.SnapSync {
 		// Before launch the snap sync, we have to ensure user uses the same
@@ -218,6 +224,12 @@ func (h *handler) doSync(op *chainSyncOp) error {
 		// has been indexed. So here for the user-experience wise, it's non-optimal
 		// that user can't change limit during the snap sync. If changed, Geth
 		// will just blindly use the original one.
+		// スナップ同期を起動する前に、ユーザーが同じtxlookup制限を使用していることを確認する必要があります。
+		// ここでの主な懸念事項は、スナップ同期中、GethがHEAD制限の前にブロックにインデックスを付けない（txインデックスを生成する）ことです。
+		// ただし、ユーザーが次のスナップ同期で制限を変更した場合（たとえば、ユーザーがGethを手動で強制終了して再起動した場合）、
+		// Gethが最も古いブロックにインデックスが付けられていることを確認するのは困難です。
+		// したがって、ここではユーザーエクスペリエンスの観点から、スナップ同期中にユーザーが制限を変更できないことは最適ではありません。
+		// 変更された場合、ゲスは盲目的に元のものを使用します。
 		limit := h.chain.TxLookupLimit()
 		if stored := rawdb.ReadFastTxLookupLimit(h.database); stored == nil {
 			rawdb.WriteFastTxLookupLimit(h.database, limit)
@@ -227,6 +239,7 @@ func (h *handler) doSync(op *chainSyncOp) error {
 		}
 	}
 	// Run the sync cycle, and disable snap sync if we're past the pivot block
+	// 同期サイクルを実行し、ピボットブロックを過ぎた場合はスナップ同期を無効にします
 	err := h.downloader.Synchronise(op.peer.ID(), op.head, op.td, op.mode)
 	if err != nil {
 		return err
